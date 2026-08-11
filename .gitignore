@@ -1,0 +1,7 @@
+backend/target/
+backend/.env
+backend/.env.*
+!backend/.env.example
+.idea/
+*.iml
+*.log
