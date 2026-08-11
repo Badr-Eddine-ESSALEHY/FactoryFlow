@@ -1,0 +1,5 @@
+factoryflow:
+  security:
+    jwt:
+      secret: factoryflow-test-only-jwt-secret-32-characters
+      access-token-ttl: PT15M

@@ -36,3 +36,11 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     display-request-duration: true
+
+factoryflow:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+  parser:
+    fuzzy-threshold: ${PARSER_FUZZY_THRESHOLD:0.82}

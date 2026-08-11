@@ -864,13 +864,13 @@ FF-1002 — JWT Authentication
 
 Priority: MUST
 
-[ ] login DTO
-[ ] login endpoint
-[ ] password verification
-[ ] access token generation
-[ ] authentication filter
-[ ] protected API behavior
-[ ] consistent unauthorized response
+[x] login DTO
+[x] login endpoint
+[x] password verification
+[x] access token generation
+[x] authentication filter
+[x] protected API behavior
+[x] consistent unauthorized response
 
 Endpoint concept:
 
@@ -886,6 +886,8 @@ Swagger authenticated request screenshot if useful.
 FF-1003 — Refresh Token Flow
 
 Priority: MUST
+
+[~] Deferred by explicit user direction for the minimal M1 authentication pass
 
 [ ] refresh token model/strategy
 [ ] rotation/lifecycle decision
@@ -944,12 +946,12 @@ active
 
 Acceptance:
 
-[ ] entity
-[ ] migration
-[ ] repository
-[ ] service
-[ ] DTOs
-[ ] validation
+[x] entity
+[x] migration
+[x] repository
+[x] service
+[x] DTOs
+[x] validation
 
 Suggested commit:
 
@@ -974,13 +976,14 @@ Potential update/deactivation endpoints should be added when needed.
 
 Acceptance:
 
-[ ] list definitions
-[ ] active filtering
-[ ] create/update behavior
-[ ] alias support
-[ ] plausible ranges
-[ ] unit handling
-[ ] Swagger documentation
+[x] list definitions
+[x] active filtering
+[x] create behavior
+[ ] update behavior
+[x] alias support
+[x] plausible ranges
+[x] unit handling
+[x] Swagger documentation
 
 Suggested commit:
 
@@ -993,11 +996,11 @@ Use real project vocabulary only when safe.
 
 If company-sensitive values exist, anonymize public examples.
 
-[ ] initial canonical KPI labels
-[ ] aliases
-[ ] known spelling variations
-[ ] units
-[ ] plausible ranges where known
+[x] initial canonical KPI labels
+[x] aliases
+[x] known spelling variations
+[x] units
+[x] plausible ranges where known
 
 Suggested commit:
 
@@ -1024,13 +1027,13 @@ feat(parser): implement input normalization
 
 Tests:
 
-[ ] Windows/Linux line endings
-[ ] extra whitespace
-[ ] casing
-[ ] colon
-[ ] equals
-[ ] arrow separator
-[ ] no explicit separator
+[x] Windows/Linux line endings
+[x] extra whitespace
+[x] casing
+[x] colon
+[x] equals
+[x] arrow separator
+[x] no explicit separator
 FF-1202 — KPI Label Recognition
 
 Priority: MUST
@@ -1065,11 +1068,11 @@ Levenshtein distance / similarity
 
 Requirements:
 
-[ ] configurable threshold
-[ ] exact match preferred
-[ ] alias match preferred before weak fuzzy match
-[ ] explainable match result
-[ ] low-quality matches receive warning
+[x] configurable threshold
+[x] exact match preferred
+[x] alias match preferred before weak fuzzy match
+[x] explainable match result
+[x] low-quality matches receive warning
 
 Do not introduce LLM extraction.
 
@@ -1099,12 +1102,12 @@ Missing value is not zero.
 
 Acceptance:
 
-[ ] decimal comma
-[ ] decimal point
-[ ] integer
-[ ] invalid numeric content
-[ ] empty field
-[ ] unit-adjacent value
+[x] decimal comma
+[x] decimal point
+[x] integer
+[x] invalid numeric content
+[x] empty field
+[x] unit-adjacent value
 
 Suggested commit:
 
@@ -1163,10 +1166,10 @@ Priority: MUST
 
 The parser must preserve/report content it does not understand.
 
-[ ] unknown lines returned
-[ ] no silent discard
+[x] unknown lines returned
+[x] no silent discard
 [ ] confirmation UI can surface them later
-[ ] drafts and confirmed reports persist `UNRESOLVED`, `ASSIGNED`, or `IGNORED` resolution
+[x] drafts and confirmed reports persist `UNRESOLVED`, `ASSIGNED`, or `IGNORED` resolution
 
 One source line may produce zero, one, or multiple KPI candidates. Do not force
 multi-measurement lines such as `Compresseur 1: 77108-77%` into one composite value.
@@ -1229,27 +1232,27 @@ Create anonymized fixtures covering real variations.
 
 Minimum scenarios:
 
-[ ] WhatsApp UI/OCR noise
-[ ] multiple visible message bubbles
-[ ] `---` / `----` missing markers
-[ ] colon separator
-[ ] arrow separator
-[ ] equals separator
-[ ] whitespace separator
-[ ] decimal comma
-[ ] decimal point
-[ ] attached units
-[ ] decimal/thousands ambiguity such as `30.197` vs `30197`
-[ ] multiple measurements in one line
-[ ] typo alias
-[ ] fuzzy typo
-[ ] missing field
-[ ] partial report
-[ ] unknown line
-[ ] duplicate KPI
-[ ] suspicious value
-[ ] invalid number
-[ ] different KPI order
+[x] WhatsApp UI/OCR noise
+[x] multiple visible message bubbles
+[x] `---` / `----` missing markers
+[x] colon separator
+[x] arrow separator
+[x] equals separator
+[x] whitespace separator
+[x] decimal comma
+[x] decimal point
+[x] attached units
+[x] decimal/thousands ambiguity such as `30.197` vs `30197`
+[x] multiple measurements in one line
+[x] typo alias
+[x] fuzzy typo
+[x] missing field
+[x] partial report
+[x] unknown line
+[x] duplicate KPI
+[x] suspicious value
+[x] invalid number
+[x] different KPI order
 
 Suggested commit:
 
@@ -1266,6 +1269,8 @@ the engineer controls the final draft during review.
 FF-1301 — Maintenance Report Model
 
 Priority: MUST
+
+[x] Backend persistence model and Flyway migration implemented
 
 Baseline:
 
@@ -1296,6 +1301,8 @@ feat(report): add maintenance report persistence
 FF-1302 — KPI Entry Model
 
 Priority: MUST
+
+[x] Extracted, current, and final values persist separately with warnings and edit tracking
 
 Baseline:
 
@@ -1341,12 +1348,12 @@ POST /api/reports/{id}/confirm
 
 Requirements:
 
-[ ] accepts reviewed values
-[ ] rejects malformed confirmation
-[ ] stores final values
-[ ] records edits
-[ ] marks report confirmed
-[ ] transactionally persists report + entries
+[x] accepts reviewed values
+[x] rejects malformed confirmation
+[x] stores final values
+[x] records edits
+[x] marks report confirmed
+[x] transactionally persists report + entries
 
 Suggested commit:
 
@@ -1396,6 +1403,9 @@ Capture a polished screenshot showing:
 FF-1501 — Draft Persistence
 
 Priority: MUST
+
+[x] Create, update, and retrieve server-side drafts
+[x] Preserve raw input, extracted values, current edits, source, date, warnings, and unknown lines
 
 Endpoint concept:
 

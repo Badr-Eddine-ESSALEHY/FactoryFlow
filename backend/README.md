@@ -4,7 +4,7 @@
 
 - Java 21
 - PostgreSQL with a `factoryflow` database
-- `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` set in the shell environment
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` set in the shell environment
 
 PowerShell example (replace the password locally; do not commit it):
 
@@ -13,6 +13,7 @@ $env:JAVA_HOME='D:\Java JDK 21'
 $env:DB_URL='jdbc:postgresql://localhost:5432/factoryflow'
 $env:DB_USERNAME='postgres'
 $env:DB_PASSWORD='<local-password>'
+$env:JWT_SECRET='<at-least-32-random-characters>'
 ```
 
 Run tests:
