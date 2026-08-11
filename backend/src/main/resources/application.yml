@@ -17,6 +17,19 @@ spring:
         default_batch_fetch_size: 50
         jdbc:
           time_zone: UTC
+  quartz:
+    job-store-type: memory
+    properties:
+      org.quartz.scheduler.instanceName: FactoryFlowScheduler
+      org.quartz.threadPool.threadCount: 2
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:25}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
 
 server:
   shutdown: graceful
@@ -25,6 +38,9 @@ server:
     include-stacktrace: never
 
 management:
+  health:
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
   endpoints:
     web:
       exposure:
@@ -47,3 +63,5 @@ factoryflow:
     fuzzy-threshold: ${PARSER_FUZZY_THRESHOLD:0.82}
   reports:
     storage-root: ${REPORT_STORAGE_ROOT:./data/generated-reports}
+  mail:
+    from: ${MAIL_FROM:}

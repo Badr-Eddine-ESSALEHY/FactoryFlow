@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class HistoryAndExcelIntegrationTest {
 
-    private static final LocalDate EFFECTIVE_DATE = LocalDate.of(2026, 8, 11);
+    private static final LocalDate EFFECTIVE_DATE = LocalDate.of(2099, 1, 1);
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -68,6 +68,7 @@ class HistoryAndExcelIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .param("effectiveDate", EFFECTIVE_DATE.toString())
                         .param("status", "CONFIRMED")
+                        .param("submittedBy", user.getId().toString())
                         .param("page", "0").param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2))
@@ -91,8 +92,8 @@ class HistoryAndExcelIntegrationTest {
                                 {
                                   "type":"DAILY",
                                   "format":"EXCEL",
-                                  "periodStart":"2026-08-11",
-                                  "periodEnd":"2026-08-11"
+                                  "periodStart":"2099-01-01",
+                                  "periodEnd":"2099-01-01"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -109,7 +110,7 @@ class HistoryAndExcelIntegrationTest {
                 .andExpect(header().string("Content-Type",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andExpect(header().string("Content-Disposition",
-                        org.hamcrest.Matchers.containsString("FactoryFlow_DAILY_2026-08-11_v1.xlsx")))
+                        org.hamcrest.Matchers.containsString("FactoryFlow_DAILY_2099-01-01_v1.xlsx")))
                 .andReturn().getResponse().getContentAsByteArray();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(downloaded))) {
@@ -137,7 +138,9 @@ class HistoryAndExcelIntegrationTest {
 
         mockMvc.perform(get("/api/generated-reports")
                         .header("Authorization", "Bearer " + token)
-                        .param("type", "DAILY"))
+                        .param("type", "DAILY")
+                        .param("dateFrom", EFFECTIVE_DATE.toString())
+                        .param("dateTo", EFFECTIVE_DATE.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1));
         mockMvc.perform(get("/api/generated-reports/{id}", generatedId)

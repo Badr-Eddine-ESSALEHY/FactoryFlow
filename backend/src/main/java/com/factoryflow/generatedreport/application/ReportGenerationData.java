@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-public record ExcelReportData(
+public record ReportGenerationData(
         GeneratedReportType type,
         ReportPeriod period,
         Instant generatedAt,

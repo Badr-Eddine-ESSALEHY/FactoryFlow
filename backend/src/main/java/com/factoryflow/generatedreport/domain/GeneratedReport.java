@@ -2,6 +2,7 @@ package com.factoryflow.generatedreport.domain;
 
 import com.factoryflow.auth.domain.UserAccount;
 import com.factoryflow.report.domain.MaintenanceReport;
+import com.factoryflow.schedule.domain.ReportSchedule;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -40,6 +41,7 @@ public class GeneratedReport {
     private EmailDeliveryStatus emailDeliveryStatus;
     @Column(nullable = false) private int version;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "regenerated_from_id") private GeneratedReport regeneratedFrom;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "schedule_id") private ReportSchedule schedule;
     @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
     @ManyToMany
     @JoinTable(name = "generated_report_sources",
@@ -51,7 +53,8 @@ public class GeneratedReport {
 
     public static GeneratedReport ready(GeneratedReportType type, GeneratedReportFormat format, ReportPeriod period,
                                         Instant generatedAt, String filePath, String fileName, UserAccount user,
-                                        int version, GeneratedReport previous, Set<MaintenanceReport> sources) {
+                                        int version, GeneratedReport previous, Set<MaintenanceReport> sources,
+                                        GenerationOrigin origin, ReportSchedule schedule, EmailDeliveryStatus emailStatus) {
         GeneratedReport report = new GeneratedReport();
         report.type = type;
         report.format = format;
@@ -61,11 +64,12 @@ public class GeneratedReport {
         report.filePath = filePath;
         report.fileName = fileName;
         report.generatedBy = user;
-        report.origin = GenerationOrigin.MANUAL;
+        report.origin = origin;
         report.generationStatus = GenerationStatus.READY;
-        report.emailDeliveryStatus = EmailDeliveryStatus.NOT_REQUESTED;
+        report.emailDeliveryStatus = emailStatus;
         report.version = version;
         report.regeneratedFrom = previous;
+        report.schedule = schedule;
         report.createdAt = generatedAt;
         report.sourceReports.addAll(sources);
         return report;
@@ -85,5 +89,9 @@ public class GeneratedReport {
     public EmailDeliveryStatus getEmailDeliveryStatus() { return emailDeliveryStatus; }
     public int getVersion() { return version; }
     public GeneratedReport getRegeneratedFrom() { return regeneratedFrom; }
+    public ReportSchedule getSchedule() { return schedule; }
+    public void markEmailPending() { emailDeliveryStatus = EmailDeliveryStatus.PENDING; }
+    public void markEmailDelivered() { emailDeliveryStatus = EmailDeliveryStatus.DELIVERED; }
+    public void markEmailFailed() { emailDeliveryStatus = EmailDeliveryStatus.FAILED; }
     public Set<MaintenanceReport> getSourceReports() { return Set.copyOf(sourceReports); }
 }

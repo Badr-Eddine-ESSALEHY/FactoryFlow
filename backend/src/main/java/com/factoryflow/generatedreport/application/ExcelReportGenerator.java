@@ -23,7 +23,7 @@ public class ExcelReportGenerator {
             "Confirmed value", "Submitted by", "Confirmed at"
     };
 
-    public byte[] generate(ExcelReportData data) {
+    public byte[] generate(ReportGenerationData data) {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Maintenance KPIs");
             Styles styles = createStyles(workbook);
@@ -45,7 +45,7 @@ public class ExcelReportGenerator {
             }
 
             int rowIndex = 6;
-            for (ExcelReportData.Row value : data.rows()) {
+            for (ReportGenerationData.Row value : data.rows()) {
                 Row row = sheet.createRow(rowIndex++);
                 text(row, 0, value.effectiveDate().toString(), styles.body());
                 numeric(row, 1, value.sourceReportId(), styles.integer());

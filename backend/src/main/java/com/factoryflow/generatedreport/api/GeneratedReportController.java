@@ -40,7 +40,7 @@ public class GeneratedReportController {
     }
 
     @PostMapping
-    @Operation(summary = "Synchronously generate an Excel report from confirmed KPI data")
+    @Operation(summary = "Synchronously generate an Excel or PDF report from confirmed KPI data")
     public ResponseEntity<GeneratedReportResponse> generate(
             Principal principal,
             @Valid @RequestBody GenerateReportRequest request
@@ -70,14 +70,15 @@ public class GeneratedReportController {
     }
 
     @GetMapping("/{id}/file")
-    @Operation(summary = "Download a ready generated Excel file")
+    @Operation(summary = "Download a ready generated Excel or PDF file")
     public ResponseEntity<Resource> download(@PathVariable Long id) {
         GeneratedReportService.DownloadedGeneratedReport download = service.download(id);
         return ResponseEntity.ok()
-                .contentType(EXCEL)
+                .contentType(download.format() == GeneratedReportFormat.PDF ? MediaType.APPLICATION_PDF : EXCEL)
                 .contentLength(download.file().contentLength())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + download.fileName().replace("\"", "") + "\"")
+                        (download.format() == GeneratedReportFormat.PDF ? "inline" : "attachment")
+                                + "; filename=\"" + download.fileName().replace("\"", "") + "\"")
                 .body(download.file().resource());
     }
 }

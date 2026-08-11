@@ -1678,6 +1678,9 @@ FF-2001 — Dashboard Statistics API
 
 Priority: MUST
 
+[x] Authenticated dashboard read model implemented from persisted data
+[x] Confirmed-only latest KPI values, today's counts, missing-value count, recent reports/documents, and upcoming schedule exposed
+
 The dashboard uses confirmed data only.
 
 Potential data:
@@ -1796,14 +1799,14 @@ Priority: MUST
 
 Professional output:
 
-[ ] title/header
-[ ] period
-[ ] KPI data
-[ ] units
-[ ] readable layout
+[x] title/header
+[x] period
+[x] KPI data
+[x] units
+[x] readable layout
 [ ] page numbering if multiple pages
-[ ] generation metadata
-[ ] deterministic filename
+[x] generation metadata
+[x] deterministic filename
 
 Suggested commit:
 
@@ -1819,6 +1822,8 @@ FF-2302 — PDF Generation API
 Use the same canonical period-based generation contract with `format = PDF`:
 
 POST /api/generated-reports
+
+[x] PDF uses the existing generation/list/detail/download contract and shared confirmed dataset
 
 Suggested commit:
 
@@ -1892,6 +1897,9 @@ FF-2601 — Schedule Domain Model
 
 Priority: MUST
 
+[x] PostgreSQL-backed daily, weekly, and monthly schedule configuration implemented
+[x] Formats, recipients, enablement, timezone, run history, and optimistic version persisted
+
 Support:
 
 Daily
@@ -1913,6 +1921,10 @@ FF-2602 — Quartz Integration
 
 Priority: MUST
 
+[x] Thin Quartz job delegates to shared report-generation application service
+[x] One fire-and-proceed misfire recovery and database idempotency implemented
+[x] Enabled schedules are reconstructed in Quartz from PostgreSQL on startup
+
 Quartz decides when.
 
 Application services decide what.
@@ -1932,10 +1944,10 @@ FF-2603 — Daily Report Schedule
 
 Priority: MUST
 
-[ ] define daily period semantics
-[ ] trigger generation
-[ ] persist generated report
-[ ] error handling
+[x] define daily period semantics
+[x] trigger generation
+[x] persist generated report
+[x] error handling
 
 Suggested commit:
 
@@ -1943,6 +1955,8 @@ feat(scheduler): automate daily report generation
 FF-2604 — Weekly Report Schedule
 
 Priority: MUST
+
+[x] Configurable weekly trigger with previous Monday-through-Sunday reporting period
 
 Use calendar weeks from Monday through Sunday.
 
@@ -1952,6 +1966,8 @@ feat(scheduler): automate weekly report generation
 FF-2605 — Monthly Report Schedule
 
 Priority: MUST
+
+[x] First-day trigger generates the complete previous calendar month
 
 At the configured time on the first day of a month, generate the complete previous
 calendar month. Do not use arbitrary `dayOfMonth = 31` behavior.
@@ -1964,9 +1980,9 @@ FF-2701 — JavaMailSender Configuration
 
 Priority: SHOULD
 
-[ ] SMTP config externalized
-[ ] secrets excluded
-[ ] test/development behavior defined
+[x] SMTP config externalized
+[x] secrets excluded
+[x] test/development behavior defined
 
 Suggested commit:
 
@@ -1974,6 +1990,9 @@ feat(email): configure scheduled report delivery
 FF-2702 — Scheduled Email Delivery
 
 Priority: SHOULD
+
+[x] Optional scheduled attachment delivery implemented through JavaMailSender
+[x] Delivery status persisted independently; email failure preserves READY generated documents
 
 Flow:
 
@@ -2253,6 +2272,9 @@ feat(android): add notification deep-link navigation
 FF-3601 — Statistics Backend
 
 Priority: SHOULD
+
+[x] Authenticated date-range and optional-KPI statistics API implemented
+[x] Confirmed-only points, latest/min/max/average, sample/report counts, and missing counts returned without zero substitution
 
 Confirmed data only.
 

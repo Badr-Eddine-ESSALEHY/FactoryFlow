@@ -24,6 +24,7 @@ public record GeneratedReportResponse(
         String fileName,
         Long generatedBy,
         Long regeneratedFromId,
+        Long scheduleId,
         List<Long> sourceReportIds
 ) {
     public static GeneratedReportResponse from(GeneratedReport report) {
@@ -33,6 +34,7 @@ public record GeneratedReportResponse(
                 report.getGeneratedAt(), report.getFileName(),
                 report.getGeneratedBy() == null ? null : report.getGeneratedBy().getId(),
                 report.getRegeneratedFrom() == null ? null : report.getRegeneratedFrom().getId(),
+                report.getSchedule() == null ? null : report.getSchedule().getId(),
                 report.getSourceReports().stream().map(source -> source.getId()).sorted().toList()
         );
     }

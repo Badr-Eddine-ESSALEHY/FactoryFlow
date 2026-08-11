@@ -5,3 +5,6 @@ factoryflow:
       access-token-ttl: PT15M
   reports:
     storage-root: target/test-generated-reports
+spring:
+  quartz:
+    auto-startup: false

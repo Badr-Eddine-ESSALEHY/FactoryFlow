@@ -7,6 +7,8 @@ import com.factoryflow.generatedreport.api.GeneratedReportResponse;
 import com.factoryflow.generatedreport.domain.GeneratedReport;
 import com.factoryflow.generatedreport.domain.GeneratedReportFormat;
 import com.factoryflow.generatedreport.domain.GeneratedReportType;
+import com.factoryflow.generatedreport.domain.GenerationOrigin;
+import com.factoryflow.generatedreport.domain.EmailDeliveryStatus;
 import com.factoryflow.generatedreport.domain.GenerationStatus;
 import com.factoryflow.generatedreport.domain.ReportPeriod;
 import com.factoryflow.generatedreport.persistence.GeneratedReportRepository;
@@ -15,6 +17,7 @@ import com.factoryflow.generatedreport.storage.StoredReportFile;
 import com.factoryflow.report.domain.MaintenanceReport;
 import com.factoryflow.report.domain.ReportStatus;
 import com.factoryflow.report.persistence.MaintenanceReportRepository;
+import com.factoryflow.schedule.domain.ReportSchedule;
 import com.factoryflow.shared.api.PageResponse;
 import com.factoryflow.shared.error.ApiErrorCode;
 import com.factoryflow.shared.error.ApiException;
@@ -39,6 +42,7 @@ public class GeneratedReportService {
     private final MaintenanceReportRepository maintenanceReports;
     private final AuthenticationService authentication;
     private final ExcelReportGenerator excelGenerator;
+    private final PdfReportGenerator pdfGenerator;
     private final ReportStorageService storage;
     private final Clock clock;
 
@@ -46,12 +50,14 @@ public class GeneratedReportService {
                                   MaintenanceReportRepository maintenanceReports,
                                   AuthenticationService authentication,
                                   ExcelReportGenerator excelGenerator,
+                                  PdfReportGenerator pdfGenerator,
                                   ReportStorageService storage,
                                   Clock clock) {
         this.generatedReports = generatedReports;
         this.maintenanceReports = maintenanceReports;
         this.authentication = authentication;
         this.excelGenerator = excelGenerator;
+        this.pdfGenerator = pdfGenerator;
         this.storage = storage;
         this.clock = clock;
     }
@@ -65,29 +71,47 @@ public class GeneratedReportService {
         } catch (IllegalArgumentException exception) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, exception.getMessage());
         }
+        return generateDocument(request.type(), request.format(), period, user, null, GenerationOrigin.MANUAL);
+    }
+
+    @Transactional
+    public GeneratedReportResponse generateScheduled(ReportSchedule schedule, GeneratedReportFormat format,
+                                                      ReportPeriod period) {
+        return generateDocument(GeneratedReportType.valueOf(schedule.getType().name()), format, period,
+                null, schedule, GenerationOrigin.SCHEDULED);
+    }
+
+    private GeneratedReportResponse generateDocument(GeneratedReportType type, GeneratedReportFormat format,
+                                                       ReportPeriod period, UserAccount user,
+                                                       ReportSchedule schedule, GenerationOrigin origin) {
         List<MaintenanceReport> sourceReports = maintenanceReports
                 .findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
                         ReportStatus.CONFIRMED, period.start(), period.end());
-        GeneratedReport previous = generatedReports
-                .findFirstByTypeAndFormatAndPeriodStartAndPeriodEndOrderByVersionDesc(
-                        request.type(), request.format(), period.start(), period.end())
-                .orElse(null);
+        GeneratedReport previous = origin == GenerationOrigin.MANUAL
+                ? generatedReports.findFirstByTypeAndFormatAndPeriodStartAndPeriodEndAndOriginOrderByVersionDesc(
+                        type, format, period.start(), period.end(), GenerationOrigin.MANUAL).orElse(null)
+                : null;
         int version = previous == null ? 1 : previous.getVersion() + 1;
         Instant generatedAt = clock.instant();
-        String fileName = fileName(request.type(), period, version);
-        ExcelReportData data = toExcelData(request.type(), period, generatedAt, sourceReports);
-        byte[] workbook;
+        String fileName = fileName(type, format, period, version, schedule);
+        ReportGenerationData data = toGenerationData(type, period, generatedAt, sourceReports);
+        byte[] document;
         try {
-            workbook = excelGenerator.generate(data);
+            document = switch (format) {
+                case EXCEL -> excelGenerator.generate(data);
+                case PDF -> pdfGenerator.generate(data);
+            };
         } catch (RuntimeException exception) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.REPORT_GENERATION_FAILED,
-                    "The Excel report could not be generated.");
+                    "The " + format + " report could not be generated.");
         }
-        String reference = storage.store(fileName, workbook);
+        String reference = storage.store(fileName, document);
         try {
             GeneratedReport report = GeneratedReport.ready(
-                    request.type(), GeneratedReportFormat.EXCEL, period, generatedAt, reference, fileName, user,
-                    version, previous, new LinkedHashSet<>(sourceReports)
+                    type, format, period, generatedAt, reference, fileName, user,
+                    version, previous, new LinkedHashSet<>(sourceReports), origin, schedule,
+                    schedule != null && schedule.isEmailEnabled()
+                            ? EmailDeliveryStatus.PENDING : EmailDeliveryStatus.NOT_REQUESTED
             );
             return GeneratedReportResponse.from(generatedReports.saveAndFlush(report));
         } catch (RuntimeException exception) {
@@ -134,7 +158,7 @@ public class GeneratedReportService {
                     "Only ready generated reports can be downloaded.");
         }
         StoredReportFile file = storage.read(report.getFilePath());
-        return new DownloadedGeneratedReport(report.getFileName(), file);
+        return new DownloadedGeneratedReport(report.getFileName(), report.getFormat(), file);
     }
 
     private GeneratedReport requireReport(Long id) {
@@ -143,23 +167,26 @@ public class GeneratedReportService {
                         "Generated report not found."));
     }
 
-    private ExcelReportData toExcelData(GeneratedReportType type, ReportPeriod period, Instant generatedAt,
-                                        List<MaintenanceReport> reports) {
-        List<ExcelReportData.Row> rows = reports.stream().flatMap(report -> report.getEntries().stream().map(entry ->
-                new ExcelReportData.Row(
+    private ReportGenerationData toGenerationData(GeneratedReportType type, ReportPeriod period, Instant generatedAt,
+                                                   List<MaintenanceReport> reports) {
+        List<ReportGenerationData.Row> rows = reports.stream().flatMap(report -> report.getEntries().stream().map(entry ->
+                new ReportGenerationData.Row(
                         report.getEffectiveDate(), report.getId(), report.getSource(),
                         entry.getDefinition().getDisplayName(), entry.getDefinition().getUnit(), entry.getFinalValue(),
                         report.getSubmittedBy().getName(), report.getConfirmedAt()
                 ))).toList();
-        return new ExcelReportData(type, period, generatedAt, rows);
+        return new ReportGenerationData(type, period, generatedAt, rows);
     }
 
-    private String fileName(GeneratedReportType type, ReportPeriod period, int version) {
+    private String fileName(GeneratedReportType type, GeneratedReportFormat format, ReportPeriod period, int version,
+                            ReportSchedule schedule) {
         String dates = period.start().equals(period.end())
                 ? period.start().toString()
                 : period.start() + "_to_" + period.end();
-        return "FactoryFlow_" + type.name() + "_" + dates + "_v" + version + ".xlsx";
+        String extension = format == GeneratedReportFormat.PDF ? ".pdf" : ".xlsx";
+        String scheduleSuffix = schedule == null ? "" : "_schedule-" + schedule.getId();
+        return "FactoryFlow_" + type.name() + "_" + dates + scheduleSuffix + "_v" + version + extension;
     }
 
-    public record DownloadedGeneratedReport(String fileName, StoredReportFile file) { }
+    public record DownloadedGeneratedReport(String fileName, GeneratedReportFormat format, StoredReportFile file) { }
 }

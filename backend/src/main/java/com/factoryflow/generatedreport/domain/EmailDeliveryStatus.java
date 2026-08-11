@@ -1,5 +1,8 @@
 package com.factoryflow.generatedreport.domain;
 
 public enum EmailDeliveryStatus {
-    NOT_REQUESTED
+    NOT_REQUESTED,
+    PENDING,
+    DELIVERED,
+    FAILED
 }
