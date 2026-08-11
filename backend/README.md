@@ -14,6 +14,7 @@ $env:DB_URL='jdbc:postgresql://localhost:5432/factoryflow'
 $env:DB_USERNAME='postgres'
 $env:DB_PASSWORD='<local-password>'
 $env:JWT_SECRET='<at-least-32-random-characters>'
+$env:REPORT_STORAGE_ROOT='.\data\generated-reports'
 ```
 
 Run tests:

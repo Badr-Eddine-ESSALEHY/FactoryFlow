@@ -14,6 +14,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
+        default_batch_fetch_size: 50
         jdbc:
           time_zone: UTC
 
@@ -44,3 +45,5 @@ factoryflow:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
   parser:
     fuzzy-threshold: ${PARSER_FUZZY_THRESHOLD:0.82}
+  reports:
+    storage-root: ${REPORT_STORAGE_ROOT:./data/generated-reports}

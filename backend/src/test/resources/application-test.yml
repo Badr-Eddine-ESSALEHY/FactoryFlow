@@ -3,3 +3,5 @@ factoryflow:
     jwt:
       secret: factoryflow-test-only-jwt-secret-32-characters
       access-token-ttl: PT15M
+  reports:
+    storage-root: target/test-generated-reports

@@ -1493,6 +1493,9 @@ FF-1801 — Report Generation Domain
 
 Priority: MUST
 
+[x] Generated document domain remains separate from maintenance report persistence
+[x] Daily, weekly, monthly, and manual period semantics implemented
+
 Separate:
 
 maintenance report data
@@ -1507,6 +1510,9 @@ Suggested commit:
 
 feat(report): define generated report domain model
 FF-1802 — Generated Report Persistence
+
+[x] Flyway migration and JPA persistence implemented
+[x] Metadata, version/provenance, generating user, and source-report links persisted
 
 Baseline:
 
@@ -1547,6 +1553,9 @@ FF-1803 — Report Storage Abstraction
 
 Priority: MUST
 
+[x] `ReportStorageService` abstraction implemented
+[x] Safe local filesystem adapter implemented
+
 Interface concept:
 
 ReportStorageService
@@ -1573,16 +1582,16 @@ FF-1804 — Apache POI Excel Generator
 
 Priority: MUST
 
-[ ] workbook creation
-[ ] report title
-[ ] reporting period
-[ ] KPI table
-[ ] units
-[ ] professional styling
-[ ] reasonable column widths
-[ ] generation timestamp
-[ ] deterministic filename
-[ ] valid downloadable file
+[x] workbook creation
+[x] report title
+[x] reporting period
+[x] KPI table
+[x] units
+[x] professional styling
+[x] reasonable column widths
+[x] generation timestamp
+[x] deterministic filename
+[x] valid downloadable file
 
 Do not stop at an unformatted table dump.
 
@@ -1598,6 +1607,9 @@ Capture actual workbook screenshot.
 FF-1805 — Generated Report API
 
 Priority: MUST
+
+[x] synchronous `POST /api/generated-reports` for Excel
+[x] generated-report list, detail, and authenticated download endpoints
 
 Canonical endpoint:
 
@@ -1722,6 +1734,11 @@ FF-2101 — Report History API
 
 Priority: MUST
 
+[x] paginated maintenance report list
+[x] full maintenance report detail
+[x] effective date, date range, status, and submitter filters
+[x] confirmed final values exposed without treating drafts as confirmed
+
 Support:
 
 date
@@ -1757,6 +1774,9 @@ feat(android): build searchable report history
 FF-2201 — Generated Report List
 
 Priority: MUST
+
+[x] paginated generated-document history
+[x] metadata detail and authenticated file download
 
 Distinguish:
 
