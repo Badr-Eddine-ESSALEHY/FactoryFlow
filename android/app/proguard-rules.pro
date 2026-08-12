@@ -1,0 +1,1 @@
+-keep class com.factoryflow.app.core.network.dto.** { *; }

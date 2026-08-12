@@ -771,12 +771,12 @@ Only include dependencies when their milestone begins unless base setup genuinel
 
 Acceptance:
 
-[ ] Android project builds
+[x] Android project builds
 [ ] app launches
-[ ] package naming finalized
-[ ] Compose theme initialized
-[ ] navigation shell ready
-[ ] all user-facing strings live in Android resources and use professional French
+[x] package naming finalized
+[x] Compose theme initialized
+[x] navigation shell ready
+[x] all user-facing strings live in Android resources and use professional French
 
 Canonical bottom navigation: `Tableau de bord`, `Rapports`, `Créer`, `Notifications`.
 Profile/settings use the top-level profile action, not a fifth bottom item.
@@ -907,16 +907,16 @@ FF-1004 — Android Login
 
 Priority: MUST
 
-[ ] login screen
-[ ] email validation
-[ ] password validation
-[ ] loading state
-[ ] invalid credentials state
-[ ] network error
-[ ] Retrofit integration
-[ ] secure token persistence
-[ ] authenticated app session
-[ ] logout behavior
+[x] login screen
+[x] email validation
+[x] password validation
+[x] loading state
+[x] invalid credentials state
+[x] network error
+[x] Retrofit integration
+[x] secure token persistence
+[x] authenticated app session
+[x] logout behavior
 
 Suggested commit:
 
@@ -1168,7 +1168,7 @@ The parser must preserve/report content it does not understand.
 
 [x] unknown lines returned
 [x] no silent discard
-[ ] confirmation UI can surface them later
+[x] confirmation UI can surface them later
 [x] drafts and confirmed reports persist `UNRESOLVED`, `ASSIGNED`, or `IGNORED` resolution
 
 One source line may produce zero, one, or multiple KPI candidates. Do not force
@@ -1426,11 +1426,11 @@ FF-1502 — Android Draft Resume
 
 Priority: MUST
 
-[ ] interrupted validation can be saved
-[ ] draft appears later
-[ ] draft reopens with corrections intact
-[ ] user can continue confirmation
-[ ] no duplicate authoritative report created
+[x] interrupted validation can be saved
+[x] draft appears later
+[x] draft reopens with corrections intact
+[x] user can continue confirmation
+[x] no duplicate authoritative report created
 
 Suggested commit:
 
@@ -1446,13 +1446,13 @@ Priority: MUST
 
 Manual entry must remain available even when parsing/OCR is unavailable.
 
-[ ] choose KPI
-[ ] enter value
-[ ] show unit
-[ ] plausibility warning
-[ ] add multiple KPIs
-[ ] review
-[ ] confirm
+[x] choose KPI
+[x] enter value
+[x] show unit
+[x] plausibility warning
+[x] add multiple KPIs
+[x] review
+[x] confirm
 
 Manual entries do not need OCR/parser recognition.
 
@@ -1466,13 +1466,13 @@ FF-1701 — Paste WhatsApp Text
 
 Priority: MUST
 
-[ ] multiline text field
-[ ] clipboard-friendly behavior
-[ ] analyze action
-[ ] loading
-[ ] parser error
-[ ] empty text validation
-[ ] navigation to confirmation
+[x] multiline text field
+[x] clipboard-friendly behavior
+[x] analyze action
+[x] loading
+[x] parser error
+[x] empty text validation
+[x] navigation to confirmation
 
 Flow:
 
@@ -1761,14 +1761,14 @@ FF-2102 — Android Report History
 
 Priority: MUST
 
-[ ] list
+[x] list
 [ ] search
-[ ] filters
+[x] filters
 [ ] date range
-[ ] empty state
-[ ] loading
-[ ] error
-[ ] report detail navigation
+[x] empty state
+[x] loading
+[x] error
+[x] report detail navigation
 
 Suggested commit:
 
@@ -1835,8 +1835,8 @@ Priority: MUST
 
 Actions:
 
-View metadata
-Download/open
+[x] View metadata
+[x] Download/open
 Share
 Email
 
@@ -1848,10 +1848,10 @@ FF-2501 — FileProvider
 
 Priority: MUST
 
-[ ] secure content URI
-[ ] temporary read permission
-[ ] MIME type
-[ ] no raw private path exposure
+[x] secure content URI
+[x] temporary read permission
+[x] MIME type
+[x] no raw private path exposure
 
 Suggested commit:
 
@@ -2295,11 +2295,11 @@ FF-3602 — Android Statistics UI
 
 Priority: SHOULD
 
-[ ] charts
-[ ] period filters
-[ ] readable labels
-[ ] empty state
-[ ] loading
+[x] charts
+[x] period filters
+[x] readable labels
+[x] empty state
+[x] loading
 
 Suggested commit:
 
