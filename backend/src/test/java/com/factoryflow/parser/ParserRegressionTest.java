@@ -2,12 +2,12 @@ package com.factoryflow.parser;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.factoryflow.kpi.domain.KpiDefinition;
+import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
 import com.factoryflow.parser.api.AnalyzeReportRequest;
 import com.factoryflow.parser.api.AnalyzeReportResponse;
 import com.factoryflow.parser.api.ParsedEntry;
 import com.factoryflow.parser.application.ReportAnalysisService;
-import com.factoryflow.kpi.domain.KpiDefinition;
-import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
 import com.factoryflow.report.domain.AcquisitionSource;
 import java.math.BigDecimal;
 import java.util.List;
@@ -66,14 +66,27 @@ class ParserRegressionTest {
 
         AnalyzeReportResponse result = analyze(input);
 
-        assertThat(result.entries()).hasSize(3);
+        assertThat(result.entries()).hasSize(4);
         assertThat(find(result, "VRAC").extractedValue()).isNull();
         assertThat(find(result, "VRAC").warnings()).extracting("code").contains("MISSING_VALUE");
         assertThat(result.entries().stream().filter(entry -> "SAC".equals(entry.kpiCode())))
                 .allSatisfy(entry -> assertThat(entry.warnings()).extracting("code").contains("DUPLICATE_KPI"));
-        assertThat(result.unrecognizedLines()).extracting("sourceLine")
-                .contains("[10:52] Maintenance group", "Unexpected metric 44");
-        assertThat(result.unrecognizedCount()).isEqualTo(2);
+        assertThat(result.entries().stream().filter(entry -> "UNRESOLVED".equals(entry.reviewState())))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.sourceLine()).isEqualTo("Unexpected metric 44");
+                    assertThat(entry.kpiDefinitionId()).isNull();
+                    assertThat(entry.extractedValue()).isEqualByComparingTo("44");
+                    assertThat(entry.matchMethod()).isEqualTo("UNKNOWN");
+                    assertThat(entry.warnings()).extracting("code").contains("UNKNOWN_KPI");
+                });
+        assertThat(result.unresolvedCount()).isEqualTo(1);
+        assertThat(result.unrecognizedCount()).isZero();
+        assertThat(result.unrecognizedLines()).isEmpty();
+        assertThat(result.ignoredLines()).anySatisfy(line -> {
+            assertThat(line.sourceLine()).isEqualTo("[10:52] Maintenance group");
+            assertThat(line.classification()).isEqualTo("WHATSAPP_METADATA");
+        });
     }
 
     @Test
@@ -116,7 +129,12 @@ class ParserRegressionTest {
         AnalyzeReportResponse result = analyze(input);
 
         assertThat(result.entries()).extracting(ParsedEntry::kpiCode).containsExactly("VRAC", "CHOLINE");
-        assertThat(result.unrecognizedLines()).extracting("sourceLine").containsExactly("10:52", "10:53");
+        assertThat(result.unresolvedCount()).isZero();
+        assertThat(result.unrecognizedLines()).isEmpty();
+        assertThat(result.ignoredLines()).extracting("sourceLine").containsExactly("10:52", "10:53");
+        assertThat(result.ignoredLines()).allSatisfy(line ->
+                assertThat(line.classification()).isEqualTo("WHATSAPP_METADATA")
+        );
         assertThat(result.rawText()).isEqualTo(input);
     }
 
