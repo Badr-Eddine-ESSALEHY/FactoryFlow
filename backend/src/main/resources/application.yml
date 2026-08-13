@@ -61,6 +61,8 @@ factoryflow:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
   parser:
     fuzzy-threshold: ${PARSER_FUZZY_THRESHOLD:0.82}
+    fuzzy-ambiguity-margin: ${PARSER_FUZZY_AMBIGUITY_MARGIN:0.04}
+    suggestion-threshold: ${PARSER_SUGGESTION_THRESHOLD:0.45}
   reports:
     storage-root: ${REPORT_STORAGE_ROOT:./data/generated-reports}
   mail:

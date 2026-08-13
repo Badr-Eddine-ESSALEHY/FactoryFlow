@@ -15,6 +15,9 @@ public record ParsedEntry(
         String expectedUnit,
         BigDecimal confidenceScore,
         String confidenceLevel,
-        List<ParserWarning> warnings
+        String matchMethod,
+        String reviewState,
+        List<ParserWarning> warnings,
+        List<KpiSuggestion> suggestions
 ) {
 }

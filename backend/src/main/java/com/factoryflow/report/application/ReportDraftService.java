@@ -114,7 +114,8 @@ public class ReportDraftService {
         for (DraftEntryRequest entry : request.entries()) {
             report.addEntry(optionalDefinition(entry.kpiDefinitionId()), entry.sourceLabel(), entry.sourceLine(),
                     entry.extractedValue(), entry.currentValue(), entry.confidenceScore(), entry.editedByUser(),
-                    entry.capturedUnit(), entry.warnings());
+                    entry.capturedUnit(), entry.warnings(), optionalDefinition(entry.suggestedKpiDefinitionId()),
+                    entry.suggestionScore());
         }
         for (DraftUnknownLineRequest line : request.unrecognizedLines()) {
             try {

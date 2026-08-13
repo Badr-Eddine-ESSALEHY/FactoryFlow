@@ -1,5 +1,6 @@
 package com.factoryflow.kpi.application;
 
+import com.factoryflow.auth.application.AuthenticationService;
 import com.factoryflow.kpi.api.KpiDefinitionRequest;
 import com.factoryflow.kpi.api.KpiDefinitionResponse;
 import com.factoryflow.kpi.domain.KpiDefinition;
@@ -16,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class KpiDefinitionService {
 
     private final KpiDefinitionRepository definitions;
+    private final AuthenticationService authentication;
 
-    public KpiDefinitionService(KpiDefinitionRepository definitions) {
+    public KpiDefinitionService(KpiDefinitionRepository definitions, AuthenticationService authentication) {
         this.definitions = definitions;
+        this.authentication = authentication;
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +47,19 @@ public class KpiDefinitionService {
             throw new ApiException(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "A KPI code or normalized alias already exists.");
         } catch (IllegalArgumentException exception) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, exception.getMessage());
+        }
+    }
+
+    @Transactional
+    public KpiDefinitionResponse approveAlias(String email, Long definitionId, String alias) {
+        KpiDefinition definition = definitions.findById(definitionId)
+                .filter(KpiDefinition::isActive)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.KPI_DEFINITION_NOT_FOUND, "KPI definition not found."));
+        try {
+            definition.addApprovedAlias(alias, authentication.requireUser(email));
+            return KpiDefinitionResponse.from(definitions.saveAndFlush(definition));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ApiException(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "This normalized alias is already assigned to another KPI.");
         }
     }
 

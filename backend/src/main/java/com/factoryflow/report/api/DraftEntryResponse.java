@@ -17,7 +17,11 @@ public record DraftEntryResponse(
         BigDecimal confidenceScore,
         boolean editedByUser,
         String capturedUnit,
-        Set<String> warnings
+        Set<String> warnings,
+        Long suggestedKpiDefinitionId,
+        String suggestedKpiDisplayName,
+        String suggestedKpiUnit,
+        BigDecimal suggestionScore
 ) {
     static DraftEntryResponse from(KpiEntry entry) {
         return new DraftEntryResponse(
@@ -27,7 +31,11 @@ public record DraftEntryResponse(
                 entry.getDefinition() == null ? null : entry.getDefinition().getDisplayName(),
                 entry.getSourceLabel(), entry.getSourceLine(), entry.getExtractedValue(), entry.getCurrentValue(),
                 entry.getFinalValue(), entry.getConfidenceScore(), entry.isEditedByUser(), entry.getCapturedUnit(),
-                entry.getWarningCodes()
+                entry.getWarningCodes(),
+                entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getId(),
+                entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getDisplayName(),
+                entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getUnit(),
+                entry.getSuggestionScore()
         );
     }
 }

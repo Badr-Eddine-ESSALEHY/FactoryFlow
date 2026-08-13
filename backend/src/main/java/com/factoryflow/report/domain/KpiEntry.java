@@ -29,6 +29,10 @@ public class KpiEntry {
     private MaintenanceReport report;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "kpi_definition_id")
     private KpiDefinition definition;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "suggested_kpi_definition_id")
+    private KpiDefinition suggestedDefinition;
+    @Column(name = "suggestion_score", precision = 5, scale = 4)
+    private BigDecimal suggestionScore;
     @Column(name = "source_label", length = 255) private String sourceLabel;
     @Column(name = "source_line") private String sourceLine;
     @Column(name = "extracted_value", precision = 20, scale = 6) private BigDecimal extractedValue;
@@ -46,12 +50,17 @@ public class KpiEntry {
 
     protected KpiEntry() { }
 
-    static KpiEntry draft(MaintenanceReport report, KpiDefinition definition, String sourceLabel, String sourceLine,
-                          BigDecimal extractedValue, BigDecimal currentValue, BigDecimal confidenceScore,
-                          boolean editedByUser, String capturedUnit, Set<String> warnings) {
+    static KpiEntry draft(
+            MaintenanceReport report, KpiDefinition definition, String sourceLabel, String sourceLine,
+            BigDecimal extractedValue, BigDecimal currentValue, BigDecimal confidenceScore,
+            boolean editedByUser, String capturedUnit, Set<String> warnings,
+            KpiDefinition suggestedDefinition, BigDecimal suggestionScore
+    ) {
         KpiEntry entry = new KpiEntry();
         entry.report = report;
         entry.definition = definition;
+        entry.suggestedDefinition = suggestedDefinition;
+        entry.suggestionScore = suggestionScore;
         entry.sourceLabel = sourceLabel;
         entry.sourceLine = sourceLine;
         entry.extractedValue = extractedValue;
@@ -77,6 +86,8 @@ public class KpiEntry {
 
     public Long getId() { return id; }
     public KpiDefinition getDefinition() { return definition; }
+    public KpiDefinition getSuggestedDefinition() { return suggestedDefinition; }
+    public BigDecimal getSuggestionScore() { return suggestionScore; }
     public String getSourceLabel() { return sourceLabel; }
     public String getSourceLine() { return sourceLine; }
     public BigDecimal getExtractedValue() { return extractedValue; }

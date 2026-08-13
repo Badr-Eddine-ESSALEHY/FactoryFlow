@@ -23,13 +23,18 @@ data class DashboardDto(
     val businessDate: String,
     val todayConfirmedReportCount: Long,
     val todayDraftOrPendingReportCount: Long,
+    val todayGeneratedDocumentCount: Long = 0,
     val todayConfirmedMissingValueCount: Long,
     val todayHasConfirmedReport: Boolean,
+    val activityTrend: List<DashboardActivityDto> = emptyList(),
     val latestKpis: List<LatestKpiDto> = emptyList(),
     val recentReports: List<RecentReportDto> = emptyList(),
     val recentGeneratedReports: List<RecentGeneratedReportDto> = emptyList(),
     val upcomingSchedule: UpcomingScheduleDto? = null,
 )
+@JsonClass(generateAdapter = false)
+data class DashboardActivityDto(val date: String, val confirmedReportCount: Long, val missingValueCount: Long)
+
 
 @JsonClass(generateAdapter = false)
 data class LatestKpiDto(
@@ -60,12 +65,17 @@ data class KpiDefinitionDto(
 )
 
 @JsonClass(generateAdapter = false)
+data class ApproveAliasRequest(val alias: String)
+
+@JsonClass(generateAdapter = false)
 data class AnalyzeReportRequest(val rawText: String, val source: String = "PASTE")
 
 @JsonClass(generateAdapter = false)
 data class AnalyzeReportResponse(
-    val source: String, val rawText: String, val recognizedCount: Int, val needsReviewCount: Int,
-    val unrecognizedCount: Int, val entries: List<ParsedEntryDto> = emptyList(),
+    val source: String, val rawText: String, val recognizedCount: Int, val readyCount: Int = 0,
+    val attentionCount: Int = 0, val missingCount: Int = 0, val unresolvedCount: Int = 0,
+    val needsReviewCount: Int, val unrecognizedCount: Int, val entries: List<ParsedEntryDto> = emptyList(),
+    val ignoredLines: List<IgnoredSourceLineDto> = emptyList(),
     val unrecognizedLines: List<ParsedUnknownLineDto> = emptyList(),
 )
 
@@ -74,6 +84,8 @@ data class ParsedEntryDto(
     val candidateId: String, val kpiDefinitionId: Long?, val kpiCode: String?, val kpiDisplayName: String?,
     val sourceLabel: String?, val sourceLine: String, val extractedValue: BigDecimal?, val capturedUnit: String?,
     val expectedUnit: String?, val confidenceScore: BigDecimal?, val confidenceLevel: String?,
+    val matchMethod: String? = null, val reviewState: String? = null,
+    val suggestions: List<KpiSuggestionDto> = emptyList(),
     val warnings: List<ParserWarningDto> = emptyList(),
 )
 
@@ -81,7 +93,13 @@ data class ParsedEntryDto(
 data class ParserWarningDto(val code: String, val message: String, val severity: String)
 
 @JsonClass(generateAdapter = false)
-data class ParsedUnknownLineDto(val lineId: String, val sourceLine: String, val reason: String)
+data class ParsedUnknownLineDto(val lineId: String, val sourceLine: String, val reason: String, val sourceLabel: String? = null, val suggestions: List<KpiSuggestionDto> = emptyList())
+
+@JsonClass(generateAdapter = false)
+data class KpiSuggestionDto(val kpiDefinitionId: Long, val kpiCode: String, val displayName: String, val unit: String?, val score: BigDecimal, val matchMethod: String)
+
+@JsonClass(generateAdapter = false)
+data class IgnoredSourceLineDto(val lineId: String, val sourceLine: String, val classification: String)
 
 @JsonClass(generateAdapter = false)
 data class DraftReportRequest(
@@ -94,6 +112,7 @@ data class DraftEntryRequest(
     val kpiDefinitionId: Long?, val sourceLabel: String?, val sourceLine: String?,
     val extractedValue: BigDecimal?, val currentValue: BigDecimal?, val confidenceScore: BigDecimal?,
     val editedByUser: Boolean, val capturedUnit: String?, val warnings: Set<String> = emptySet(),
+    val suggestedKpiDefinitionId: Long? = null, val suggestionScore: BigDecimal? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -128,6 +147,8 @@ data class ReportEntryDto(
     val sourceLabel: String?, val sourceLine: String?, val extractedValue: BigDecimal?, val currentValue: BigDecimal?,
     val finalValue: BigDecimal?, val confidenceScore: BigDecimal?, val editedByUser: Boolean,
     val capturedUnit: String?, val warnings: Set<String> = emptySet(),
+    val suggestedKpiDefinitionId: Long? = null, val suggestedKpiDisplayName: String? = null,
+    val suggestedKpiUnit: String? = null, val suggestionScore: BigDecimal? = null,
 )
 
 @JsonClass(generateAdapter = false)

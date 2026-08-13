@@ -1,5 +1,6 @@
 package com.factoryflow.kpi.domain;
 
+import com.factoryflow.auth.domain.UserAccount;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,8 +22,7 @@ import java.util.Locale;
 @Table(name = "kpi_definitions")
 public class KpiDefinition {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(nullable = false, length = 100)
     private String code;
@@ -46,18 +46,11 @@ public class KpiDefinition {
     @OneToMany(mappedBy = "definition", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<KpiAlias> aliases = new ArrayList<>();
 
-    protected KpiDefinition() {
-    }
+    protected KpiDefinition() { }
 
     public static KpiDefinition create(
-            String code,
-            String displayName,
-            String category,
-            String unit,
-            BigDecimal plausibleMin,
-            BigDecimal plausibleMax,
-            boolean active,
-            List<String> aliases
+            String code, String displayName, String category, String unit,
+            BigDecimal plausibleMin, BigDecimal plausibleMax, boolean active, List<String> aliases
     ) {
         if (plausibleMin != null && plausibleMax != null && plausibleMin.compareTo(plausibleMax) > 0) {
             throw new IllegalArgumentException("plausibleMin must be less than or equal to plausibleMax");
@@ -75,6 +68,14 @@ public class KpiDefinition {
         return definition;
     }
 
+    public void addApprovedAlias(String alias, UserAccount approvedBy) {
+        String requiredAlias = required(alias);
+        if (aliases.stream().anyMatch(existing -> existing.getNormalizedAlias().equals(com.factoryflow.shared.text.TextNormalizer.normalizeLabel(requiredAlias)))) {
+            return;
+        }
+        aliases.add(new KpiAlias(this, requiredAlias, approvedBy));
+    }
+
     @PrePersist
     void initializeTimestamps() {
         Instant now = Instant.now();
@@ -83,9 +84,7 @@ public class KpiDefinition {
     }
 
     @PreUpdate
-    void updateTimestamp() {
-        updatedAt = Instant.now();
-    }
+    void updateTimestamp() { updatedAt = Instant.now(); }
 
     public Long getId() { return id; }
     public String getCode() { return code; }

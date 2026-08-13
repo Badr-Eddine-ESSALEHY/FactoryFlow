@@ -18,6 +18,7 @@ interface FactoryFlowApi {
     @GET("api/kpi-definitions") suspend fun kpiDefinitions(@Query("active") active: Boolean = true): List<KpiDefinitionDto>
     @POST("api/reports/analyze") suspend fun analyze(@Body request: AnalyzeReportRequest): AnalyzeReportResponse
     @POST("api/reports/drafts") suspend fun createDraft(@Body request: DraftReportRequest): ReportDto
+    @POST("api/kpi-definitions/{id}/aliases") suspend fun approveAlias(@Path("id") id: Long, @Body request: ApproveAliasRequest): KpiDefinitionDto
     @PUT("api/reports/{id}/draft") suspend fun updateDraft(@Path("id") id: Long, @Body request: DraftReportRequest): ReportDto
     @GET("api/reports/{id}/draft") suspend fun draft(@Path("id") id: Long): ReportDto
     @POST("api/reports/{id}/confirm") suspend fun confirm(@Path("id") id: Long, @Body request: ConfirmReportRequest): ReportDto

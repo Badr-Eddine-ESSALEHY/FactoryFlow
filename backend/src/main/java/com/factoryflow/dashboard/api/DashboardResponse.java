@@ -3,24 +3,27 @@ package com.factoryflow.dashboard.api;
 import com.factoryflow.generatedreport.domain.GeneratedReportFormat;
 import com.factoryflow.generatedreport.domain.GeneratedReportType;
 import com.factoryflow.report.domain.ReportStatus;
+import com.factoryflow.schedule.domain.ReportScheduleType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.time.ZonedDateTime;
-import com.factoryflow.schedule.domain.ReportScheduleType;
+import java.util.List;
 
 public record DashboardResponse(
         LocalDate businessDate,
         long todayConfirmedReportCount,
         long todayDraftOrPendingReportCount,
         long todayConfirmedMissingValueCount,
+        long todayGeneratedDocumentCount,
         boolean todayHasConfirmedReport,
+        List<DailyActivity> activityTrend,
         List<LatestKpi> latestKpis,
         List<RecentReport> recentReports,
         List<RecentGeneratedReport> recentGeneratedReports,
         UpcomingSchedule upcomingSchedule
 ) {
+    public record DailyActivity(LocalDate date, long confirmedReportCount, long missingValueCount) { }
     public record LatestKpi(Long kpiDefinitionId, String code, String displayName, String unit,
                             BigDecimal value, LocalDate effectiveDate, Long reportId, Instant confirmedAt) { }
     public record RecentReport(Long id, LocalDate effectiveDate, ReportStatus status, Instant submittedAt,

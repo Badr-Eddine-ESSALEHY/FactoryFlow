@@ -4,12 +4,16 @@ import com.factoryflow.dashboard.api.DashboardResponse;
 import com.factoryflow.generatedreport.persistence.GeneratedReportRepository;
 import com.factoryflow.report.domain.ReportStatus;
 import com.factoryflow.report.persistence.MaintenanceReportRepository;
+import com.factoryflow.schedule.application.ReportScheduleService;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
-import com.factoryflow.schedule.application.ReportScheduleService;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +26,15 @@ public class DashboardService {
     private final Clock clock;
     private final ReportScheduleService scheduleService;
 
-    public DashboardService(MaintenanceReportRepository reports, GeneratedReportRepository generatedReports,
-                            Clock clock, ReportScheduleService scheduleService) {
-        this.reports = reports; this.generatedReports = generatedReports; this.clock = clock;
+    public DashboardService(
+            MaintenanceReportRepository reports,
+            GeneratedReportRepository generatedReports,
+            Clock clock,
+            ReportScheduleService scheduleService
+    ) {
+        this.reports = reports;
+        this.generatedReports = generatedReports;
+        this.clock = clock;
         this.scheduleService = scheduleService;
     }
 
@@ -32,6 +42,20 @@ public class DashboardService {
     public DashboardResponse get() {
         LocalDate today = LocalDate.now(clock.withZone(BUSINESS_ZONE));
         long confirmed = reports.countByStatusAndEffectiveDate(ReportStatus.CONFIRMED, today);
+        Map<LocalDate, com.factoryflow.report.persistence.DailyDashboardActivityProjection> activityByDate =
+                reports.findDailyDashboardActivity(today.minusDays(6), today).stream()
+                        .collect(Collectors.toMap(value -> value.getActivityDate(), Function.identity()));
+        var activity = IntStream.rangeClosed(0, 6)
+                .mapToObj(index -> today.minusDays(6L - index))
+                .map(date -> {
+                    var value = activityByDate.get(date);
+                    return new DashboardResponse.DailyActivity(
+                            date,
+                            value == null ? 0 : value.getConfirmedReportCount(),
+                            value == null ? 0 : value.getMissingValueCount()
+                    );
+                })
+                .toList();
         var latest = reports.findLatestConfirmedKpiValues().stream().map(value -> new DashboardResponse.LatestKpi(
                 value.getKpiDefinitionId(), value.getCode(), value.getDisplayName(), value.getUnit(), value.getValue(),
                 value.getEffectiveDate(), value.getReportId(), value.getConfirmedAt())).toList();
@@ -45,8 +69,20 @@ public class DashboardService {
                 .min(Comparator.comparing(value -> value.nextRunAt())).map(value ->
                         new DashboardResponse.UpcomingSchedule(value.id(), value.type(), value.nextRunAt(),
                                 value.generateExcel(), value.generatePdf(), value.emailEnabled())).orElse(null);
-        return new DashboardResponse(today, confirmed,
+        var startOfToday = today.atStartOfDay(BUSINESS_ZONE).toInstant();
+        return new DashboardResponse(
+                today,
+                confirmed,
                 reports.countOpenOnDate(today, List.of(ReportStatus.DRAFT, ReportStatus.PENDING_REVIEW)),
-                reports.countConfirmedMissingValues(today), confirmed > 0, latest, recent, generated, upcoming);
+                reports.countConfirmedMissingValues(today),
+                generatedReports.countByGeneratedAtGreaterThanEqualAndGeneratedAtLessThan(
+                        startOfToday, today.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant()),
+                confirmed > 0,
+                activity,
+                latest,
+                recent,
+                generated,
+                upcoming
+        );
     }
 }

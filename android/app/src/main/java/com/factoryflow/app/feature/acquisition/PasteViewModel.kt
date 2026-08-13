@@ -40,7 +40,9 @@ private fun AnalyzeReportResponse.toDraft(date: String) = DraftReportRequest(
     entries = entries.map { entry -> DraftEntryRequest(
         kpiDefinitionId = entry.kpiDefinitionId, sourceLabel = entry.sourceLabel, sourceLine = entry.sourceLine,
         extractedValue = entry.extractedValue, currentValue = entry.extractedValue, confidenceScore = entry.confidenceScore,
-        editedByUser = false, capturedUnit = entry.capturedUnit ?: entry.expectedUnit, warnings = entry.warnings.map { it.code }.toSet(),
+        editedByUser = false, capturedUnit = entry.capturedUnit ?: entry.expectedUnit,
+        warnings = entry.warnings.map { it.code }.toSet(),
+        suggestedKpiDefinitionId = entry.suggestions.firstOrNull()?.kpiDefinitionId, suggestionScore = entry.suggestions.firstOrNull()?.score,
     ) },
     unrecognizedLines = unrecognizedLines.map { DraftUnknownLineRequest(it.sourceLine) },
 )

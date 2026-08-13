@@ -41,10 +41,11 @@ class DefaultDashboardRepository @Inject constructor(private val api: FactoryFlo
 
 interface ReportsRepository {
     suspend fun definitions(): List<KpiDefinitionDto>
-    suspend fun analyze(rawText: String): AnalyzeReportResponse
+    suspend fun analyze(rawText: String, source: String = "PASTE"): AnalyzeReportResponse
     suspend fun createDraft(request: DraftReportRequest): ReportDto
     suspend fun updateDraft(id: Long, request: DraftReportRequest): ReportDto
     suspend fun draft(id: Long): ReportDto
+    suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto
     suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto
     suspend fun reports(status: String? = null): PageDto<ReportSummaryDto>
     suspend fun report(id: Long): ReportDto
@@ -52,10 +53,11 @@ interface ReportsRepository {
 
 class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowApi, private val executor: ApiExecutor) : ReportsRepository {
     override suspend fun definitions() = executor.execute { api.kpiDefinitions() }
-    override suspend fun analyze(rawText: String) = executor.execute { api.analyze(AnalyzeReportRequest(rawText)) }
+    override suspend fun analyze(rawText: String, source: String) = executor.execute { api.analyze(AnalyzeReportRequest(rawText, source)) }
     override suspend fun createDraft(request: DraftReportRequest) = executor.execute { api.createDraft(request) }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = executor.execute { api.updateDraft(id, request) }
     override suspend fun draft(id: Long) = executor.execute { api.draft(id) }
+    override suspend fun approveAlias(kpiDefinitionId: Long, alias: String) = executor.execute { api.approveAlias(kpiDefinitionId, ApproveAliasRequest(alias)) }
     override suspend fun confirm(id: Long, request: ConfirmReportRequest) = executor.execute { api.confirm(id, request) }
     override suspend fun reports(status: String?) = executor.execute { api.reports(status = status) }
     override suspend fun report(id: Long) = executor.execute { api.report(id) }

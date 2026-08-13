@@ -11,17 +11,24 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
 import com.factoryflow.app.core.design.LoadingPane
+import com.factoryflow.app.core.design.ThemeMode
 import com.factoryflow.app.core.navigation.AuthenticatedApp
-import com.factoryflow.app.feature.auth.*
+import com.factoryflow.app.feature.auth.LoginScreen
+import com.factoryflow.app.feature.auth.SessionUiState
+import com.factoryflow.app.feature.auth.SessionViewModel
 
 @Composable
-fun FactoryFlowApp(viewModel: SessionViewModel = hiltViewModel()) {
+fun FactoryFlowApp(
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    viewModel: SessionViewModel = hiltViewModel(),
+) {
     val session by viewModel.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (val state = session) {
             SessionUiState.Loading -> LoadingPane(stringResource(R.string.app_name))
             SessionUiState.SignedOut -> LoginScreen(onAuthenticated = viewModel::restore)
-            is SessionUiState.SignedIn -> AuthenticatedApp(state.user, viewModel::logout)
+            is SessionUiState.SignedIn -> AuthenticatedApp(state.user, themeMode, onThemeMode, viewModel::logout)
         }
     }
 }

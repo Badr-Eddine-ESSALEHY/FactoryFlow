@@ -1,16 +1,16 @@
 package com.factoryflow.report.persistence;
 
 import com.factoryflow.report.domain.MaintenanceReport;
-import java.util.Optional;
+import com.factoryflow.report.domain.ReportStatus;
 import java.time.LocalDate;
 import java.util.List;
-import com.factoryflow.report.domain.ReportStatus;
+import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.domain.Pageable;
 
 public interface MaintenanceReportRepository extends JpaRepository<MaintenanceReport, Long>, JpaSpecificationExecutor<MaintenanceReport> {
 
@@ -18,10 +18,7 @@ public interface MaintenanceReportRepository extends JpaRepository<MaintenanceRe
 
     @EntityGraph(attributePaths = {"submittedBy", "entries", "entries.definition"})
     List<MaintenanceReport> findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
-            ReportStatus status,
-            LocalDate periodStart,
-            LocalDate periodEnd
-    );
+            ReportStatus status, LocalDate periodStart, LocalDate periodEnd);
 
     long countByStatusAndEffectiveDate(ReportStatus status, LocalDate effectiveDate);
 
@@ -32,6 +29,20 @@ public interface MaintenanceReportRepository extends JpaRepository<MaintenanceRe
     long countConfirmedMissingValues(@Param("date") LocalDate date);
 
     List<MaintenanceReport> findAllByOrderBySubmittedAtDesc(Pageable pageable);
+
+    @Query(value = """
+            SELECT r.effective_date AS activityDate,
+                   COUNT(DISTINCT r.id) AS confirmedReportCount,
+                   COUNT(e.id) FILTER (WHERE e.final_value IS NULL) AS missingValueCount
+            FROM maintenance_reports r
+            LEFT JOIN kpi_entries e ON e.report_id = r.id
+            WHERE r.status = 'CONFIRMED'
+              AND r.effective_date BETWEEN :dateFrom AND :dateTo
+            GROUP BY r.effective_date
+            ORDER BY r.effective_date
+            """, nativeQuery = true)
+    List<DailyDashboardActivityProjection> findDailyDashboardActivity(
+            @Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo);
 
     @Query(value = """
             SELECT DISTINCT ON (e.kpi_definition_id)
