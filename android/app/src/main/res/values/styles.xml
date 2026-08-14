@@ -10,6 +10,7 @@
 
     <style name="Theme.FactoryFlow.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#F7F8FA</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/alf_mabrouk_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.FactoryFlow</item>
     </style>
 </resources>

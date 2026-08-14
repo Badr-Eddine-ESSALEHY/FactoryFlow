@@ -41,7 +41,13 @@ class GeneratedListViewModel @Inject constructor(private val repository: Generat
     }
 }
 
-data class ReportDetailUiState(val loading: Boolean = true, val report: ReportDto? = null, val error: UiError? = null)
+data class ReportDetailUiState(
+    val loading: Boolean = true,
+    val report: ReportDto? = null,
+    val deleting: Boolean = false,
+    val deleted: Boolean = false,
+    val error: UiError? = null,
+)
 @HiltViewModel
 class ReportDetailViewModel @Inject constructor(savedState: SavedStateHandle, private val repository: ReportsRepository) : ViewModel() {
     private val id = checkNotNull(savedState.get<String>("reportId")?.toLongOrNull())
@@ -49,12 +55,27 @@ class ReportDetailViewModel @Inject constructor(savedState: SavedStateHandle, pr
     init { load() }
     fun load() = viewModelScope.launch {
         _state.value = ReportDetailUiState()
-        runCatching { repository.report(id) }.onSuccess { _state.value = ReportDetailUiState(false, it) }
+        runCatching { repository.report(id) }.onSuccess { _state.value = ReportDetailUiState(loading = false, report = it) }
             .onFailure { _state.value = ReportDetailUiState(false, error = it.toUiError()) }
+    }
+    fun deleteDraft() = viewModelScope.launch {
+        if (_state.value.report?.status != "DRAFT" || _state.value.deleting) return@launch
+        _state.update { it.copy(deleting = true, error = null) }
+        runCatching { repository.deleteDraft(id) }
+            .onSuccess { _state.update { it.copy(deleting = false, deleted = true) } }
+            .onFailure { error -> _state.update { it.copy(deleting = false, error = error.toUiError()) } }
     }
 }
 
-data class GeneratedDetailUiState(val loading: Boolean = true, val document: GeneratedReportDto? = null, val downloading: Boolean = false, val file: File? = null, val error: UiError? = null)
+enum class GeneratedFileAction { OPEN, SAVE, SHARE, EMAIL }
+data class GeneratedDetailUiState(
+    val loading: Boolean = true,
+    val document: GeneratedReportDto? = null,
+    val downloading: Boolean = false,
+    val file: File? = null,
+    val fileAction: GeneratedFileAction? = null,
+    val error: UiError? = null,
+)
 @HiltViewModel
 class GeneratedDetailViewModel @Inject constructor(savedState: SavedStateHandle, private val repository: GeneratedReportsRepository) : ViewModel() {
     private val id = checkNotNull(savedState.get<String>("generatedId")?.toLongOrNull())
@@ -62,14 +83,14 @@ class GeneratedDetailViewModel @Inject constructor(savedState: SavedStateHandle,
     init { load() }
     fun load() = viewModelScope.launch {
         _state.value = GeneratedDetailUiState()
-        runCatching { repository.detail(id) }.onSuccess { _state.value = GeneratedDetailUiState(false, it) }
-            .onFailure { _state.value = GeneratedDetailUiState(false, error = it.toUiError()) }
+        runCatching { repository.detail(id) }.onSuccess { _state.value = GeneratedDetailUiState(loading = false, document = it) }
+            .onFailure { _state.value = GeneratedDetailUiState(loading = false, error = it.toUiError()) }
     }
-    fun download() = viewModelScope.launch {
+    fun download(action: GeneratedFileAction = GeneratedFileAction.OPEN) = viewModelScope.launch {
         val document = _state.value.document ?: return@launch
-        _state.update { it.copy(downloading = true, error = null, file = null) }
+        _state.update { it.copy(downloading = true, error = null, file = null, fileAction = action) }
         runCatching { repository.download(document) }.onSuccess { file -> _state.update { it.copy(downloading = false, file = file) } }
             .onFailure { error -> _state.update { it.copy(downloading = false, error = error.toUiError()) } }
     }
-    fun fileHandled() = _state.update { it.copy(file = null) }
+    fun fileHandled() = _state.update { it.copy(file = null, fileAction = null) }
 }

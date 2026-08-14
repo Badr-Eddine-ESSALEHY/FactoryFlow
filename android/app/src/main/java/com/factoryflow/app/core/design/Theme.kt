@@ -17,8 +17,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.factoryflow.app.R
 
@@ -50,71 +48,73 @@ private val Cairo = FontFamily(
 )
 
 private val LightColors = lightColorScheme(
-    primary = FactoryFlowMagenta,
+    primary = FlowBlue,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF6DFED),
-    onPrimaryContainer = Color(0xFF5C0A3F),
-    secondary = FactoryFlowGreenDark,
+    primaryContainer = FlowIndigoTint,
+    onPrimaryContainer = FlowNavy,
+    secondary = FlowTealDark,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE2EED9),
-    onSecondaryContainer = Color(0xFF243E13),
-    background = FactoryFlowCream,
-    onBackground = FactoryFlowInk,
-    surface = Color.White,
-    onSurface = FactoryFlowInk,
-    surfaceVariant = Color(0xFFF3EDE8),
-    onSurfaceVariant = FactoryFlowTextMuted,
-    outline = Color(0xFFD2C7CC),
-    outlineVariant = Color(0xFFE9E0E3),
-    error = FactoryFlowDanger,
-    errorContainer = Color(0xFFF8E1DE),
-    onErrorContainer = Color(0xFF641B15),
+    secondaryContainer = FlowTealTint,
+    onSecondaryContainer = FlowNavy,
+    background = FlowCanvas,
+    onBackground = FlowTextPrimary,
+    surface = FlowSurface,
+    onSurface = FlowTextPrimary,
+    surfaceVariant = FlowDivider,
+    onSurfaceVariant = FlowTextSecondary,
+    outline = FlowTextSecondary,
+    outlineVariant = FlowDivider,
+    error = FlowDanger,
+    errorContainer = FlowPinkTint,
+    onErrorContainer = FlowDanger,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = FactoryFlowMagentaLight,
+    primary = FlowBlueBright,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFF5E1647),
-    onPrimaryContainer = Color(0xFFFAD9EB),
-    secondary = FactoryFlowGreen,
-    onSecondary = Color(0xFF102806),
-    secondaryContainer = Color(0xFF2B4D19),
-    onSecondaryContainer = Color(0xFFDCEECF),
-    background = FactoryFlowInk,
-    onBackground = FactoryFlowCream,
-    surface = FactoryFlowInkSoft,
-    onSurface = FactoryFlowCream,
-    surfaceVariant = Color(0xFF4A3E46),
-    onSurfaceVariant = Color(0xFFD0C5CA),
-    outline = Color(0xFF75686F),
-    outlineVariant = Color(0xFF51454C),
-    error = Color(0xFFFFB4AB),
-    errorContainer = Color(0xFF7B2A22),
-    onErrorContainer = Color(0xFFFFDAD5),
+    primaryContainer = FlowNavy,
+    onPrimaryContainer = FlowTextPrimaryDark,
+    secondary = FlowTeal,
+    onSecondary = FlowCanvasDark,
+    secondaryContainer = FlowSurfaceElevatedDark,
+    onSecondaryContainer = FlowTextPrimaryDark,
+    background = FlowCanvasDark,
+    onBackground = FlowTextPrimaryDark,
+    surface = FlowSurfaceDark,
+    onSurface = FlowTextPrimaryDark,
+    surfaceVariant = FlowSurfaceElevatedDark,
+    onSurfaceVariant = FlowTextSecondaryDark,
+    outline = FlowTextSecondaryDark,
+    outlineVariant = FlowDividerDark,
+    error = FlowDanger,
+    errorContainer = FlowSurfaceElevatedDark,
+    onErrorContainer = FlowPinkTint,
 )
 
 private val FactoryTypography = Typography(
-    displaySmall = TextStyle(fontFamily = Cairo, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold),
-    headlineLarge = TextStyle(fontFamily = Cairo, fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold),
-    headlineMedium = TextStyle(fontFamily = Cairo, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
-    headlineSmall = TextStyle(fontFamily = Cairo, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold),
-    titleLarge = TextStyle(fontFamily = Cairo, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontFamily = Inter, fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
-    titleSmall = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 23.sp, fontWeight = FontWeight.Normal),
-    bodyMedium = TextStyle(fontFamily = Inter, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal),
-    bodySmall = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal),
-    labelLarge = TextStyle(fontFamily = Inter, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
-    labelMedium = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
-    labelSmall = TextStyle(fontFamily = Inter, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Normal),
+    displaySmall = TextStyle(fontFamily = Cairo, fontSize = FlowType.display, lineHeight = FlowType.displayLine, fontWeight = FontWeight.Bold),
+    headlineLarge = TextStyle(fontFamily = Cairo, fontSize = FlowType.screen, lineHeight = FlowType.screenLine, fontWeight = FontWeight.Bold),
+    headlineMedium = TextStyle(fontFamily = Inter, fontSize = FlowType.metric, lineHeight = FlowType.metricLine, fontWeight = FontWeight.Bold),
+    headlineSmall = TextStyle(fontFamily = Inter, fontSize = FlowType.screenCompact, lineHeight = FlowType.screenCompactLine, fontWeight = FontWeight.Bold),
+    titleLarge = TextStyle(fontFamily = Inter, fontSize = FlowType.section, lineHeight = FlowType.sectionLine, fontWeight = FontWeight.SemiBold),
+    titleMedium = TextStyle(fontFamily = Inter, fontSize = FlowType.card, lineHeight = FlowType.cardLine, fontWeight = FontWeight.SemiBold),
+    titleSmall = TextStyle(fontFamily = Inter, fontSize = FlowType.row, lineHeight = FlowType.rowLine, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontFamily = Inter, fontSize = FlowType.body, lineHeight = FlowType.bodyLine, fontWeight = FontWeight.Medium),
+    bodyMedium = TextStyle(fontFamily = Inter, fontSize = FlowType.bodyCompact, lineHeight = FlowType.bodyCompactLine, fontWeight = FontWeight.Normal),
+    bodySmall = TextStyle(fontFamily = Inter, fontSize = FlowType.meta, lineHeight = FlowType.metaLine, fontWeight = FontWeight.Normal),
+    labelLarge = TextStyle(fontFamily = Inter, fontSize = FlowType.label, lineHeight = FlowType.labelLine, fontWeight = FontWeight.SemiBold),
+    labelMedium = TextStyle(fontFamily = Inter, fontSize = FlowType.labelCompact, lineHeight = FlowType.labelCompactLine, fontWeight = FontWeight.Medium),
+    labelSmall = TextStyle(fontFamily = Inter, fontSize = FlowType.micro, lineHeight = FlowType.microLine, fontWeight = FontWeight.Normal),
 )
 
 private val FactoryShapes = Shapes(
-    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(FlowRadius.iconTile),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(FlowRadius.control),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(FlowRadius.card),
 )
 
+// The color setters remain necessary for the supported pre-edge-to-edge Android versions.
+@Suppress("DEPRECATION")
 @Composable
 fun FactoryFlowTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
     val dark = when (mode) {

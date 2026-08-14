@@ -3,6 +3,7 @@ package com.factoryflow.app.core.network
 import com.factoryflow.app.core.network.dto.*
 import okhttp3.ResponseBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -21,6 +22,7 @@ interface FactoryFlowApi {
     @POST("api/kpi-definitions/{id}/aliases") suspend fun approveAlias(@Path("id") id: Long, @Body request: ApproveAliasRequest): KpiDefinitionDto
     @PUT("api/reports/{id}/draft") suspend fun updateDraft(@Path("id") id: Long, @Body request: DraftReportRequest): ReportDto
     @GET("api/reports/{id}/draft") suspend fun draft(@Path("id") id: Long): ReportDto
+    @DELETE("api/reports/{id}/draft") suspend fun deleteDraft(@Path("id") id: Long)
     @POST("api/reports/{id}/confirm") suspend fun confirm(@Path("id") id: Long, @Body request: ConfirmReportRequest): ReportDto
     @GET("api/reports") suspend fun reports(
         @Query("dateFrom") dateFrom: String? = null, @Query("dateTo") dateTo: String? = null,
@@ -32,6 +34,7 @@ interface FactoryFlowApi {
         @Query("format") format: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 30,
         @Query("sort") sort: String = "generatedAt,desc",
     ): PageDto<GeneratedReportDto>
+    @POST("api/generated-reports") suspend fun generateReport(@Body request: GenerateReportRequest): GeneratedReportDto
     @GET("api/generated-reports/{id}") suspend fun generatedReport(@Path("id") id: Long): GeneratedReportDto
     @Streaming @GET("api/generated-reports/{id}/file") suspend fun generatedFile(@Path("id") id: Long): ResponseBody
     @GET("api/statistics") suspend fun statistics(

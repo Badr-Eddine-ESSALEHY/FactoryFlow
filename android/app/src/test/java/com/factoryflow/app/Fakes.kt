@@ -18,6 +18,7 @@ class FakeAuthRepository : AuthRepository {
 
 open class FakeReportsRepository : ReportsRepository {
     var analyzed: AnalyzeReportResponse? = null
+    var analyzeFailure: Throwable? = null
     var created: ReportDto? = null
     var updated: ReportDto? = null
     var draftValue: ReportDto? = null
@@ -25,14 +26,59 @@ open class FakeReportsRepository : ReportsRepository {
     var reportList = PageDto<ReportSummaryDto>()
     var reportValue: ReportDto? = null
     var definitionsValue = emptyList<KpiDefinitionDto>()
+    var approvedAlias: KpiDefinitionDto? = null
+    var lastAnalyzedRawText: String? = null
+    var lastAnalyzedSource: String? = null
+    val createdDraftRequests = mutableListOf<DraftReportRequest>()
+    val approvedAliasCalls = mutableListOf<Pair<Long, String>>()
+    val deletedDraftIds = mutableListOf<Long>()
+    var lastConfirmRequest: ConfirmReportRequest? = null
     override suspend fun definitions() = definitionsValue
-    override suspend fun analyze(rawText: String) = checkNotNull(analyzed)
-    override suspend fun createDraft(request: DraftReportRequest) = checkNotNull(created)
+    override suspend fun analyze(rawText: String, source: String): AnalyzeReportResponse {
+        lastAnalyzedRawText = rawText
+        lastAnalyzedSource = source
+        analyzeFailure?.let { throw it }
+        return checkNotNull(analyzed)
+    }
+    override suspend fun createDraft(request: DraftReportRequest): ReportDto {
+        createdDraftRequests += request
+        return checkNotNull(created)
+    }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = checkNotNull(updated ?: draftValue)
     override suspend fun draft(id: Long) = checkNotNull(draftValue)
-    override suspend fun confirm(id: Long, request: ConfirmReportRequest) = checkNotNull(confirmed)
+    override suspend fun deleteDraft(id: Long) { deletedDraftIds += id }
+    override suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto {
+        approvedAliasCalls += kpiDefinitionId to alias
+        return approvedAlias
+            ?: definitionsValue.firstOrNull { it.id == kpiDefinitionId }
+            ?: error("No KPI definition configured for alias approval: $kpiDefinitionId")
+    }
+    override suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto {
+        lastConfirmRequest = request
+        return checkNotNull(confirmed)
+    }
     override suspend fun reports(status: String?) = reportList
     override suspend fun report(id: Long) = checkNotNull(reportValue)
+}
+
+class FakeGeneratedReportsRepository : GeneratedReportsRepository {
+    var listValue = PageDto<GeneratedReportDto>()
+    var detailValue: GeneratedReportDto? = null
+    var generatedValue: GeneratedReportDto? = null
+    var downloadedFile: java.io.File? = null
+    val generationRequests = mutableListOf<GenerateReportRequest>()
+    val downloadedReports = mutableListOf<GeneratedReportDto>()
+
+    override suspend fun list() = listValue
+    override suspend fun detail(id: Long) = checkNotNull(detailValue)
+    override suspend fun generate(request: GenerateReportRequest): GeneratedReportDto {
+        generationRequests += request
+        return checkNotNull(generatedValue)
+    }
+    override suspend fun download(report: GeneratedReportDto): java.io.File {
+        downloadedReports += report
+        return checkNotNull(downloadedFile)
+    }
 }
 
 fun reportDto(status: String = "DRAFT", id: Long = 12) = ReportDto(

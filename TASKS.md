@@ -1171,8 +1171,10 @@ The parser must preserve/report content it does not understand.
 [x] confirmation UI can surface them later
 [x] drafts and confirmed reports persist `UNRESOLVED`, `ASSIGNED`, or `IGNORED` resolution
 
-One source line may produce zero, one, or multiple KPI candidates. Do not force
-multi-measurement lines such as `Compresseur 1: 77108-77%` into one composite value.
+One source line may produce zero, one, or multiple KPI candidates. A recognized
+composite pattern such as `Compresseur 1: 77108-77%` must preserve both linked
+measurements in one review entry. Other multi-measurement lines remain separate
+candidates unless a deterministic, configured composite rule applies.
 
 Suggested commit:
 
@@ -2537,6 +2539,8 @@ Review every screen against DESIGN.md and UI_UX.md.
 [ ] system bars
 [ ] dark/light theme if supported
 [ ] orientation/configuration behavior where relevant
+[ ] compare final Vivo screenshots against the 13 August 2026 BEFORE-state baseline
+[ ] verify no clipping or bottom-navigation occlusion at the baseline Vivo display/font settings
 
 Suggested commit:
 
@@ -3145,25 +3149,25 @@ Do not silently reorder the project because a different feature looks more excit
 
 67. Current Work
 Current milestone:
-M0/M1 — Backend Foundation
+Android premium visual migration
 
 Current task:
-Verified Spring Boot, PostgreSQL/Flyway, OpenAPI, shared error, and user persistence foundation
+Apply the approved Flow UI foundation across the remaining Android application
 
 Last completed:
-FF-1001 — User Entity and Persistence
+Flow UI migration implemented for Login, Reports, acquisition, Review, confirmation/export, Statistics, Schedules, Notifications, Profile, and startup states without changing application contracts
 
 In progress:
 None
 
 Next:
-FF-1002 — JWT Authentication, only when explicitly started
+User visual review of the application-wide Flow migration
 
 Primary blocker:
-None
+None; visual acceptance remains with the user
 
 Implementation status:
-Backend foundation implemented; remaining product features not started
+Android presentation migrated to the shared Flow tokens and production components. Navigation, ViewModels, repositories, API/backend contracts, parsing, persistence, and report-generation behavior remain unchanged by this UI pass. `compileDebugKotlin`, `testDebugUnitTest`, `assembleDebug`, and `lintDebug` pass.
 
 Update this section after every meaningful development session.
 
@@ -3199,45 +3203,45 @@ FactoryFlow cannot be considered presentation-ready until:
 
 [ ] Real business problem clearly demonstrated
 
-[ ] Authentication works
+[x] Authentication works
 
 [ ] Five KPI acquisition methods work
 
 [ ] OCR works on-device
 
-[ ] Deterministic parser handles realistic variations
+[x] Deterministic parser handles realistic variations
 
-[ ] Parser regression tests exist
+[x] Parser regression tests exist
 
-[ ] Human confirmation cannot be bypassed
+[x] Human confirmation cannot be bypassed
 
-[ ] Drafts work
+[x] Drafts work
 
-[ ] PostgreSQL stores trusted structured values
+[x] PostgreSQL stores trusted structured values
 
-[ ] Dashboard uses confirmed data
+[x] Dashboard uses confirmed data
 
-[ ] History/search/filter works
+[x] History/search/filter works
 
-[ ] Excel report is professional
+[x] Excel report is professional
 
-[ ] PDF report is professional
+[x] PDF report is professional
 
-[ ] Daily Quartz scheduling works
+[x] Daily Quartz scheduling works
 
-[ ] Weekly Quartz scheduling works
+[x] Weekly Quartz scheduling works
 
-[ ] Monthly Quartz scheduling works
+[x] Monthly Quartz scheduling works
 
 [ ] Android user sharing works
 
-[ ] Scheduled backend email works
+[x] Scheduled backend email works
 
 [ ] Swagger/OpenAPI is complete
 
 [ ] Critical security review complete
 
-[ ] Core tests pass
+[x] Core tests pass
 
 [ ] Android UI follows DESIGN.md
 

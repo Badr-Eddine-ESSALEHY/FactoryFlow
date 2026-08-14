@@ -87,6 +87,8 @@ data class ParsedEntryDto(
     val matchMethod: String? = null, val reviewState: String? = null,
     val suggestions: List<KpiSuggestionDto> = emptyList(),
     val warnings: List<ParserWarningDto> = emptyList(),
+    val secondaryExtractedValue: BigDecimal? = null,
+    val secondaryUnit: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -113,6 +115,8 @@ data class DraftEntryRequest(
     val extractedValue: BigDecimal?, val currentValue: BigDecimal?, val confidenceScore: BigDecimal?,
     val editedByUser: Boolean, val capturedUnit: String?, val warnings: Set<String> = emptySet(),
     val suggestedKpiDefinitionId: Long? = null, val suggestionScore: BigDecimal? = null,
+    val secondaryExtractedValue: BigDecimal? = null, val secondaryCurrentValue: BigDecimal? = null,
+    val secondaryUnit: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -125,7 +129,11 @@ data class ConfirmReportRequest(
 )
 
 @JsonClass(generateAdapter = false)
-data class ConfirmationEntryRequest(val kpiDefinitionId: Long, val finalValue: BigDecimal?)
+data class ConfirmationEntryRequest(
+    val kpiDefinitionId: Long,
+    val finalValue: BigDecimal?,
+    val secondaryFinalValue: BigDecimal? = null,
+)
 
 @JsonClass(generateAdapter = false)
 data class UnknownLineResolutionRequest(val lineId: Long, val resolution: String, val resolvedKpiDefinitionId: Long? = null)
@@ -149,6 +157,8 @@ data class ReportEntryDto(
     val capturedUnit: String?, val warnings: Set<String> = emptySet(),
     val suggestedKpiDefinitionId: Long? = null, val suggestedKpiDisplayName: String? = null,
     val suggestedKpiUnit: String? = null, val suggestionScore: BigDecimal? = null,
+    val secondaryExtractedValue: BigDecimal? = null, val secondaryCurrentValue: BigDecimal? = null,
+    val secondaryFinalValue: BigDecimal? = null, val secondaryUnit: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -166,6 +176,14 @@ data class GeneratedReportDto(
     val origin: String, val generationStatus: String, val emailDeliveryStatus: String, val version: Int,
     val generatedAt: String, val fileName: String, val generatedBy: Long?, val regeneratedFromId: Long?,
     val scheduleId: Long?, val sourceReportIds: List<Long> = emptyList(),
+)
+
+@JsonClass(generateAdapter = false)
+data class GenerateReportRequest(
+    val type: String,
+    val format: String,
+    val periodStart: String,
+    val periodEnd: String,
 )
 
 @JsonClass(generateAdapter = false)

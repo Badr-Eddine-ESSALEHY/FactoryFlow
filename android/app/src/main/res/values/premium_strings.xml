@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="official_logo_content_description">Logo officiel Alf Mabrouk Nutrition Animale</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_statistics">Stats</string>
     <string name="nav_alerts">Alertes</string>
@@ -48,4 +49,74 @@
     <string name="use_image">Utiliser cette image</string>
     <string name="share_document">Partager</string>
     <string name="save_document">Enregistrer</string>
+    <string name="paste_analysis_failed">Impossible d’analyser ce message. Le texte a été conservé. Réessayez ou utilisez la saisie manuelle.</string>
+    <string name="continue_verification">Continuer la vérification</string>
+    <string name="delete_draft">Supprimer le brouillon</string>
+    <string name="delete_draft_confirm_title">Supprimer ce brouillon ?</string>
+    <string name="delete_draft_confirm_detail">Cette action est définitive. Les données confirmées ne sont pas concernées.</string>
+    <string name="delete">Supprimer</string>
+    <string name="verification_state">État de la vérification</string>
+    <string name="not_provided">Non renseigné</string>
+    <string name="report_confirmed_detail">Les valeurs validées sont maintenant enregistrées comme données de référence.</string>
+    <string name="export_now">Créer un document</string>
+    <string name="export_now_detail">Choisissez le format. Le document sera généré, conservé dans l’historique et prêt à être partagé.</string>
+    <string name="open_confirmed_report">Voir le rapport confirmé</string>
+    <string name="back_to_reports">Retrouver mes rapports</string>
+    <string name="share_report_subject">Rapport FactoryFlow du %1$s</string>
+    <string name="download_share">Télécharger ou partager</string>
+    <string name="send_by_email">E-mail</string>
+    <string name="email_report_body">Veuillez trouver en pièce jointe le rapport FactoryFlow.</string>
+    <string name="secondary_value">Valeur associée</string>
+    <string name="primary_value">Valeur principale</string>
+    <string name="composite_values">Valeurs composées</string>
+    <string name="composite_badge">2 mesures</string>
+    <string name="composite_help">Les deux mesures proviennent de la même ligne et resteront liées dans le rapport.</string>
+    <string name="activity_chart_detail">Rapports confirmés et données manquantes</string>
+    <string name="hello">Bonjour,</string>
+    <string name="situation_on_date">Situation du %1$s</string>
+    <string name="today_situation">Situation du jour</string>
+    <string name="confirmed_data_available">Données confirmées disponibles</string>
+    <string name="no_confirmed_report_today">Aucun rapport confirmé aujourd’hui</string>
+    <string name="to_resume">À reprendre</string>
+    <string name="documents_short">Documents</string>
+    <string name="import_reading">Importer un relevé</string>
+    <string name="import_reading_detail">Choisissez une capture WhatsApp ou une photo lisible. Le texte reste traité sur cet appareil.</string>
+    <string name="camera_required">Appareil photo requis</string>
+    <string name="authorize">Autoriser</string>
+    <string name="camera_guidance">Cadrez le message complet et évitez les reflets</string>
+    <string name="detected_text">Texte détecté</string>
+    <string name="review_before_analysis">Relisez si nécessaire avant l’analyse</string>
+    <string name="change">Changer</string>
+    <string name="analyze_and_review">Analyser et vérifier</string>
+    <string name="save_failed">Enregistrement impossible</string>
+    <string name="save_failed_detail">Le document reste disponible dans FactoryFlow. Choisissez un autre emplacement et réessayez.</string>
+    <string name="period_7_days">7 j</string>
+    <string name="dashboard_your_day">Votre journée</string>
+    <string name="dashboard_situation">Situation</string>
+    <string name="dashboard_reports">Rapports</string>
+    <plurals name="dashboard_confirmed_count">
+        <item quantity="one">%1$d confirmé</item>
+        <item quantity="other">%1$d confirmés</item>
+    </plurals>
+    <plurals name="dashboard_review_count">
+        <item quantity="one">%1$d rapport</item>
+        <item quantity="other">%1$d rapports</item>
+    </plurals>
+    <plurals name="dashboard_generated_count">
+        <item quantity="one">%1$d généré</item>
+        <item quantity="other">%1$d générés</item>
+    </plurals>
+    <plurals name="dashboard_missing_value_count">
+        <item quantity="one">%1$d valeur non renseignée</item>
+        <item quantity="other">%1$d valeurs non renseignées</item>
+    </plurals>
+    <string name="dashboard_new_report">Rapport</string>
+    <string name="dashboard_new_report_meta">Nouveau</string>
+    <string name="dashboard_paste_title">Coller</string>
+    <string name="dashboard_paste_meta">Message</string>
+    <string name="dashboard_manual_title">Saisie</string>
+    <string name="dashboard_manual_meta">Manuelle</string>
+    <string name="dashboard_activity_point">%1$s · %2$d confirmés · %3$d manquants</string>
+    <string name="statistics_confirmed_trend">Évolution des valeurs confirmées</string>
+    <string name="statistics_touch_hint">Touchez la courbe</string>
 </resources>

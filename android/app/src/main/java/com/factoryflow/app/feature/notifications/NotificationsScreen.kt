@@ -10,13 +10,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.factoryflow.app.R
-import com.factoryflow.app.core.design.EmptyPane
+import com.factoryflow.app.core.design.*
 
 @Composable
 fun NotificationsScreen() {
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp)) {
-        Text(stringResource(R.string.notifications_title), style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(18.dp))
-        EmptyPane(stringResource(R.string.no_notifications), stringResource(R.string.no_notifications_detail), icon = Icons.Outlined.NotificationsNone)
+    FlowScreen {
+        NotificationsContent(Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun NotificationsContent(modifier: Modifier = Modifier) {
+    FlowContentSurface(modifier) {
+        Column(Modifier.fillMaxSize().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.lg)) {
+            FlowPageHeader(stringResource(R.string.notifications_title))
+            Spacer(Modifier.height(FlowSpacing.lg))
+            FlowEmptyState(stringResource(R.string.no_notifications), stringResource(R.string.no_notifications_detail), icon = Icons.Outlined.NotificationsNone)
+        }
     }
 }

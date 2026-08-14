@@ -42,18 +42,18 @@ fun GalleryOcrScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> uri?.let(viewModel::process) }
-    Scaffold(topBar = { FocusedTopBar(stringResource(R.string.gallery_ocr), onBack) }) { padding ->
+    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.gallery_ocr), onBack) }) { padding ->
         if (state.imageUri == null) {
             OcrPickerEmpty(
                 modifier = Modifier.padding(padding),
                 icon = Icons.Outlined.ImageSearch,
-                title = "Importer un relevé",
-                detail = "Choisissez une capture WhatsApp ou une photo lisible. Le texte reste traité sur cet appareil.",
+                title = stringResource(R.string.import_reading),
+                detail = stringResource(R.string.import_reading_detail),
                 action = stringResource(R.string.select_image),
                 onAction = { picker.launch("image/*") },
             )
         } else {
-            OcrResultContent(state, OcrSource.GALLERY, viewModel, onReview, { picker.launch("image/*") }, Modifier.padding(padding))
+            OcrResultContent(state, OcrSource.GALLERY, viewModel::editText, { viewModel.analyze(OcrSource.GALLERY, onReview) }, { picker.launch("image/*") }, Modifier.padding(padding))
         }
     }
 }
@@ -67,8 +67,8 @@ fun SharedImageOcrScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(uri) { viewModel.process(uri) }
-    Scaffold(topBar = { FocusedTopBar(stringResource(R.string.shared_content), onBack) }) { padding ->
-        OcrResultContent(state, OcrSource.SHARE, viewModel, onReview, null, Modifier.padding(padding))
+    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.shared_content), onBack) }) { padding ->
+        OcrResultContent(state, OcrSource.SHARE, viewModel::editText, { viewModel.analyze(OcrSource.SHARE, onReview) }, null, Modifier.padding(padding))
     }
 }
 
@@ -83,13 +83,13 @@ fun CameraOcrScreen(
     var permitted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permitted = it }
     LaunchedEffect(Unit) { if (!permitted) permission.launch(Manifest.permission.CAMERA) }
-    Scaffold(topBar = { FocusedTopBar(stringResource(R.string.camera_ocr), onBack) }) { padding ->
+    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.camera_ocr), onBack) }) { padding ->
         when {
             !permitted -> OcrPickerEmpty(
-                Modifier.padding(padding), Icons.Outlined.NoPhotography, "Appareil photo requis",
-                stringResource(R.string.camera_permission_needed), "Autoriser", { permission.launch(Manifest.permission.CAMERA) },
+                Modifier.padding(padding), Icons.Outlined.NoPhotography, stringResource(R.string.camera_required),
+                stringResource(R.string.camera_permission_needed), stringResource(R.string.authorize), { permission.launch(Manifest.permission.CAMERA) },
             )
-            state.imageUri != null -> OcrResultContent(state, OcrSource.CAMERA, viewModel, onReview, viewModel::clear, Modifier.padding(padding))
+            state.imageUri != null -> OcrResultContent(state, OcrSource.CAMERA, viewModel::editText, { viewModel.analyze(OcrSource.CAMERA, onReview) }, viewModel::clear, Modifier.padding(padding))
             else -> CameraCapture(viewModel::process, Modifier.padding(padding))
         }
     }
@@ -129,7 +129,7 @@ private fun CameraCapture(onCaptured: (Uri) -> Unit, modifier: Modifier) {
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = .64f)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Cadrez le message complet et évitez les reflets", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.camera_guidance), color = Color.White, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(16.dp))
             FloatingActionButton(
                 onClick = {
@@ -143,7 +143,7 @@ private fun CameraCapture(onCaptured: (Uri) -> Unit, modifier: Modifier) {
                         override fun onError(exception: ImageCaptureException) { cameraError = true }
                     })
                 },
-                containerColor = FactoryFlowMagenta,
+                containerColor = FlowBlue,
                 contentColor = Color.White,
             ) { Icon(Icons.Outlined.PhotoCamera, stringResource(R.string.capture)) }
             if (cameraError) Text(stringResource(R.string.ocr_failed), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 10.dp))
@@ -152,52 +152,63 @@ private fun CameraCapture(onCaptured: (Uri) -> Unit, modifier: Modifier) {
 }
 
 @Composable
-private fun OcrResultContent(
+fun OcrResultContent(
     state: OcrAcquisitionState,
     source: OcrSource,
-    viewModel: OcrAcquisitionViewModel,
-    onReview: (Long) -> Unit,
+    onEditText: (String) -> Unit,
+    onAnalyze: () -> Unit,
     onReplace: (() -> Unit)?,
     modifier: Modifier,
 ) {
-    Column(modifier.fillMaxSize().imePadding().padding(horizontal = 20.dp, vertical = 16.dp)) {
+    FlowContentSurface(modifier) {
+    Column(Modifier.fillMaxSize().imePadding().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.lg)) {
         if (state.processing) {
-            FactoryFlowHero(Modifier.fillMaxWidth()) {
+            FlowCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(FlowSpacing.lg)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                    Spacer(Modifier.width(13.dp))
-                    Column { Text(stringResource(R.string.ocr_processing), color = Color.White, style = MaterialTheme.typography.titleMedium); Text(stringResource(R.string.ocr_extracting), color = Color.White.copy(alpha = .76f), style = MaterialTheme.typography.bodySmall) }
+                    CircularProgressIndicator(Modifier.size(24.dp), color = FlowBlue, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(FlowSpacing.md))
+                    Column { Text(stringResource(R.string.ocr_processing), style = MaterialTheme.typography.titleMedium); Text(stringResource(R.string.ocr_extracting), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                 }
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(FlowSpacing.lg))
             SkeletonRows(Modifier.fillMaxWidth(), 4)
             return@Column
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            FactoryIconChip(Icons.Outlined.DocumentScanner, null, tint = FactoryFlowGreenDark, container = FactoryFlowGreen.copy(alpha = .13f))
-            Spacer(Modifier.width(12.dp))
+            FlowIconTile(Icons.Outlined.DocumentScanner, null, FlowTeal)
+            Spacer(Modifier.width(FlowSpacing.md))
             Column(Modifier.weight(1f)) {
-                Text("Texte détecté", style = MaterialTheme.typography.titleLarge)
-                Text("Relisez si nécessaire avant l’analyse", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.detected_text), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.review_before_analysis), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
-            if (onReplace != null) TextButton(onClick = onReplace) { Text(if (source == OcrSource.CAMERA) stringResource(R.string.retake) else "Changer") }
+            if (onReplace != null) TextButton(onClick = onReplace) { Text(if (source == OcrSource.CAMERA) stringResource(R.string.retake) else stringResource(R.string.change)) }
         }
-        Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
-            value = state.extractedText,
-            onValueChange = viewModel::editText,
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            label = { Text(stringResource(R.string.raw_text_label)) },
-            shape = RoundedCornerShape(FactoryRadius.card),
-            isError = state.noTextDetected,
-            supportingText = { if (state.noTextDetected) Text(stringResource(R.string.ocr_empty)) },
-        )
+        Spacer(Modifier.height(FlowSpacing.lg))
+        FlowCard(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(FlowSpacing.sm)) {
+            TextField(
+                value = state.extractedText,
+                onValueChange = onEditText,
+                modifier = Modifier.fillMaxSize(),
+                label = { Text(stringResource(R.string.raw_text_label)) },
+                shape = RoundedCornerShape(FlowRadius.control),
+                isError = state.noTextDetected,
+                supportingText = { if (state.noTextDetected) Text(stringResource(R.string.ocr_empty)) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    errorIndicatorColor = Color.Transparent,
+                ),
+            )
+        }
         state.error?.let { error ->
             Spacer(Modifier.height(10.dp))
             Text(stringResource(error.detail), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(14.dp))
-        PrimaryAction("Analyser et vérifier", state.creatingDraft, state.extractedText.isNotBlank(), { viewModel.analyze(source, onReview) })
+        PrimaryAction(stringResource(R.string.analyze_and_review), state.creatingDraft, state.extractedText.isNotBlank(), onAnalyze)
+    }
     }
 }
 
@@ -210,15 +221,7 @@ private fun OcrPickerEmpty(
     action: String,
     onAction: () -> Unit,
 ) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            FactoryIconChip(icon, null, size = 72.dp, tint = FactoryFlowMagenta, container = FactoryFlowMagenta.copy(alpha = .11f))
-            Spacer(Modifier.height(20.dp))
-            Text(title, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(8.dp))
-            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(24.dp))
-            PrimaryAction(action, onClick = onAction)
-        }
+    Box(modifier.fillMaxSize().padding(FlowSpacing.xl), contentAlignment = Alignment.Center) {
+        FlowEmptyState(title, detail, icon = icon, action = action, onAction = onAction)
     }
 }

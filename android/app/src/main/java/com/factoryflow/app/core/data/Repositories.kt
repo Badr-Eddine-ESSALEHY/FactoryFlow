@@ -45,6 +45,7 @@ interface ReportsRepository {
     suspend fun createDraft(request: DraftReportRequest): ReportDto
     suspend fun updateDraft(id: Long, request: DraftReportRequest): ReportDto
     suspend fun draft(id: Long): ReportDto
+    suspend fun deleteDraft(id: Long)
     suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto
     suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto
     suspend fun reports(status: String? = null): PageDto<ReportSummaryDto>
@@ -57,6 +58,7 @@ class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowA
     override suspend fun createDraft(request: DraftReportRequest) = executor.execute { api.createDraft(request) }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = executor.execute { api.updateDraft(id, request) }
     override suspend fun draft(id: Long) = executor.execute { api.draft(id) }
+    override suspend fun deleteDraft(id: Long) = executor.execute { api.deleteDraft(id) }
     override suspend fun approveAlias(kpiDefinitionId: Long, alias: String) = executor.execute { api.approveAlias(kpiDefinitionId, ApproveAliasRequest(alias)) }
     override suspend fun confirm(id: Long, request: ConfirmReportRequest) = executor.execute { api.confirm(id, request) }
     override suspend fun reports(status: String?) = executor.execute { api.reports(status = status) }
@@ -66,6 +68,7 @@ class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowA
 interface GeneratedReportsRepository {
     suspend fun list(): PageDto<GeneratedReportDto>
     suspend fun detail(id: Long): GeneratedReportDto
+    suspend fun generate(request: GenerateReportRequest): GeneratedReportDto
     suspend fun download(report: GeneratedReportDto): File
 }
 
@@ -76,6 +79,7 @@ class DefaultGeneratedReportsRepository @Inject constructor(
 ) : GeneratedReportsRepository {
     override suspend fun list() = executor.execute { api.generatedReports() }
     override suspend fun detail(id: Long) = executor.execute { api.generatedReport(id) }
+    override suspend fun generate(request: GenerateReportRequest) = executor.execute { api.generateReport(request) }
     override suspend fun download(report: GeneratedReportDto): File = executor.execute {
         val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }
         directory.listFiles()?.sortedByDescending(File::lastModified)?.drop(12)?.forEach(File::delete)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<string name="nav_stats">Stats</string>
     <string name="app_name">FactoryFlow</string>
     <string name="nav_dashboard">Tableau de bord</string>
     <string name="nav_reports">Rapports</string>

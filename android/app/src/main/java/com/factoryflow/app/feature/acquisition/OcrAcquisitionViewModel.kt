@@ -110,6 +110,9 @@ private fun AnalyzeReportResponse.asDraft(date: String) = DraftReportRequest(
             warnings = entry.warnings.map { it.code }.toSet(),
             suggestedKpiDefinitionId = entry.suggestions.firstOrNull()?.kpiDefinitionId,
             suggestionScore = entry.suggestions.firstOrNull()?.score,
+            secondaryExtractedValue = entry.secondaryExtractedValue,
+            secondaryCurrentValue = entry.secondaryExtractedValue,
+            secondaryUnit = entry.secondaryUnit,
         )
     },
     unrecognizedLines = unrecognizedLines.map { DraftUnknownLineRequest(it.sourceLine) },

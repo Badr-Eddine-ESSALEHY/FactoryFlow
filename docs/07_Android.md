@@ -3063,6 +3063,30 @@ For every major screen:
 [ ] accessibility acceptable
 ```
 
+## 219.1 Vivo real-device before-state baseline
+
+The 12 Vivo screenshots supplied on 13 August 2026 are the explicit BEFORE-state
+reference for final Android visual acceptance. The original WhatsApp images remain
+outside the repository because they are private QA evidence.
+
+The final Vivo pass must compare the same representative screens and verify:
+
+```text
+[ ] no clipped headings, cards, chips, KPI values, or acquisition descriptions
+[ ] the canonical four-destination bottom navigation is balanced and legible
+[ ] focused workflows and detail screens do not show the bottom navigation
+[ ] scroll content remains clear of app navigation and Vivo system navigation
+[ ] report lists and KPI rows use compact, value-first hierarchy
+[ ] empty states have restrained scale and intentional vertical balance
+[ ] dark-theme surfaces, text, status tones, and accent colors retain clear contrast
+[ ] screenshots are captured at the Vivo display/font settings used for the baseline
+```
+
+The baseline covers Dashboard, recent/history content, confirmed and draft report
+detail, Reports, Create Report, Statistics, Notifications, and Profile. Final QA
+should preserve business-state differences while comparing layout, hierarchy,
+density, clipping, and navigation behavior.
+
 ---
 
 # 220. Dashboard Screen Implementation
@@ -3081,6 +3105,23 @@ UpcomingScheduleCard
 ```
 
 Do not create one 600-line `DashboardScreen`.
+
+The production Dashboard visual foundation is documented in
+`docs/14_Android_Design_System.md`. Its route continues to consume the existing
+`DashboardViewModel` and `DashboardDto`; the redesign is presentation-only. The
+screen uses the shared Flow components for daily summary cards, quick actions,
+list rows, progress, smooth charting, empty state, and the common bottom shell.
+
+The navigation shell presents four destinations around one centered creation
+action:
+
+```text
+Accueil | Rapports | + | Stats | Alertes
+```
+
+The blue creation FAB is a system-level action and is not a fifth labeled tab.
+Dashboard previews must wrap the production `DashboardContent` in the production
+`FactoryFlowAppShell`; debug fixtures provide data only and must not duplicate UI.
 
 ---
 

@@ -43,6 +43,9 @@ data class ReviewEntry(
     val suggestedKpiUnit: String?,
     val suggestionScore: String?,
     val rememberAlias: Boolean = false,
+    val secondaryValue: String? = null,
+    val secondaryExtractedValue: String? = null,
+    val secondaryUnit: String? = null,
 ) {
     val reviewState: ReviewState
         get() = when {
@@ -120,6 +123,14 @@ class ReviewViewModel @Inject constructor(
         )
     }
 
+    fun editSecondary(id: Long, value: String) = _state.update { state ->
+        state.copy(
+            dirty = true,
+            savedNotice = false,
+            entries = state.entries.map { if (it.id == id) it.copy(secondaryValue = value, edited = true) else it },
+        )
+    }
+
     fun remove(id: Long) = _state.update {
         it.copy(dirty = true, entries = it.entries.filterNot { entry -> entry.id == id })
     }
@@ -192,7 +203,13 @@ class ReviewViewModel @Inject constructor(
             reports.confirm(
                 reportId,
                 ConfirmReportRequest(
-                    current.entries.map { ConfirmationEntryRequest(checkNotNull(it.kpiDefinitionId), it.value.asEditableDecimal()) },
+                    current.entries.map {
+                        ConfirmationEntryRequest(
+                            checkNotNull(it.kpiDefinitionId),
+                            it.value.asEditableDecimal(),
+                            it.secondaryValue?.asEditableDecimal(),
+                        )
+                    },
                     current.unknownLines.map { UnknownLineResolutionRequest(it.id, it.resolution, it.resolvedKpiDefinitionId) },
                 ),
             )
@@ -226,6 +243,9 @@ private fun ReportEntryDto.toReview() = ReviewEntry(
     suggestedKpiDisplayName = suggestedKpiDisplayName,
     suggestedKpiUnit = suggestedKpiUnit,
     suggestionScore = suggestionScore?.multiply(java.math.BigDecimal("100"))?.setScale(0)?.toPlainString(),
+    secondaryValue = (secondaryCurrentValue ?: secondaryExtractedValue)?.stripTrailingZeros()?.toPlainString(),
+    secondaryExtractedValue = secondaryExtractedValue?.stripTrailingZeros()?.toPlainString(),
+    secondaryUnit = secondaryUnit,
 )
 
 private fun ReviewUiState.toDraftRequest(report: ReportDto) = DraftReportRequest(
@@ -245,6 +265,9 @@ private fun ReviewUiState.toDraftRequest(report: ReportDto) = DraftReportRequest
             entry.warnings,
             entry.suggestedKpiDefinitionId,
             entry.suggestionScore?.toBigDecimalOrNull()?.movePointLeft(2),
+            entry.secondaryExtractedValue?.toBigDecimalOrNull(),
+            entry.secondaryValue?.asEditableDecimal(),
+            entry.secondaryUnit,
         )
     },
     unknownLines.map { DraftUnknownLineRequest(it.sourceLine, it.resolution, it.resolvedKpiDefinitionId) },
