@@ -1,0 +1,76 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ============================================================
+% FACTORYFLOW INTERNSHIP REPORT
+% Main document
+% ============================================================
+
+\input{config/packages}
+\input{config/formatting}
+\input{config/commands}
+\input{config/metadata}
+
+\begin{document}
+
+% ============================================================
+% FRONT MATTER
+% ============================================================
+
+\pagenumbering{gobble}
+
+\input{frontmatter/cover}
+
+\clearpage
+\input{frontmatter/dedication}
+
+\clearpage
+\input{frontmatter/acknowledgements}
+
+\clearpage
+\input{frontmatter/abstract}
+
+\clearpage
+\input{frontmatter/lists}
+
+% ============================================================
+% GENERAL INTRODUCTION
+% Page numbering starts here, as required by ENSIASD.
+% ============================================================
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter*{GENERAL INTRODUCTION}
+\addcontentsline{toc}{chapter}{GENERAL INTRODUCTION}
+
+% Content will be written later.
+
+% ============================================================
+% MAIN CHAPTERS
+% ============================================================
+
+\include{chapters/01_context}
+\include{chapters/02_requirements}
+\include{chapters/03_architecture}
+\include{chapters/04_factoryflow_implementation}
+\include{chapters/05_dosage_analysis}
+\include{chapters/06_validation_results}
+
+% ============================================================
+% BACK MATTER
+% ============================================================
+
+\include{backmatter/conclusion}
+
+\clearpage
+\chapter*{REFERENCES}
+\addcontentsline{toc}{chapter}{REFERENCES}
+
+\printbibliography[heading=none]
+
+\clearpage
+\appendix
+\input{backmatter/appendices}
+
+\end{document}

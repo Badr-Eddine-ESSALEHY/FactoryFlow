@@ -1,0 +1,193 @@
+% ============================================================
+% ENSIASD REPORT FORMATTING
+% ============================================================
+
+% ------------------------------------------------------------
+% Body text
+% ------------------------------------------------------------
+
+\onehalfspacing
+\justifying
+
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+% Prevent isolated lines where possible.
+\widowpenalty=10000
+\clubpenalty=10000
+
+% ------------------------------------------------------------
+% Chapter titles
+%
+% ENSIASD:
+% - New page
+% - Times New Roman
+% - 16 pt
+% - Bold
+% - Uppercase
+% - Right aligned
+% ------------------------------------------------------------
+
+\titleformat{\chapter}[display]
+    {\normalfont\bfseries\fontsize{16}{19}\selectfont\raggedleft}
+    {\MakeUppercase{\chaptername\ \thechapter}}
+    {10pt}
+    {\MakeUppercase}
+
+\titlespacing*{\chapter}
+    {0pt}
+    {0pt}
+    {54pt}
+
+% ------------------------------------------------------------
+% Section numbering
+%
+% ENSIASD convention:
+% I.
+% II.
+% III.
+%
+% I.1.
+% I.2.
+%
+% I.1.1.
+% ------------------------------------------------------------
+
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+
+% ------------------------------------------------------------
+% Sections
+% 14 pt bold
+% ------------------------------------------------------------
+
+\titleformat{\section}
+    {\normalfont\bfseries\fontsize{14}{17}\selectfont}
+    {\thesection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\section}
+    {0pt}
+    {12pt}
+    {12pt}
+
+% ------------------------------------------------------------
+% Subsections
+% 12 pt bold
+% ------------------------------------------------------------
+
+\titleformat{\subsection}
+    {\normalfont\bfseries\fontsize{12}{15}\selectfont}
+    {\thesubsection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\subsection}
+    {0pt}
+    {6pt}
+    {6pt}
+
+% ------------------------------------------------------------
+% Subsubsections
+% 12 pt bold
+% ------------------------------------------------------------
+
+\titleformat{\subsubsection}
+    {\normalfont\bfseries\fontsize{12}{15}\selectfont}
+    {\thesubsubsection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\subsubsection}
+    {0pt}
+    {6pt}
+    {6pt}
+
+% ------------------------------------------------------------
+% Page numbering
+% Bottom-right
+% ------------------------------------------------------------
+
+\pagestyle{fancy}
+
+\fancyhf{}
+
+\fancyfoot[R]{\thepage}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Ensure chapter-opening pages use the same footer.
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[R]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% ------------------------------------------------------------
+% Figure numbering
+% Chapter.Figure
+% Example: Figure 3.2
+% ------------------------------------------------------------
+
+\renewcommand{\thefigure}{\thechapter.\arabic{figure}}
+
+\captionsetup[figure]{
+    position=bottom,
+    font={small,it},
+    labelfont={bf,it},
+    justification=centering,
+    singlelinecheck=false,
+    skip=6pt
+}
+
+% ------------------------------------------------------------
+% Table numbering
+% Chapter.Table
+% Example: Table 3.1
+% ------------------------------------------------------------
+
+\renewcommand{\thetable}{\thechapter.\arabic{table}}
+
+\captionsetup[table]{
+    position=top,
+    font=small,
+    labelfont=bf,
+    justification=centering,
+    singlelinecheck=false,
+    skip=6pt
+}
+
+% ------------------------------------------------------------
+% List appearance
+% ------------------------------------------------------------
+
+\setlist[itemize]{
+    leftmargin=1.2cm,
+    itemsep=3pt,
+    topsep=6pt
+}
+
+\setlist[enumerate]{
+    leftmargin=1.2cm,
+    itemsep=3pt,
+    topsep=6pt
+}
+
+% ------------------------------------------------------------
+% Table defaults
+% ------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.2}
+
+% ------------------------------------------------------------
+% Hyperlink PDF metadata appearance
+% ------------------------------------------------------------
+
+\hypersetup{
+    colorlinks=false,
+    pdfborder={0 0 0}
+}

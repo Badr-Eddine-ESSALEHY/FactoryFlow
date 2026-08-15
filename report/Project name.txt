@@ -1,0 +1,220 @@
+FactoryFlow: A Mobile Platform for Intelligent Collection and Automated Reporting of Industrial Maintenance KPIs
+
+
+Proposed final report architecture
+
+I want us to target roughly 58–64 pages, not 69. The school maximum is 70 pages, so we need breathing room for final figures and corrections.
+
+I currently recommend:
+
+Chapter 1 — Industrial Context and Problem Definition
+
+This chapter answers:
+
+Why did this project need to exist?
+
+We cover:
+
+host company and industrial context;
+maintenance context;
+current KPI collection process;
+WhatsApp-based workflow;
+manual Excel/reporting workflow;
+weaknesses of the existing process;
+data-quality problems;
+business problem;
+internship objectives;
+FactoryFlow positioning;
+introduction to the complementary Dosage Analysis project.
+
+Very little code here.
+
+Chapter 2 — Requirements Analysis and System Specification
+
+This answers:
+
+What exactly must FactoryFlow do?
+
+We explain:
+
+stakeholders;
+Maintenance Engineer;
+functional requirements;
+non-functional requirements;
+acquisition channels;
+OCR requirements;
+manual entry;
+deterministic parsing;
+human validation;
+data traceability;
+reporting;
+analytics;
+scheduling;
+notifications;
+security;
+business rules such as missing != zero;
+composite KPIs;
+acceptance criteria.
+
+And here comes the Use Case Diagram.
+
+But we will understand it before drawing it.
+
+Chapter 3 — System Design and Architecture
+
+This is going to be one of the strongest chapters.
+
+It answers:
+
+How did we transform those requirements into a coherent architecture?
+
+We explain:
+
+global architecture;
+Android/backend/OCR/database boundaries;
+Spring Boot layered architecture;
+Android MVVM architecture;
+REST communication;
+PostgreSQL persistence;
+JPA;
+Flyway;
+security architecture;
+JWT;
+OCR provider architecture;
+PaddleOCR;
+deterministic parser;
+review projection;
+report analytics engine;
+PDFBox;
+Apache POI;
+Quartz;
+email;
+realtime/WebSockets only if they are genuinely present in the final implementation;
+error handling;
+traceability;
+deployment/integration architecture.
+
+This is where the Class Diagram belongs.
+
+Also architecture diagrams.
+
+Chapter 4 — Implementation of FactoryFlow
+
+This answers:
+
+How was the architecture actually implemented?
+
+Instead of describing every source file, we follow the user's journey:
+
+Authentication
+      ↓
+Acquisition
+      ↓
+OCR
+      ↓
+Parsing
+      ↓
+Review
+      ↓
+Confirmation
+      ↓
+Persistence
+      ↓
+Dashboard / Statistics
+      ↓
+PDF / Excel
+      ↓
+Scheduling / Email / Sharing
+
+Here we explain actual technologies and code mechanisms.
+
+This chapter will contain the important Sequence Diagrams.
+
+For example:
+
+login/authentication;
+text acquisition → parser → review;
+image → OCR → parser → review;
+report confirmation;
+scheduled PDF/Excel generation;
+possibly generated report + email.
+Chapter 5 — Complementary Project: Dosage Analysis
+
+This gets real space, perhaps 6–8 pages.
+
+Not 20 pages, because FactoryFlow remains the principal project.
+
+We explain:
+
+industrial problem;
+objectives;
+architecture;
+ASP.NET Core;
+React/Vite;
+PostgreSQL;
+authentication;
+dosage deviations/anomalies;
+tolerances;
+realtime refresh;
+dashboard;
+principal engineering decisions;
+relation to FactoryFlow.
+
+Then one section:
+
+How the Two Projects Complement Each Other
+
+This could be excellent.
+
+FactoryFlow deals mainly with acquisition and trustworthy structuring of operational information.
+
+Dosage Analysis deals with analysis and monitoring of production deviations.
+
+That creates a coherent internship story rather than two unrelated GitHub repositories.
+
+Chapter 6 — Validation, Testing and Results
+
+Not:
+
+“We tested the application and everything worked.”
+
+Real evidence.
+
+We cover:
+
+testing strategy;
+unit tests;
+integration tests;
+parser tests;
+OCR benchmark;
+OCR difficult cases;
+Android tests;
+backend tests;
+PDF verification;
+Excel verification;
+scheduled-report tests;
+email tests;
+real-device tests;
+end-to-end scenarios;
+user testing;
+performance where meaningful;
+limitations found;
+corrections made;
+final results.
+
+We may also bring in:
+
+load testing;
+stress testing;
+spike testing;
+soak/endurance testing
+
+only where technically meaningful.
+
+Your previous report already had a real results/testing chapter including performance methodology and user/integration tests, which is a good structural idea we can improve significantly this year.
+
+General Conclusion and Perspectives
+
+Short and meaningful.
+
+Not five pages of repetition.

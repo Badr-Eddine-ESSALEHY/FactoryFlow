@@ -1,0 +1,134 @@
+% ============================================================
+% PACKAGES
+% ============================================================
+
+% ------------------------------------------------------------
+% Font and language
+% ------------------------------------------------------------
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+\setdefaultlanguage{english}
+
+% ENSIASD requires Times New Roman.
+\setmainfont{Times New Roman}
+
+% ------------------------------------------------------------
+% Page layout
+% ------------------------------------------------------------
+
+\usepackage[
+    a4paper,
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+]{geometry}
+
+\usepackage{setspace}
+\usepackage{ragged2e}
+
+% ------------------------------------------------------------
+% Headings
+% ------------------------------------------------------------
+
+\usepackage{titlesec}
+
+% ------------------------------------------------------------
+% Header / footer
+% ------------------------------------------------------------
+
+\usepackage{fancyhdr}
+
+% ------------------------------------------------------------
+% Figures and images
+% ------------------------------------------------------------
+
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ------------------------------------------------------------
+% Tables
+% ------------------------------------------------------------
+
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+
+% ------------------------------------------------------------
+% Lists
+% ------------------------------------------------------------
+
+\usepackage{enumitem}
+
+% ------------------------------------------------------------
+% Mathematics and symbols
+% ------------------------------------------------------------
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% ------------------------------------------------------------
+% Colors
+% ------------------------------------------------------------
+
+\usepackage{xcolor}
+
+% ------------------------------------------------------------
+% UML / architecture diagrams when useful
+% ------------------------------------------------------------
+
+\usepackage{tikz}
+\usetikzlibrary{
+    arrows.meta,
+    positioning,
+    shapes.geometric,
+    fit,
+    backgrounds,
+    calc
+}
+
+% ------------------------------------------------------------
+% Links
+% ------------------------------------------------------------
+
+\usepackage[
+    hidelinks,
+    unicode
+]{hyperref}
+
+\usepackage{bookmark}
+
+% ------------------------------------------------------------
+% Bibliography
+% ------------------------------------------------------------
+
+\usepackage[
+    backend=biber,
+    style=numeric,
+    sorting=none
+]{biblatex}
+
+\addbibresource{references.bib}
+
+% ------------------------------------------------------------
+% Better typography
+% ------------------------------------------------------------
+
+\usepackage{microtype}
+
+% ------------------------------------------------------------
+% Abbreviations
+% ------------------------------------------------------------
+
+\usepackage[
+    acronym,
+    nonumberlist
+]{glossaries}
+
+\makeglossaries

@@ -1,0 +1,29 @@
+# LaTeX build files
+build/
+
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.ist
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+
+# VS Code
+.vscode/*.log
+
+# OS
+Thumbs.db
+.DS_Store
