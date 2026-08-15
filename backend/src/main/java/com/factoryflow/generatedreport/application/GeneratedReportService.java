@@ -2,6 +2,8 @@ package com.factoryflow.generatedreport.application;
 
 import com.factoryflow.auth.application.AuthenticationService;
 import com.factoryflow.auth.domain.UserAccount;
+import com.factoryflow.analytics.application.ReportAnalyticsService;
+import com.factoryflow.analytics.application.ReportAnalyticsService.Measurement;
 import com.factoryflow.generatedreport.api.GenerateReportRequest;
 import com.factoryflow.generatedreport.api.GeneratedReportResponse;
 import com.factoryflow.generatedreport.domain.GeneratedReport;
@@ -45,6 +47,7 @@ public class GeneratedReportService {
     private final PdfReportGenerator pdfGenerator;
     private final ReportStorageService storage;
     private final Clock clock;
+    private final ReportAnalyticsService analytics;
 
     public GeneratedReportService(GeneratedReportRepository generatedReports,
                                   MaintenanceReportRepository maintenanceReports,
@@ -52,7 +55,8 @@ public class GeneratedReportService {
                                   ExcelReportGenerator excelGenerator,
                                   PdfReportGenerator pdfGenerator,
                                   ReportStorageService storage,
-                                  Clock clock) {
+                                  Clock clock,
+                                  ReportAnalyticsService analytics) {
         this.generatedReports = generatedReports;
         this.maintenanceReports = maintenanceReports;
         this.authentication = authentication;
@@ -60,6 +64,7 @@ public class GeneratedReportService {
         this.pdfGenerator = pdfGenerator;
         this.storage = storage;
         this.clock = clock;
+        this.analytics = analytics;
     }
 
     @Transactional
@@ -94,7 +99,13 @@ public class GeneratedReportService {
         int version = previous == null ? 1 : previous.getVersion() + 1;
         Instant generatedAt = clock.instant();
         String fileName = fileName(type, format, period, version, schedule);
-        ReportGenerationData data = toGenerationData(type, period, generatedAt, sourceReports);
+        LocalDate previousEnd = period.start().minusDays(1);
+        long periodDays = java.time.temporal.ChronoUnit.DAYS.between(period.start(), period.end()) + 1;
+        LocalDate previousStart = previousEnd.minusDays(periodDays - 1);
+        List<MaintenanceReport> previousReports = maintenanceReports
+                .findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
+                        ReportStatus.CONFIRMED, previousStart, previousEnd);
+        ReportGenerationData data = toGenerationData(type, period, generatedAt, sourceReports, previousReports);
         byte[] document;
         try {
             document = switch (format) {
@@ -168,14 +179,24 @@ public class GeneratedReportService {
     }
 
     private ReportGenerationData toGenerationData(GeneratedReportType type, ReportPeriod period, Instant generatedAt,
-                                                   List<MaintenanceReport> reports) {
+                                                   List<MaintenanceReport> reports, List<MaintenanceReport> previousReports) {
         List<ReportGenerationData.Row> rows = reports.stream().flatMap(report -> report.getEntries().stream().map(entry ->
                 new ReportGenerationData.Row(
                         report.getEffectiveDate(), report.getId(), report.getSource(),
+                        entry.getDefinition().getId(), entry.getDefinition().getCode(),
                         entry.getDefinition().getDisplayName(), entry.getDefinition().getUnit(), entry.getFinalValue(),
+                        entry.getSecondaryFinalValue(), entry.getSecondaryUnit(),
                         report.getSubmittedBy().getName(), report.getConfirmedAt()
                 ))).toList();
-        return new ReportGenerationData(type, period, generatedAt, rows);
+        return new ReportGenerationData(type, period, generatedAt, rows,
+                analytics.analyze(measurements(reports), measurements(previousReports)));
+    }
+
+    private List<Measurement> measurements(List<MaintenanceReport> reports) {
+        return reports.stream().flatMap(report -> report.getEntries().stream().map(entry -> new Measurement(
+                entry.getDefinition().getId(), entry.getDefinition().getCode(), entry.getDefinition().getDisplayName(),
+                entry.getDefinition().getUnit(), report.getEffectiveDate(), report.getId(), entry.getFinalValue()
+        ))).toList();
     }
 
     private String fileName(GeneratedReportType type, GeneratedReportFormat format, ReportPeriod period, int version,

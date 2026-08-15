@@ -66,7 +66,6 @@ A `MaintenanceReport` represents one business record containing KPI information 
 - pasted text
 - gallery image
 - shared image
-- camera image
 
 It is not the same as an Excel or PDF file.
 
@@ -170,7 +169,6 @@ MANUAL
 PASTE
 GALLERY_OCR
 SHARE_OCR
-CAMERA_OCR
 ```
 
 Each report must preserve its acquisition source.
@@ -209,7 +207,6 @@ For:
 
 - gallery
 - share intent
-- camera
 
 the Android application performs OCR first.
 
@@ -670,7 +667,6 @@ This rule applies to:
 - paste
 - gallery OCR
 - shared image OCR
-- camera OCR
 
 ---
 

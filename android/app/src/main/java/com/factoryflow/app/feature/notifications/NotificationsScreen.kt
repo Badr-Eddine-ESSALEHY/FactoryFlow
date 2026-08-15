@@ -1,31 +1,72 @@
 package com.factoryflow.app.feature.notifications
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
 import com.factoryflow.app.core.design.*
+import com.factoryflow.app.core.network.dto.NotificationDto
 
 @Composable
-fun NotificationsScreen() {
-    FlowScreen {
-        NotificationsContent(Modifier.weight(1f))
-    }
+fun NotificationsScreen(viewModel: NotificationsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    FlowScreen { NotificationsContent(state, viewModel::load, viewModel::read, Modifier.weight(1f)) }
 }
 
 @Composable
-fun NotificationsContent(modifier: Modifier = Modifier) {
+fun NotificationsContent(
+    state: NotificationsUiState,
+    onRetry: () -> Unit,
+    onRead: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     FlowContentSurface(modifier) {
-        Column(Modifier.fillMaxSize().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.lg)) {
-            FlowPageHeader(stringResource(R.string.notifications_title))
-            Spacer(Modifier.height(FlowSpacing.lg))
-            FlowEmptyState(stringResource(R.string.no_notifications), stringResource(R.string.no_notifications_detail), icon = Icons.Outlined.NotificationsNone)
+        when {
+            state.loading -> LoadingPane(stringResource(R.string.loading))
+            state.error != null -> ErrorPane(stringResource(state.error.title), stringResource(state.error.detail), stringResource(R.string.retry), onRetry)
+            state.items.isEmpty() -> Column(Modifier.fillMaxSize().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.lg)) {
+                FlowPageHeader(stringResource(R.string.notifications_title)); Spacer(Modifier.height(FlowSpacing.lg))
+                FlowEmptyState(stringResource(R.string.no_notifications), stringResource(R.string.no_notifications_detail), icon = Icons.Outlined.NotificationsNone)
+            }
+            else -> LazyColumn(
+                Modifier.fillMaxSize(), contentPadding = PaddingValues(FlowSpacing.xl, FlowSpacing.lg, FlowSpacing.xl, FlowSpacing.xxxl),
+                verticalArrangement = Arrangement.spacedBy(FlowSpacing.sm),
+            ) {
+                item { FlowPageHeader(stringResource(R.string.notifications_title)) }
+                items(state.items, key = NotificationDto::id) { item ->
+                    FlowListRow(
+                        icon = icon(item.type), title = item.title, meta = item.message,
+                        accent = accent(item.type), modifier = Modifier.fillMaxWidth().clickable { onRead(item.id) },
+                        trailing = { if (item.readAt == null) FlowStatusPill(stringResource(R.string.new_notification), FlowBlue, compact = true) },
+                    )
+                }
+            }
         }
     }
+}
+
+private fun icon(type: String): ImageVector = when (type) {
+    "REPORT_CONFIRMED" -> Icons.Outlined.TaskAlt
+    "SCHEDULED_DOCUMENT_READY" -> Icons.Outlined.Description
+    "EMAIL_FAILED" -> Icons.Outlined.MarkEmailUnread
+    "SCHEDULE_FAILED" -> Icons.Outlined.ErrorOutline
+    else -> Icons.Outlined.RateReview
+}
+
+private fun accent(type: String) = when (type) {
+    "REPORT_CONFIRMED" -> FlowTeal
+    "SCHEDULED_DOCUMENT_READY" -> FlowBlue
+    "EMAIL_FAILED", "SCHEDULE_FAILED" -> FlowOrange
+    else -> FlowPurple
 }

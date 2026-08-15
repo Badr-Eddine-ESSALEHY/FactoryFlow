@@ -23,8 +23,9 @@ import com.factoryflow.app.R
 import com.factoryflow.app.core.design.*
 
 @Composable
-fun PasteScreen(onBack: () -> Unit, onReview: (Long) -> Unit, viewModel: PasteViewModel = hiltViewModel()) {
+fun PasteScreen(onBack: () -> Unit, onReview: (Long) -> Unit, initialText: String? = null, viewModel: PasteViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(initialText) { if (state.text.isBlank() && !initialText.isNullOrBlank()) viewModel.text(initialText) }
     val clipboard = LocalClipboardManager.current
     FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.paste_title), onBack) }) { padding ->
         PasteContent(

@@ -8,7 +8,7 @@
 >
 > Last updated: 2026-08-11
 >
-> This document defines the **Android application architecture, package organization, implementation rules, state-management patterns, navigation behavior, data access, OCR integration, CameraX integration, Share Intent handling, FileProvider usage, FCM integration, Room usage, Retrofit contracts, testing expectations, and premium Compose implementation standards** for FactoryFlow.
+> This document defines the **Android application architecture, package organization, implementation rules, state-management patterns, navigation behavior, data access, backend OCR integration, Share Intent handling, FileProvider usage, notifications, Room usage, Retrofit contracts, testing expectations, and premium Compose implementation standards** for FactoryFlow.
 >
 > This document must remain aligned with:
 >
@@ -43,8 +43,7 @@
 > Coroutines
 > Flow / StateFlow
 > Navigation Compose
-> CameraX
-> Google ML Kit OCR
+> PaddleOCR backend integration
 > Android Share Intent
 > FileProvider
 > Firebase Cloud Messaging (SHOULD after the trusted core)
@@ -1101,7 +1100,6 @@ dashboard
 create
 paste
 gallery
-camera
 manual
 confirmation/{draftId?}
 reports
@@ -1167,7 +1165,7 @@ Hide during focused workflows:
 
 ```text
 Login
-Camera
+Gallery OCR
 OCR processing
 Confirmation
 Schedule edit
@@ -1326,8 +1324,8 @@ For OCR:
 
 ```text
 URI
-→ InputImage
-→ ML Kit
+→ authenticated multipart upload
+→ PaddleOCR runtime
 → text
 ```
 
@@ -1363,89 +1361,60 @@ Do not create unnecessary extra steps if image is clearly selected and OCR can b
 
 ---
 
-# 80. CameraX Architecture
+# 80. Image Acquisition Architecture
 
-Camera feature owns:
+Android acquisition owns:
 
-- permission
-- preview
-- capture
-- temporary image
-- return captured URI/file
+- gallery selection
+- shared content URI validation
+- lifecycle-safe handoff
+- authenticated multipart upload
 
 It does not own OCR business logic.
 
 ---
 
-# 81. Camera Permission
+# 81. URI Permission
 
-Request only when user taps Camera.
+Consume only the read permission granted with the picker or Share Intent.
 
-If denied:
+If the URI is unreadable, show a recoverable error and keep the other acquisition methods available.
 
-Other acquisition methods remain available.
-
----
-
-# 82. CameraX Use Cases
-
-Likely:
+# 82. Gallery and Share-Image Use Cases
 
 ```text
-Preview
-ImageCapture
+Select or receive image
+→ validate MIME and bounded size
+→ upload to OCR API
+→ inspect recognized text
+→ deterministic parser
+→ human review
 ```
 
-ImageAnalysis is not required if OCR occurs after capture.
+# 85. Image Rotation
 
-Do not introduce live frame OCR unless deliberately scoped.
-
----
-
-# 83. Camera Capture Flow
-
-```text
-Open Camera
-→ Capture
-→ Preview result
-→ Retake / Use Photo
-→ OCR
-```
-
----
-
-# 84. Camera File Storage
-
-Use app cache/files suitable for temporary capture.
-
-Do not expose raw paths externally.
-
----
-
-# 85. Camera Rotation
-
-Handle image orientation correctly.
+The OCR runtime applies EXIF orientation before recognition.
 
 OCR should receive properly oriented input.
 
 ---
 
-# 86. Camera Error Handling
+# 86. Image Error Handling
 
 Handle:
 
-- permission denied
-- camera unavailable
-- capture error
-- storage error
+- unsupported MIME type
+- unreadable or missing URI
+- oversized upload
+- OCR timeout or unavailability
 
 Gracefully.
 
 ---
 
-# 87. ML Kit OCR Architecture
+# 87. Backend PaddleOCR Architecture
 
-Use on-device text recognition.
+Use the private PaddleOCR runtime through the authenticated backend endpoint.
 
 OCR responsibility:
 
@@ -1491,7 +1460,7 @@ data class OcrResult(
 
 For FactoryFlow core, full recognized text may be enough.
 
-Do not over-model ML Kit blocks if not used.
+Do not interpret OCR blocks as KPI semantics on Android.
 
 One screenshot feeds one review flow in MVP even when OCR sees multiple WhatsApp
 bubbles. Preserve all recognized content and unknown lines; do not auto-split it into
@@ -2410,7 +2379,7 @@ Do not mix server UTC and local time labels without conversion.
 Potential runtime permissions:
 
 ```text
-Camera
+Gallery / Share image
 Notifications
 ```
 
@@ -2428,7 +2397,7 @@ Provide alternatives.
 
 ---
 
-# 164. Camera Permanent Denial
+# 164. Shared URI Permission Loss
 
 If user permanently denies:
 
@@ -2614,7 +2583,7 @@ Select based on:
 
 - modern Android feature requirements
 - device availability
-- CameraX/ML Kit compatibility
+- gallery/share URI and OCR API compatibility
 - notification permission behavior
 
 Do not invent a device-support requirement without checking actual project needs.
@@ -2844,7 +2813,7 @@ Measure actual problems.
 
 Use efficient decoding.
 
-Do not load full camera-resolution image into memory for tiny preview.
+Do not load a full-resolution shared image into memory for a tiny preview.
 
 ---
 
@@ -2988,7 +2957,7 @@ Test manually/on emulator/device:
 
 ---
 
-# 214. Camera Tests
+# 214. Gallery and Shared-Image Tests
 
 Test on physical device if possible.
 
@@ -3826,7 +3795,7 @@ Recommended:
 17. Scheduling
 18. Gallery OCR
 19. Share Intent
-20. CameraX
+20. Backend OCR
 21. Notifications/FCM
 22. Realtime/STOMP
 23. Statistics
@@ -3914,8 +3883,8 @@ Why Hilt?
 How Retrofit authentication works?
 How token refresh works?
 Why Room is not authoritative?
-How CameraX works?
-How ML Kit OCR integrates?
+How gallery and Share Intent acquisition work?
+How PaddleOCR integrates through the backend?
 How Share Intent is received?
 How FileProvider protects files?
 How FCM token registration works?

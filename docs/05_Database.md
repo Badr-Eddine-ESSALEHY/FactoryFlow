@@ -456,7 +456,6 @@ MANUAL
 PASTE
 GALLERY_OCR
 SHARE_OCR
-CAMERA_OCR
 ```
 
 Persist using stable string values.

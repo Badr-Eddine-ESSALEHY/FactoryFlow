@@ -52,7 +52,10 @@ class PremiumParserRegressionTest {
         assertThat(result.entries()).extracting(ParsedEntry::kpiCode)
                 .contains("COMPRESSEUR_1", "COMPRESSEUR_2", "WATER_METER", "MOLASSES_TANK_LEVEL");
         assertThat(find(result, "COMPRESSEUR_1").extractedValue()).isEqualByComparingTo("77108");
+        assertThat(find(result, "COMPRESSEUR_1").secondaryExtractedValue()).isEqualByComparingTo("77");
+        assertThat(find(result, "COMPRESSEUR_1").secondaryUnit()).isEqualTo("%");
         assertThat(find(result, "COMPRESSEUR_2").extractedValue()).isEqualByComparingTo("68232");
+        assertThat(find(result, "COMPRESSEUR_2").secondaryExtractedValue()).isEqualByComparingTo("26");
         assertThat(find(result, "MOLASSES_TANK_LEVEL").reviewState()).isEqualTo("MISSING");
         assertThat(find(result, "MOLASSES_TANK_LEVEL").extractedValue()).isNull();
         assertThat(result.missingCount()).isEqualTo(3);

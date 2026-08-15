@@ -15,7 +15,7 @@ class ApiExecutor(private val moshi: Moshi) {
         }.getOrNull()
         when (error.code()) {
             401 -> if (envelope?.code == "AUTH_INVALID_CREDENTIALS") AppError.InvalidCredentials else AppError.Unauthorized
-            400, 422 -> AppError.Validation(envelope?.code, envelope?.message)
+            400, 413, 415, 422 -> AppError.Validation(envelope?.code, envelope?.message)
             409 -> AppError.Conflict(envelope?.code, envelope?.message)
             else -> AppError.Server(envelope?.code, envelope?.message)
         }.let { throw it }

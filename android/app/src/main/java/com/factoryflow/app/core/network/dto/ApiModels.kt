@@ -13,6 +13,22 @@ data class LoginResponse(val accessToken: String, val tokenType: String, val exp
 data class UserDto(val id: Long, val name: String, val email: String, val active: Boolean)
 
 @JsonClass(generateAdapter = false)
+data class OcrResultDto(
+    val fullText: String,
+    val lines: List<OcrLineDto> = emptyList(),
+    val confidence: BigDecimal?,
+    val engine: String,
+    val processingTimeMs: Long,
+    val warnings: List<String> = emptyList(),
+)
+
+@JsonClass(generateAdapter = false)
+data class OcrLineDto(val text: String, val confidence: BigDecimal?, val boundingBox: OcrBoundingBoxDto?)
+
+@JsonClass(generateAdapter = false)
+data class OcrBoundingBoxDto(val left: Int, val top: Int, val right: Int, val bottom: Int)
+
+@JsonClass(generateAdapter = false)
 data class PageDto<T>(
     val content: List<T> = emptyList(), val page: Int = 0, val size: Int = 0,
     val totalElements: Long = 0, val totalPages: Int = 0, val first: Boolean = true, val last: Boolean = true,
@@ -194,6 +210,9 @@ data class KpiStatisticsDto(
     val kpiDefinitionId: Long, val code: String, val displayName: String, val unit: String?,
     val latest: BigDecimal?, val minimum: BigDecimal?, val maximum: BigDecimal?, val average: BigDecimal?,
     val sampleCount: Long, val reportCount: Long, val missingValueCount: Long, val points: List<StatisticsPointDto> = emptyList(),
+    val range: BigDecimal? = null, val standardDeviation: BigDecimal? = null, val periodDelta: BigDecimal? = null,
+    val trend: String = "INSUFFICIENT_DATA", val first: BigDecimal? = null, val last: BigDecimal? = null,
+    val validCount: Long = 0, val completenessRate: BigDecimal? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -221,4 +240,10 @@ data class ScheduleRunDto(
     val id: Long, val format: String, val periodStart: String, val periodEnd: String,
     val scheduledFor: String, val startedAt: String?, val finishedAt: String?, val status: String,
     val generatedReportId: Long?, val emailDeliveryStatus: String?, val errorCode: String?, val errorMessage: String?,
+)
+
+@JsonClass(generateAdapter = false)
+data class NotificationDto(
+    val id: Long, val type: String, val title: String, val message: String,
+    val relatedReportId: Long?, val relatedGeneratedReportId: Long?, val createdAt: String, val readAt: String?,
 )

@@ -699,7 +699,6 @@ Allowed sources for text analysis:
 PASTE
 GALLERY_OCR
 SHARE_OCR
-CAMERA_OCR
 ```
 
 Manual entry does not require this endpoint.
@@ -2707,11 +2706,9 @@ after OCR.
 
 ---
 
-# 133. Camera Contract
+# 133. Image OCR Contract
 
-CameraX is Android-local behavior.
-
-No camera upload endpoint required in current architecture.
+Gallery and shared images are submitted to the authenticated `/api/ocr/recognize` endpoint. The backend delegates only text recognition to the private PaddleOCR runtime; deterministic KPI interpretation remains in the parser.
 
 ---
 

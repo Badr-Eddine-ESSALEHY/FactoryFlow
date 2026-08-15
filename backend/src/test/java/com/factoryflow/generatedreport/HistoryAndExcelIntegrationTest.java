@@ -114,18 +114,35 @@ class HistoryAndExcelIntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(downloaded))) {
-            var sheet = workbook.getSheet("Maintenance KPIs");
-            assertThat(sheet).isNotNull();
-            assertThat(sheet.getRow(0).getCell(0).getStringCellValue())
-                    .isEqualTo("FactoryFlow Maintenance KPI Report");
-            assertThat(sheet.getLastRowNum()).isEqualTo(7);
-            assertThat(sheet.getRow(6).getCell(5).getCellType()).isEqualTo(CellType.NUMERIC);
-            assertThat(sheet.getRow(6).getCell(5).getNumericCellValue()).isEqualTo(15.8);
-            assertThat(sheet.getRow(7).getCell(5).getCellType()).isEqualTo(CellType.STRING);
-            assertThat(sheet.getRow(7).getCell(5).getStringCellValue()).isEqualTo("Missing");
-            sheet.forEach(row -> row.forEach(cell -> {
+            var summary = workbook.getSheet("Synthèse");
+            var indicators = workbook.getSheet("Données");
+            assertThat(summary).isNotNull();
+            assertThat(indicators).isNotNull();
+            assertThat(workbook.getSheet("Analyse KPI")).isNotNull();
+            assertThat(workbook.getSheet("Qualité des données")).isNotNull();
+            assertThat(workbook.getSheet("Traçabilité")).isNotNull();
+            assertThat(summary.getDrawingPatriarch().getShapes()).hasSize(1);
+            assertThat(indicators.getDrawingPatriarch().getShapes()).hasSize(1);
+            assertThat(workbook.getAllPictures()).hasSize(2);
+            try (var officialLogo = getClass().getResourceAsStream("/reporting/alf-mabrouk-logo.png")) {
+                assertThat(officialLogo).isNotNull();
+                byte[] expectedLogo = officialLogo.readAllBytes();
+                assertThat(workbook.getAllPictures()).allSatisfy(picture ->
+                        assertThat(picture.getData()).isEqualTo(expectedLogo));
+            }
+            assertThat(summary.getRow(0).getCell(3).getStringCellValue())
+                    .isEqualTo("Rapport journalier de maintenance");
+            assertThat(indicators.getRow(5).getCell(1).getStringCellValue()).isEqualTo("Indicateur");
+            assertThat(indicators.getRow(6).getCell(2).getCellType()).isEqualTo(CellType.NUMERIC);
+            assertThat(indicators.getRow(6).getCell(2).getNumericCellValue()).isEqualTo(15.8);
+            assertThat(indicators.getRow(7).getCell(2).getCellType()).isEqualTo(CellType.BLANK);
+            assertThat(workbook.getSheet("Analyse KPI").getDrawingPatriarch().getCharts()).hasSize(1);
+            indicators.forEach(row -> row.forEach(cell -> {
                 if (cell.getCellType() == CellType.NUMERIC) {
                     assertThat(cell.getNumericCellValue()).isNotEqualTo(999.0);
+                }
+                if (cell.getCellType() == CellType.STRING) {
+                    assertThat(cell.getStringCellValue()).doesNotContain("PASTE", "Missing", "Local Excel Verification");
                 }
             }));
         }

@@ -167,13 +167,13 @@ private fun DashboardFixtureContent() {
 @Preview(name = "Create - Light", showBackground = true, showSystemUi = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowCreateLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
-    FlowScreen { CreateHubContent({}, {}, Modifier.weight(1f)) }
+    FlowScreen { CreateHubContent({}, {}, {}, Modifier.weight(1f)) }
 }
 
 @Preview(name = "Create - Dark", showBackground = true, showSystemUi = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowCreateDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
-    FlowScreen { CreateHubContent({}, {}, Modifier.weight(1f)) }
+    FlowScreen { CreateHubContent({}, {}, {}, Modifier.weight(1f)) }
 }
 
 @Preview(name = "Paste - Light", showBackground = true, widthDp = 411, heightDp = 891)
@@ -196,7 +196,7 @@ fun FactoryFlowPasteDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
 @Composable
 fun FactoryFlowManualLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
     FocusedPreviewFrame(stringResource(R.string.manual_title)) { modifier ->
-        ManualEntryContent(PreviewFixtures.manualEntry, {}, { _, _ -> }, {}, {}, {}, {}, modifier)
+        ManualEntryContent(PreviewFixtures.manualEntry, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, modifier)
     }
 }
 
@@ -204,7 +204,7 @@ fun FactoryFlowManualLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
 @Composable
 fun FactoryFlowManualDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
     FocusedPreviewFrame(stringResource(R.string.manual_title)) { modifier ->
-        ManualEntryContent(PreviewFixtures.manualEntry, {}, { _, _ -> }, {}, {}, {}, {}, modifier)
+        ManualEntryContent(PreviewFixtures.manualEntry, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, modifier)
     }
 }
 
@@ -355,13 +355,13 @@ fun FactoryFlowScheduleFormDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DAR
 @Preview(name = "Notifications - Light", showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowNotificationsLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
-    NotificationsContent()
+    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {})
 }
 
 @Preview(name = "Notifications - Dark", showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowNotificationsDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
-    NotificationsContent()
+    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {})
 }
 
 @Preview(name = "Profile - Light", showBackground = true, widthDp = 411, heightDp = 891)

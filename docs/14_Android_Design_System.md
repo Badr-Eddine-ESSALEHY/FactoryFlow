@@ -65,7 +65,7 @@ The accepted Flow foundation is now applied across the Android presentation laye
 
 - Login uses a compact, logo-free Flow identity, borderless elevated inputs, and the shared primary action.
 - Reports and generated documents use compact `FlowListRow` history; report detail and confirmed export retain their production data and file actions in the same card grammar.
-- Create, paste, manual entry, gallery OCR, camera OCR, and shared-image OCR use permanent source accents, dominant source/input surfaces, and Flow loading and empty states.
+- Create, paste, manual entry, gallery OCR, and shared-image OCR use permanent source accents, dominant source/input surfaces, and Flow loading and empty states.
 - Review preserves ready, attention, missing, and unresolved semantics using green, orange, amber, and pink/red while keeping source text collapsible and missing values distinct from zero.
 - Statistics uses one real-data analytics surface rather than a hero plus four detached KPI tiles. Its interactive cubic area chart exposes the selected value and effective date, animates its reveal, and groups latest/average/minimum/maximum into one compact summary strip. Missing samples remain excluded from calculations.
 - Schedules and schedule editing use teal automation rows, Flow selectors, inputs, toggles, and execution history.

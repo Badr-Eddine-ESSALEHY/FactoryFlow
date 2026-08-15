@@ -75,15 +75,17 @@ public class MaintenanceReport {
     public void addEntry(KpiDefinition definition, String sourceLabel, String sourceLine, BigDecimal extractedValue,
                          BigDecimal currentValue, BigDecimal confidenceScore, boolean edited, String unit, Set<String> warnings) {
         requireEditable();
-        addEntry(definition, sourceLabel, sourceLine, extractedValue, currentValue, confidenceScore, edited, unit, warnings, null, null);
+        addEntry(definition, sourceLabel, sourceLine, extractedValue, currentValue, confidenceScore, edited, unit, warnings, null, null, null, null, null);
     }
 
     public void addEntry(KpiDefinition definition, String sourceLabel, String sourceLine, BigDecimal extractedValue,
                          BigDecimal currentValue, BigDecimal confidenceScore, boolean edited, String unit, Set<String> warnings,
-                         KpiDefinition suggestedDefinition, BigDecimal suggestionScore) {
+                         KpiDefinition suggestedDefinition, BigDecimal suggestionScore,
+                         BigDecimal secondaryExtractedValue, BigDecimal secondaryCurrentValue, String secondaryUnit) {
         requireEditable();
         entries.add(KpiEntry.draft(this, definition, sourceLabel, sourceLine, extractedValue, currentValue,
-                confidenceScore, edited, unit, warnings, suggestedDefinition, suggestionScore));
+                confidenceScore, edited, unit, warnings, suggestedDefinition, suggestionScore,
+                secondaryExtractedValue, secondaryCurrentValue, secondaryUnit));
     }
 
     public void addUnrecognizedLine(String sourceLine, UnknownLineResolution resolution, KpiDefinition definition) {

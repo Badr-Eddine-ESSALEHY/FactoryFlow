@@ -262,10 +262,9 @@ Dashboard
 Create Report
   ├── Paste Text
   ├── Gallery
-  ├── Camera
   └── Manual Entry
 
-Paste / Gallery / Share / Camera
+Paste / Gallery / Share
   ↓
 Analyze / OCR
   ↓
@@ -747,7 +746,6 @@ Recommended quick actions:
 ```text
 Paste Text
 Gallery
-Camera
 Manual Entry
 ```
 
@@ -1083,7 +1081,7 @@ If OCR can begin immediately without sacrificing clarity, skip a redundant confi
 
 ```text
 Image selected
-→ ML Kit OCR
+→ PaddleOCR backend OCR
 → extracted text
 → Analyze API
 → Confirmation
@@ -1215,93 +1213,6 @@ Actions:
 ```text
 Retry
 Choose another method
-```
-
----
-
-# 26. Camera Acquisition
-
-## 26.1 Entry
-
-Tap:
-
-```text
-Take Photo
-```
-
----
-
-## 26.2 Permission
-
-If camera permission not granted:
-
-Explain:
-
-```text
-Camera access is needed only to photograph KPI reports.
-```
-
-Actions:
-
-```text
-Allow Camera
-Not Now
-```
-
-If denied:
-
-Return to acquisition selector.
-
-Do not block the entire application.
-
----
-
-## 26.3 Camera View
-
-Keep simple:
-
-```text
-Preview
-Shutter
-Close
-```
-
-Optional:
-
-```text
-Flash
-```
-
-only if CameraX integration naturally supports it and it improves capture.
-
----
-
-## 26.4 Capture Result
-
-After capture:
-
-```text
-Retake
-Use Photo
-```
-
-Then:
-
-```text
-OCR
-→ Analyze
-→ Confirmation
-```
-
----
-
-## 26.5 Camera Failure
-
-Message:
-
-```text
-Couldn’t capture this image.
-Try again or use another input method.
 ```
 
 ---
@@ -3571,7 +3482,6 @@ Do not expose internal enum names such as:
 
 ```text
 gallery_ocr
-camera_ocr
 ```
 
 ---
@@ -3584,7 +3494,6 @@ In Report Detail, use friendly labels:
 Pasted text
 Gallery image
 Shared image
-Camera photo
 Manual entry
 ```
 
@@ -4036,7 +3945,7 @@ Permission denial should never feel punitive.
 
 Examples:
 
-Camera denied:
+Shared URI denied:
 
 ```text
 You can still import an image or paste text.
@@ -4062,9 +3971,9 @@ Enable notifications to receive report reminders and generation updates.
 
 ---
 
-# 193. Camera Permission Timing
+# 193. Shared URI Permission Timing
 
-Ask only when user taps Camera.
+Use only the permission granted by the system picker or Share Intent.
 
 ---
 
@@ -4379,7 +4288,7 @@ Avoid excessive nested cards.
 Hide bottom navigation during focused workflows where it could cause accidental exit:
 
 ```text
-Camera
+Gallery OCR
 OCR processing
 Confirmation
 Schedule edit
@@ -4777,13 +4686,13 @@ A subtle settings reminder may appear in Notifications screen if push alerts are
 
 ---
 
-# 256. UX of Camera Permission Permanently Denied
+# 256. UX of Shared URI Permission Loss
 
 Show:
 
 ```text
-Camera permission is disabled.
-You can enable it in Android settings.
+The shared image is no longer accessible.
+Share it again or choose it from the gallery.
 
 [Open Settings]
 ```
@@ -5352,7 +5261,7 @@ Recommended:
 14. Scheduling
 15. Gallery OCR
 16. Share Intent
-17. Camera
+17. Backend OCR
 18. Notifications
 19. Statistics
 20. Final polish
@@ -5451,7 +5360,7 @@ confirmation failure
 PDF failure
 email failure
 notification permission denied
-camera permission denied
+shared image permission denied
 ```
 
 Review UX for each.

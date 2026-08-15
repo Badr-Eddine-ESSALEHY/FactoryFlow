@@ -1,29 +1,22 @@
 package com.factoryflow.app.feature.acquisition
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.factoryflow.app.core.data.ReportsRepository
+import com.factoryflow.app.core.data.OcrRepository
 import com.factoryflow.app.core.network.dto.*
 import com.factoryflow.app.core.util.UiError
 import com.factoryflow.app.core.util.toUiError
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import javax.inject.Inject
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 
-enum class OcrSource(val apiValue: String) { GALLERY("GALLERY_OCR"), CAMERA("CAMERA_OCR"), SHARE("SHARE_OCR") }
+enum class OcrSource(val apiValue: String) { GALLERY("GALLERY_OCR"), SHARE("SHARE_OCR") }
 
 data class OcrAcquisitionState(
     val imageUri: Uri? = null,
@@ -32,11 +25,14 @@ data class OcrAcquisitionState(
     val creatingDraft: Boolean = false,
     val error: UiError? = null,
     val noTextDetected: Boolean = false,
+    val confidence: java.math.BigDecimal? = null,
+    val engine: String? = null,
+    val warnings: List<String> = emptyList(),
 )
 
 @HiltViewModel
 class OcrAcquisitionViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val ocr: OcrRepository,
     private val reports: ReportsRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OcrAcquisitionState())
@@ -46,9 +42,16 @@ class OcrAcquisitionViewModel @Inject constructor(
         if (_state.value.processing && _state.value.imageUri == uri) return
         viewModelScope.launch {
             _state.value = OcrAcquisitionState(imageUri = uri, processing = true)
-            runCatching { recognize(uri) }
-                .onSuccess { text ->
-                    _state.update { it.copy(processing = false, extractedText = text, noTextDetected = text.isBlank()) }
+            runCatching { ocr.recognize(uri) }
+                .onSuccess { result ->
+                    _state.update { it.copy(
+                        processing = false,
+                        extractedText = result.fullText,
+                        noTextDetected = result.fullText.isBlank(),
+                        confidence = result.confidence,
+                        engine = result.engine,
+                        warnings = result.warnings,
+                    ) }
                 }
                 .onFailure { error ->
                     _state.update { it.copy(processing = false, error = error.toUiError()) }
@@ -77,20 +80,6 @@ class OcrAcquisitionViewModel @Inject constructor(
         }
     }
 
-    private suspend fun recognize(uri: Uri): String = suspendCancellableCoroutine { continuation ->
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val image = InputImage.fromFilePath(context, uri)
-        recognizer.process(image)
-            .addOnSuccessListener { result ->
-                if (continuation.isActive) continuation.resume(result.text.trim())
-                recognizer.close()
-            }
-            .addOnFailureListener { error ->
-                if (continuation.isActive) continuation.resumeWithException(error)
-                recognizer.close()
-            }
-        continuation.invokeOnCancellation { recognizer.close() }
-    }
 }
 
 private fun AnalyzeReportResponse.asDraft(date: String) = DraftReportRequest(

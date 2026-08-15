@@ -56,8 +56,6 @@
     <string name="coming_next">Prochaine étape</string>
     <string name="import_image">Importer une image</string>
     <string name="share_whatsapp">Partager depuis WhatsApp</string>
-    <string name="take_photo">Prendre une photo</string>
-    <string name="ocr_coming_soon">Disponible lors de la prochaine étape d’acquisition OCR.</string>
     <string name="paste_title">Coller un message KPI</string>
     <string name="paste_description">Collez le message WhatsApp complet. Le texte original sera conservé pour la vérification.</string>
     <string name="raw_text_label">Message reçu</string>
@@ -67,7 +65,14 @@
     <string name="analysis_failed">L’analyse n’a pas abouti. Le texte n’a pas été perdu.</string>
     <string name="analyzing">Analyse déterministe en cours…</string>
     <string name="manual_title">Saisie manuelle</string>
-    <string name="manual_description">Renseignez les valeurs disponibles. Une valeur vide restera manquante.</string>
+    <string name="manual_description">Ajoutez les indicateurs reçus, saisissez leur valeur ou marquez explicitement « Non renseigné ». La valeur 0 reste une mesure réelle.</string>
+    <string name="manual_progress">%1$d sur %2$d indicateurs renseignés</string>
+    <string name="mark_not_provided">Marquer « Non renseigné »</string>
+    <string name="invalid_decimal">Saisissez un nombre valide avec une virgule ou un point.</string>
+    <string name="manual_unsaved_title">Abandonner la saisie ?</string>
+    <string name="manual_unsaved_detail">Les valeurs saisies ne seront pas conservées.</string>
+    <string name="leave">Quitter</string>
+    <string name="stay">Continuer la saisie</string>
     <string name="effective_date">Date effective</string>
     <string name="search_kpi">Rechercher un indicateur</string>
     <string name="add_kpi">Ajouter un indicateur</string>
@@ -184,6 +189,7 @@
     <string name="run_failed">Échouée</string>
     <string name="run_skipped">Ignorée</string>
     <string name="notifications_title">Notifications</string>
+    <string name="new_notification">Nouveau</string>
     <string name="no_notifications">Aucune notification pour le moment</string>
     <string name="no_notifications_detail">Les mises à jour en temps réel seront activées lors de la prochaine étape produit.</string>
     <string name="profile">Profil</string>

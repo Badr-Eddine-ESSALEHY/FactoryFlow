@@ -142,7 +142,7 @@ dashboard
 android
 android-auth
 ocr
-camera
+image-ocr
 history
 scheduler
 email
@@ -356,7 +356,7 @@ Examples:
 
 ```text
 build(backend): add Spring WebSocket dependency
-build(android): configure CameraX dependencies
+build(ocr): configure PaddleOCR runtime
 ```
 
 Do not hide feature implementation under `build`.
@@ -745,7 +745,7 @@ Dependency changes should be visible in commit scope.
 Example:
 
 ```text
-build(android): add ML Kit text recognition dependency
+feat(ocr): add PaddleOCR provider integration
 ```
 
 Do not bundle random upgrades.

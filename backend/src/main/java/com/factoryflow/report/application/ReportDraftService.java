@@ -4,6 +4,8 @@ import com.factoryflow.auth.application.AuthenticationService;
 import com.factoryflow.auth.domain.UserAccount;
 import com.factoryflow.kpi.domain.KpiDefinition;
 import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
+import com.factoryflow.notification.application.NotificationService;
+import com.factoryflow.notification.domain.NotificationType;
 import com.factoryflow.report.api.ConfirmReportRequest;
 import com.factoryflow.report.api.ConfirmationEntryRequest;
 import com.factoryflow.report.api.DraftEntryRequest;
@@ -34,12 +36,14 @@ public class ReportDraftService {
     private final MaintenanceReportRepository reports;
     private final KpiDefinitionRepository definitions;
     private final AuthenticationService authentication;
+    private final NotificationService notifications;
 
     public ReportDraftService(MaintenanceReportRepository reports, KpiDefinitionRepository definitions,
-                              AuthenticationService authentication) {
+                              AuthenticationService authentication, NotificationService notifications) {
         this.reports = reports;
         this.definitions = definitions;
         this.authentication = authentication;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -47,7 +51,14 @@ public class ReportDraftService {
         UserAccount user = authentication.requireUser(email);
         MaintenanceReport report = MaintenanceReport.draft(user, request.effectiveDate(), request.source(), request.rawText());
         populate(report, request);
-        return ReportResponse.from(reports.saveAndFlush(report));
+        MaintenanceReport saved = reports.saveAndFlush(report);
+        boolean requiresAttention = !saved.getUnrecognizedLines().isEmpty() || saved.getEntries().stream()
+                .anyMatch(entry -> entry.getDefinition() == null || entry.getCurrentValue() == null || !entry.getWarningCodes().isEmpty());
+        if (requiresAttention) {
+            notifications.notify(user, NotificationType.REVIEW_REQUIRED, "Vérification requise",
+                    "Le rapport du " + saved.getEffectiveDate() + " contient des éléments à vérifier.", saved.getId(), null);
+        }
+        return ReportResponse.from(saved);
     }
 
     @Transactional
@@ -61,6 +72,13 @@ public class ReportDraftService {
     @Transactional(readOnly = true)
     public ReportResponse get(String email, Long reportId) {
         return ReportResponse.from(requireOwnedDraft(email, reportId));
+    }
+
+    @Transactional
+    public void delete(String email, Long reportId) {
+        MaintenanceReport report = requireOwnedDraft(email, reportId);
+        reports.delete(report);
+        reports.flush();
     }
 
     @Transactional
@@ -89,7 +107,7 @@ public class ReportDraftService {
             if (finalEntry == null) {
                 validationFailure("Confirmation data must include every retained draft KPI entry.");
             }
-            entry.confirm(finalEntry.finalValue());
+            entry.confirm(finalEntry.finalValue(), finalEntry.secondaryFinalValue());
         }
         if (!draftDefinitionIds.equals(submitted.keySet())) {
             validationFailure("Confirmation data contains a KPI that is not present in the draft.");
@@ -107,7 +125,11 @@ public class ReportDraftService {
             }
         }
         report.confirm();
-        return ReportResponse.from(reports.saveAndFlush(report));
+        MaintenanceReport confirmed = reports.saveAndFlush(report);
+        notifications.notify(confirmed.getSubmittedBy(), NotificationType.REPORT_CONFIRMED,
+                "Rapport confirmé", "Le rapport du " + confirmed.getEffectiveDate() + " est maintenant officiel.",
+                confirmed.getId(), null);
+        return ReportResponse.from(confirmed);
     }
 
     private void populate(MaintenanceReport report, DraftReportRequest request) {
@@ -115,7 +137,8 @@ public class ReportDraftService {
             report.addEntry(optionalDefinition(entry.kpiDefinitionId()), entry.sourceLabel(), entry.sourceLine(),
                     entry.extractedValue(), entry.currentValue(), entry.confidenceScore(), entry.editedByUser(),
                     entry.capturedUnit(), entry.warnings(), optionalDefinition(entry.suggestedKpiDefinitionId()),
-                    entry.suggestionScore());
+                    entry.suggestionScore(), entry.secondaryExtractedValue(), entry.secondaryCurrentValue(),
+                    entry.secondaryUnit());
         }
         for (DraftUnknownLineRequest line : request.unrecognizedLines()) {
             try {

@@ -524,8 +524,8 @@ Do not use unlabeled arrows when communication type matters.
           ▼
 ┌────────────────────┐
 │ Android App        │
-│ Compose / ML Kit   │
-│ CameraX            │
+│ Compose / OCR API  │
+│ Gallery / Share    │
 └──────┬──────┬──────┘
        │REST  │STOMP
        ▼      ▼
@@ -553,7 +553,6 @@ Manual Entry ───────────────┐
 Paste Text ────────────────┤
 Gallery → OCR ─────────────┤
 Share → OCR ───────────────┤
-Camera → OCR ──────────────┘
             ↓
      Deterministic Parser
             ↓
@@ -742,7 +741,7 @@ Optional but strong for portfolio.
 WhatsApp
 → Android OS
 → FactoryFlow
-→ ML Kit
+→ PaddleOCR API
 → Backend
 → Confirmation
 ```

@@ -89,6 +89,12 @@ public class DeterministicKpiParser {
             while (numberMatcher.find()) {
                 NumericValue numeric = normalizeNumber(numberMatcher.group());
                 String capturedUnit = capturedUnit(multiValueSafe, numberMatcher.end());
+                if (valueIndex == 1 && "%".equals(capturedUnit) && labelMatch.isPresent()
+                        && !candidates.isEmpty() && candidates.getLast().sourceLine.equals(line)) {
+                    candidates.getLast().attachSecondary(numeric.value(), capturedUnit);
+                    valueIndex++;
+                    continue;
+                }
                 KpiDefinition definition = valueIndex == 0 ? labelMatch.map(LabelMatch::definition).orElse(null) : null;
                 String matchMethod = valueIndex == 0 ? labelMatch.map(LabelMatch::kind).orElse("UNKNOWN") : "ADDITIONAL_VALUE";
                 List<ParserWarning> warnings = new ArrayList<>(numeric.warnings());
@@ -349,6 +355,8 @@ public class DeterministicKpiParser {
         private final String matchMethod;
         private final List<ParserWarning> warnings;
         private final List<KpiSuggestion> suggestions;
+        private BigDecimal secondaryValue;
+        private String secondaryUnit;
 
         private MutableCandidate(
                 KpiDefinition definition,
@@ -392,6 +400,11 @@ public class DeterministicKpiParser {
             );
         }
 
+        void attachSecondary(BigDecimal value, String unit) {
+            secondaryValue = value;
+            secondaryUnit = unit;
+        }
+
         ParsedEntry toResponse(String id) {
             String level = confidence.compareTo(new BigDecimal("0.90")) >= 0 ? "HIGH"
                     : confidence.compareTo(new BigDecimal("0.70")) >= 0 ? "MEDIUM" : "LOW";
@@ -415,7 +428,9 @@ public class DeterministicKpiParser {
                     matchMethod,
                     reviewState,
                     List.copyOf(warnings),
-                    List.copyOf(suggestions)
+                    List.copyOf(suggestions),
+                    secondaryValue,
+                    secondaryUnit
             );
         }
     }

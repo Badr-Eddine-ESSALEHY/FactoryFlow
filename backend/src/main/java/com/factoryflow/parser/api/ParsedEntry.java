@@ -18,6 +18,8 @@ public record ParsedEntry(
         String matchMethod,
         String reviewState,
         List<ParserWarning> warnings,
-        List<KpiSuggestion> suggestions
+        List<KpiSuggestion> suggestions,
+        BigDecimal secondaryExtractedValue,
+        String secondaryUnit
 ) {
 }

@@ -576,7 +576,6 @@ Must define every important screen and flow.
 [x] Manual entry
 [x] Gallery import
 [x] Share Intent
-[x] Camera
 [x] OCR processing
 [x] Analyze state
 [x] Confirmation
@@ -645,8 +644,7 @@ M2 — Operational Product
 M3 — Mobile Acquisition & Realtime
      Gallery OCR
      Share Intent
-     CameraX
-     ML Kit
+     PaddleOCR backend runtime
      WebSocket/STOMP
      FCM
      Statistics
@@ -763,8 +761,7 @@ Room
 Coroutines
 Flow / StateFlow
 Navigation Compose
-CameraX
-ML Kit eventually
+Backend PaddleOCR runtime
 FCM eventually
 
 Only include dependencies when their milestone begins unless base setup genuinely requires them.
@@ -1294,7 +1291,6 @@ Source concepts:
 paste
 gallery_ocr
 share_ocr
-camera_ocr
 manual
 
 Suggested commit:
@@ -2060,30 +2056,30 @@ FF-3001 — Gallery Image Picker
 
 Priority: MUST
 
-[ ] choose image
-[ ] content URI handling
-[ ] preview
-[ ] cancellation
-[ ] invalid image state
+[x] choose image
+[x] content URI handling
+[x] OCR inspection state
+[x] cancellation
+[x] invalid image state
 
 Suggested commit:
 
 feat(android): add KPI screenshot gallery import
-FF-3002 — ML Kit OCR Integration
+FF-3002 — PaddleOCR Integration
 
 Priority: MUST
 
-OCR occurs on-device.
+OCR is processed by the private FactoryFlow PaddleOCR runtime.
 
 Image
-→ ML Kit
+→ authenticated OCR API
 → Extracted text
 → Analyze API
 → Confirmation
 
 Suggested commit:
 
-feat(ocr): integrate on-device ML Kit text recognition
+feat(ocr): integrate PaddleOCR PP-OCRv5 through the backend provider boundary
 
 Report evidence:
 
@@ -2119,42 +2115,19 @@ Report evidence:
 
 VERY HIGH
 FF-3102 — Share Intent Error Handling
-[ ] unsupported type
-[ ] unreadable URI
-[ ] missing permissions
-[ ] OCR failure
-[ ] retry
+[x] unsupported type
+[x] unreadable URI
+[x] missing permissions
+[x] OCR failure
+[x] retry
 
 Suggested commit:
 
 fix(android): harden shared-image acquisition flow
-37. CameraX
-FF-3201 — Camera Permission UX
+37. Direct Camera Acquisition — Removed
 
-Priority: MUST
-
-[ ] request when needed
-[ ] denial
-[ ] permanent denial
-[ ] settings path if appropriate
-[ ] app remains usable without camera
-
-Suggested commit:
-
-feat(android): add camera permission workflow
-FF-3202 — CameraX Capture
-
-Priority: MUST
-
-Capture
-→ preview
-→ OCR
-→ parser
-→ confirmation
-
-Suggested commit:
-
-feat(camera): capture KPI reports with CameraX
+[x] CameraX dependencies, permission, route, UI and state removed by approved M3 scope.
+[x] Supported image sources are gallery import and Android Share Intent.
 38. Unified Acquisition Entry Point
 FF-3301 — Acquisition Method Selector
 
@@ -2165,7 +2138,6 @@ Quick options:
 Paste text
 Manual entry
 Gallery
-Camera
 
 Share Intent may enter directly from outside the app.
 
@@ -2316,7 +2288,7 @@ Demonstrate:
 
 WhatsApp screenshot
 → Share to FactoryFlow
-→ ML Kit OCR
+→ PaddleOCR backend runtime
 → deterministic parser
 → warning/confirmation
 → user correction
@@ -2570,9 +2542,9 @@ FF-5403 — WhatsApp Share Flow
 [ ] OCR
 [ ] Analyze
 [ ] Confirm
-FF-5404 — Camera Flow
-[ ] Camera
-[ ] Capture
+FF-5404 — Gallery Image Flow
+[x] Gallery selection
+[x] Bounded image upload
 [ ] OCR
 [ ] Analyze
 [ ] Confirm
@@ -2652,7 +2624,6 @@ Manual
 Paste
 Gallery
 Share Intent
-Camera
    ↓
 Unified processing
    ↓
@@ -2773,7 +2744,7 @@ Show extracted vs corrected vs final value.
 
 Evidence E06 — Mobile Integration
 
-Show Share Intent / ML Kit / CameraX.
+Show Share Intent and the PaddleOCR-backed image workflow.
 
 Evidence E07 — Reporting
 
@@ -2895,8 +2866,7 @@ FactoryFlow is Android-only.
 Native Kotlin provides better alignment with:
 
 Share Intent
-CameraX
-ML Kit
+PaddleOCR backend runtime
 FileProvider
 FCM
 Android lifecycle
@@ -3073,7 +3043,6 @@ Manual entry	No	No/limited	Yes	Yes
 Paste text	No	Yes	Yes	Yes
 Gallery screenshot	Yes	Yes	Yes	Yes
 Android/WhatsApp Share	Yes	Yes	Yes	Yes
-CameraX photo	Yes	Yes	Yes	Yes
 
 The important architectural fact is not that FactoryFlow has five features.
 
@@ -3133,9 +3102,9 @@ When implementation begins, unless a blocking dependency requires adjustment, us
 24. Scheduled email
 25. Gallery OCR
 26. Share Intent acquisition
-27. CameraX
+27. Backend PaddleOCR
 28. Realtime
-29. FCM
+29. In-app notifications
 30. Statistics
 31. Optional RabbitMQ/resilience
 32. Monitoring/performance

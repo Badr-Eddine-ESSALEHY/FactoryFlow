@@ -5,6 +5,10 @@ import java.math.BigDecimal;
 
 public record ConfirmationEntryRequest(
         @NotNull Long kpiDefinitionId,
-        BigDecimal finalValue
+        BigDecimal finalValue,
+        BigDecimal secondaryFinalValue
 ) {
+    public ConfirmationEntryRequest(Long kpiDefinitionId, BigDecimal finalValue) {
+        this(kpiDefinitionId, finalValue, null);
+    }
 }

@@ -16,7 +16,10 @@ public record DraftEntryRequest(
         String capturedUnit,
         Set<String> warnings,
         Long suggestedKpiDefinitionId,
-        @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal suggestionScore
+        @DecimalMin("0.0") @DecimalMax("1.0") BigDecimal suggestionScore,
+        BigDecimal secondaryExtractedValue,
+        BigDecimal secondaryCurrentValue,
+        String secondaryUnit
 ) {
     public DraftEntryRequest {
         warnings = warnings == null ? Set.of() : Set.copyOf(warnings);
@@ -28,6 +31,6 @@ public record DraftEntryRequest(
             boolean editedByUser, String capturedUnit, Set<String> warnings
     ) {
         this(kpiDefinitionId, sourceLabel, sourceLine, extractedValue, currentValue, confidenceScore,
-                editedByUser, capturedUnit, warnings, null, null);
+                editedByUser, capturedUnit, warnings, null, null, null, null, null);
     }
 }

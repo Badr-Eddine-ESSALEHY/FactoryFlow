@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -25,7 +26,10 @@ import com.factoryflow.app.core.network.dto.KpiDefinitionDto
 @Composable
 fun ManualEntryScreen(onBack: () -> Unit, onReview: (Long) -> Unit, viewModel: ManualEntryViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.manual_title), onBack) }) { padding ->
+    var confirmExit by remember { mutableStateOf(false) }
+    val requestBack = { if (state.entries.isEmpty()) onBack() else confirmExit = true }
+    BackHandler(onBack = requestBack)
+    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.manual_title), requestBack) }) { padding ->
         when {
             state.loading -> LoadingPane(stringResource(R.string.loading), Modifier.padding(padding))
             state.error != null && state.definitions.isEmpty() -> ErrorPane(stringResource(state.error!!.title), stringResource(state.error!!.detail), stringResource(R.string.retry), viewModel::load, Modifier.padding(padding))
@@ -33,6 +37,7 @@ fun ManualEntryScreen(onBack: () -> Unit, onReview: (Long) -> Unit, viewModel: M
                 state = state,
                 onDateChanged = viewModel::date,
                 onValueChanged = viewModel::value,
+                onMissingChanged = viewModel::missing,
                 onRemove = viewModel::remove,
                 onQueryChanged = viewModel::query,
                 onAdd = viewModel::add,
@@ -41,6 +46,13 @@ fun ManualEntryScreen(onBack: () -> Unit, onReview: (Long) -> Unit, viewModel: M
             )
         }
     }
+    if (confirmExit) AlertDialog(
+        onDismissRequest = { confirmExit = false },
+        title = { Text(stringResource(R.string.manual_unsaved_title)) },
+        text = { Text(stringResource(R.string.manual_unsaved_detail)) },
+        confirmButton = { TextButton(onClick = onBack) { Text(stringResource(R.string.leave)) } },
+        dismissButton = { TextButton(onClick = { confirmExit = false }) { Text(stringResource(R.string.stay)) } },
+    )
 }
 
 @Composable
@@ -48,6 +60,7 @@ fun ManualEntryContent(
     state: ManualEntryUiState,
     onDateChanged: (String) -> Unit,
     onValueChanged: (Long, String) -> Unit,
+    onMissingChanged: (Long, Boolean) -> Unit,
     onRemove: (Long) -> Unit,
     onQueryChanged: (String) -> Unit,
     onAdd: (KpiDefinitionDto) -> Unit,
@@ -58,7 +71,14 @@ fun ManualEntryContent(
     FlowContentSurface(modifier) {
     Column(Modifier.fillMaxSize().imePadding()) {
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(FlowSpacing.xl), verticalArrangement = Arrangement.spacedBy(FlowSpacing.md)) {
-                    item { Text(stringResource(R.string.manual_description), color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(FlowSpacing.xs)) }
+                    item {
+                        Text(stringResource(R.string.manual_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (state.entries.isNotEmpty()) Text(
+                            stringResource(R.string.manual_progress, state.entries.count { it.explicitlyMissing || it.value.isNotBlank() }, state.entries.size),
+                            color = FlowBlue, style = MaterialTheme.typography.labelLarge,
+                        )
+                        Spacer(Modifier.height(FlowSpacing.xs))
+                    }
                     item {
                         TextField(
                             state.effectiveDate,
@@ -71,7 +91,13 @@ fun ManualEntryContent(
                             colors = flowInputColors(),
                         )
                     }
-                    items(state.entries, key = { it.definition.id }) { row -> ManualRow(row.definition, row.value, { onValueChanged(row.definition.id, it) }, { onRemove(row.definition.id) }) }
+                    items(state.entries, key = { it.definition.id }) { row -> ManualRow(
+                        row = row,
+                        invalid = row.definition.id in state.invalidEntryIds,
+                        onValue = { onValueChanged(row.definition.id, it) },
+                        onMissing = { onMissingChanged(row.definition.id, it) },
+                        onRemove = { onRemove(row.definition.id) },
+                    ) }
                     item {
                         OutlinedButton(onClick = { selecting = true }, Modifier.fillMaxWidth().height(FlowSize.touchTarget), shape = RoundedCornerShape(FlowRadius.control)) { Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(FlowSpacing.sm)); Text(stringResource(R.string.add_kpi)) }
                         if (state.selectionError) Text(stringResource(R.string.no_kpi_selected), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
@@ -87,7 +113,8 @@ fun ManualEntryContent(
 }
 
 @Composable
-private fun ManualRow(definition: KpiDefinitionDto, value: String, onValue: (String) -> Unit, onRemove: () -> Unit) {
+private fun ManualRow(row: ManualEntryRow, invalid: Boolean, onValue: (String) -> Unit, onMissing: (Boolean) -> Unit, onRemove: () -> Unit) {
+    val definition = row.definition
     FlowCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(FlowSpacing.lg)) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -98,17 +125,23 @@ private fun ManualRow(definition: KpiDefinitionDto, value: String, onValue: (Str
             }
             Spacer(Modifier.height(FlowSpacing.sm))
             TextField(
-                value,
+                row.value,
                 onValue,
                 Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.value)) },
                 suffix = { definition.unit?.let { FlowStatusPill(it, FlowPurple, compact = true) } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                supportingText = { if (value.isBlank()) Text(stringResource(R.string.value_missing)) },
+                enabled = !row.explicitlyMissing,
+                isError = invalid,
+                supportingText = { if (invalid) Text(stringResource(R.string.invalid_decimal)) else if (row.explicitlyMissing) Text(stringResource(R.string.not_provided)) },
                 shape = RoundedCornerShape(FlowRadius.control),
                 colors = flowInputColors(),
             )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = row.explicitlyMissing, onCheckedChange = onMissing)
+                Text(stringResource(R.string.mark_not_provided), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

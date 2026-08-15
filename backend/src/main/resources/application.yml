@@ -30,6 +30,10 @@ spring:
     properties:
       mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+  servlet:
+    multipart:
+      max-file-size: ${OCR_MAX_UPLOAD_SIZE:10MB}
+      max-request-size: ${OCR_MAX_UPLOAD_SIZE:10MB}
 
 server:
   shutdown: graceful
@@ -67,3 +71,8 @@ factoryflow:
     storage-root: ${REPORT_STORAGE_ROOT:./data/generated-reports}
   mail:
     from: ${MAIL_FROM:}
+  ocr:
+    runtime-url: ${OCR_RUNTIME_URL:http://127.0.0.1:8091}
+    connect-timeout: ${OCR_CONNECT_TIMEOUT:PT3S}
+    request-timeout: ${OCR_REQUEST_TIMEOUT:PT45S}
+    max-upload-bytes: ${OCR_MAX_UPLOAD_BYTES:10485760}

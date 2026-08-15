@@ -140,7 +140,6 @@ FactoryFlow does not implement separate business systems for:
 - paste
 - OCR
 - gallery
-- camera
 - Share Intent
 
 They are only different **input adapters**.
@@ -174,7 +173,7 @@ SHARED IMAGE          │             │
       │               │             │
       ├───────────────┤             │
       │               │             │
-CAMERA IMAGE          │             │
+SHARED IMAGE          │             │
       │               │             │
       ▼               │             │
    ML KIT OCR          │             │
@@ -215,10 +214,9 @@ The Android application is responsible for:
 - local UI state
 - secure token storage
 - acquiring text/images
-- CameraX
 - gallery selection
 - Share Intent
-- ML Kit OCR
+- authenticated backend OCR integration
 - displaying parser results
 - collecting human corrections
 - local cache/drafts where appropriate
@@ -1100,11 +1098,11 @@ Do not implement full offline synchronization by accident.
 
 # 50. OCR Boundary
 
-ML Kit lives entirely on Android.
+PaddleOCR lives in a private local runtime behind the backend `OcrProvider` interface.
 
 ```text
 Image
-→ ML Kit
+→ OCR API / PaddleOCR
 → text
 ```
 
@@ -1116,9 +1114,9 @@ human review controls the final draft.
 
 ---
 
-# 51. Camera Boundary
+# 51. Image Acquisition Boundary
 
-CameraX handles image acquisition only.
+Android image acquisition is limited to gallery selection and Share Intent.
 
 Captured image then enters:
 
@@ -1538,7 +1536,7 @@ Spring Boot modular monolith
 PostgreSQL
 REST as primary contract
 WebSocket/STOMP as a SHOULD-level realtime mechanism
-ML Kit OCR on-device
+PaddleOCR PP-OCRv5 through a private backend runtime
 Deterministic parser
 Mandatory human confirmation
 Apache POI

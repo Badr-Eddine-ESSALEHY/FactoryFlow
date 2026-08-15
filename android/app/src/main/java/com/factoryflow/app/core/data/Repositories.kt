@@ -113,3 +113,13 @@ class DefaultSchedulesRepository @Inject constructor(private val api: FactoryFlo
     override suspend fun setEnabled(id: Long, enabled: Boolean) = executor.execute { api.setScheduleEnabled(id, ScheduleEnabledRequest(enabled)) }
     override suspend fun runs(id: Long) = executor.execute { api.scheduleRuns(id) }
 }
+
+interface NotificationsRepository {
+    suspend fun list(): List<NotificationDto>
+    suspend fun markRead(id: Long): NotificationDto
+}
+
+class DefaultNotificationsRepository @Inject constructor(private val api: FactoryFlowApi, private val executor: ApiExecutor) : NotificationsRepository {
+    override suspend fun list() = executor.execute { api.notifications() }
+    override suspend fun markRead(id: Long) = executor.execute { api.markNotificationRead(id) }
+}

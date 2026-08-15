@@ -6,6 +6,8 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.Multipart
+import retrofit2.http.Part
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -16,6 +18,7 @@ interface FactoryFlowApi {
     @POST("api/auth/login") suspend fun login(@Body request: LoginRequest): LoginResponse
     @GET("api/users/me") suspend fun me(): UserDto
     @GET("api/dashboard") suspend fun dashboard(): DashboardDto
+    @Multipart @POST("api/ocr/recognize") suspend fun recognizeImage(@Part image: okhttp3.MultipartBody.Part): OcrResultDto
     @GET("api/kpi-definitions") suspend fun kpiDefinitions(@Query("active") active: Boolean = true): List<KpiDefinitionDto>
     @POST("api/reports/analyze") suspend fun analyze(@Body request: AnalyzeReportRequest): AnalyzeReportResponse
     @POST("api/reports/drafts") suspend fun createDraft(@Body request: DraftReportRequest): ReportDto
@@ -50,4 +53,6 @@ interface FactoryFlowApi {
         @Path("id") id: Long, @Query("page") page: Int = 0, @Query("size") size: Int = 20,
         @Query("sort") sort: String = "startedAt,desc",
     ): PageDto<ScheduleRunDto>
+    @GET("api/notifications") suspend fun notifications(): List<NotificationDto>
+    @PATCH("api/notifications/{id}/read") suspend fun markNotificationRead(@Path("id") id: Long): NotificationDto
 }

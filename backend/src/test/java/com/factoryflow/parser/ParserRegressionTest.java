@@ -90,7 +90,7 @@ class ParserRegressionTest {
     }
 
     @Test
-    void handlesAmbiguousThousandsAndMultipleValuesWithoutCombiningThem() {
+    void handlesAmbiguousThousandsAndKeepsCompressorPercentageLinked() {
         AnalyzeReportResponse result = analyze("""
                 Fuel : 30.197
                 Compresseur 1: 77108-77%
@@ -98,12 +98,11 @@ class ParserRegressionTest {
 
         assertThat(find(result, "FUEL").extractedValue()).isEqualByComparingTo("30197");
         assertThat(find(result, "FUEL").warnings()).extracting("code").contains("AMBIGUOUS_NUMBER");
-        assertThat(result.entries()).hasSize(3);
+        assertThat(result.entries()).hasSize(2);
         assertThat(result.entries().get(1).extractedValue()).isEqualByComparingTo("77108");
-        assertThat(result.entries().get(2).extractedValue()).isEqualByComparingTo("77");
-        assertThat(result.entries().get(2).kpiDefinitionId()).isNull();
-        assertThat(result.entries().get(2).warnings()).extracting("code")
-                .contains("ADDITIONAL_VALUE_REQUIRES_ASSIGNMENT");
+        assertThat(result.entries().get(1).secondaryExtractedValue()).isEqualByComparingTo("77");
+        assertThat(result.entries().get(1).secondaryUnit()).isEqualTo("%");
+        assertThat(result.entries().get(1).reviewState()).isEqualTo("READY");
     }
 
     @Test

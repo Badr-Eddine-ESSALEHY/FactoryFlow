@@ -146,9 +146,8 @@ confirmed data
 Features:
 
 - gallery import
-- ML Kit OCR
+- PaddleOCR OCR
 - Android Share Intent
-- CameraX
 - unified acquisition UI
 
 Signature success flow:
@@ -259,7 +258,6 @@ manual entry
 paste text
 gallery OCR
 share OCR
-camera OCR
 human confirmation
 drafts
 PostgreSQL
@@ -369,7 +367,6 @@ Target:
 ```text
 gallery OCR
 Share Intent
-CameraX
 realtime
 FCM
 statistics
@@ -446,7 +443,7 @@ v1.0-demo
 [ ] gallery
 [ ] OCR
 [ ] Share Intent
-[ ] CameraX
+[x] Direct camera acquisition removed from approved scope
 [ ] unified acquisition
 ```
 

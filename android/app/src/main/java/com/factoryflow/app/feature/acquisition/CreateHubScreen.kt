@@ -13,14 +13,14 @@ import com.factoryflow.app.R
 import com.factoryflow.app.core.design.*
 
 @Composable
-fun CreateHubScreen(onPaste: () -> Unit, onManual: () -> Unit) {
+fun CreateHubScreen(onPaste: () -> Unit, onManual: () -> Unit, onGallery: () -> Unit) {
     FlowScreen {
-        CreateHubContent(onPaste, onManual, Modifier.weight(1f))
+        CreateHubContent(onPaste, onManual, onGallery, Modifier.weight(1f))
     }
 }
 
 @Composable
-fun CreateHubContent(onPaste: () -> Unit, onManual: () -> Unit, modifier: Modifier = Modifier) {
+fun CreateHubContent(onPaste: () -> Unit, onManual: () -> Unit, onGallery: () -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(FlowSpacing.xl, FlowSpacing.lg, FlowSpacing.xl, 110.dp),
@@ -32,15 +32,12 @@ fun CreateHubContent(onPaste: () -> Unit, onManual: () -> Unit, modifier: Modifi
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
                 FlowCategoryCard(Icons.Outlined.ContentPaste, stringResource(R.string.dashboard_paste_title), stringResource(R.string.dashboard_paste_meta), FlowOrange, FlowOrangeTint, Modifier.weight(1f), onClick = onPaste)
                 FlowCategoryCard(Icons.Outlined.EditNote, stringResource(R.string.dashboard_manual_title), stringResource(R.string.dashboard_manual_meta), FlowPurple, FlowPurpleTint, Modifier.weight(1f), onClick = onManual)
-                FlowCategoryCard(Icons.Outlined.Image, stringResource(R.string.import_image), stringResource(R.string.coming_next), FlowTeal, FlowTealTint, Modifier.weight(1f), showAction = false)
+                FlowCategoryCard(Icons.Outlined.Image, stringResource(R.string.import_image), stringResource(R.string.advanced_ocr), FlowTeal, FlowTealTint, Modifier.weight(1f), onClick = onGallery)
             }
         }
-        item { FlowSectionHeader(stringResource(R.string.coming_next)) }
+        item { FlowSectionHeader(stringResource(R.string.share_into_factoryflow)) }
         item {
-            FlowListRow(Icons.Outlined.PhotoCamera, stringResource(R.string.take_photo), stringResource(R.string.ocr_coming_soon), FlowTeal, Modifier.fillMaxWidth(), trailing = { FlowStatusPill(stringResource(R.string.coming_next), FlowTealDark, compact = true) })
-        }
-        item {
-            FlowListRow(Icons.Outlined.Share, stringResource(R.string.share_whatsapp), stringResource(R.string.ocr_coming_soon), FlowIndigo, Modifier.fillMaxWidth(), trailing = { FlowStatusPill(stringResource(R.string.coming_next), FlowIndigo, compact = true) })
+            FlowListRow(Icons.Outlined.Share, stringResource(R.string.share_whatsapp), stringResource(R.string.share_supported_detail), FlowIndigo, Modifier.fillMaxWidth(), trailing = { FlowStatusPill(stringResource(R.string.available_now), FlowIndigo, compact = true) })
         }
     }
 }

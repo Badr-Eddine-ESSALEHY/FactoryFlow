@@ -1,6 +1,7 @@
 package com.factoryflow.report;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -136,6 +137,121 @@ class ReportWorkflowIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT raw_text FROM maintenance_reports WHERE id = ?", String.class, reportId
         )).contains("Unknown Label 123");
+    }
+
+    @Test
+    void compositePercentageRemainsLinkedFromAnalysisThroughConfirmation() throws Exception {
+        String email = "composite-" + UUID.randomUUID() + "@example.com";
+        users.saveAndFlush(UserAccount.create("Composite Engineer", email, passwordEncoder.encode("flow-password")));
+        String token = login(email);
+        Long compressorId = definitionId("COMPRESSEUR_1");
+
+        mockMvc.perform(post("/api/reports/analyze")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rawText\":\"Compresseur 1: 77108-77%\",\"source\":\"PASTE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].kpiDefinitionId").value(compressorId))
+                .andExpect(jsonPath("$.entries[0].extractedValue").value(77108))
+                .andExpect(jsonPath("$.entries[0].secondaryExtractedValue").value(77))
+                .andExpect(jsonPath("$.entries[0].secondaryUnit").value("%"))
+                .andExpect(jsonPath("$.unresolvedCount").value(0));
+
+        String draftBody = mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "effectiveDate":"2026-08-13","source":"PASTE",
+                                  "rawText":"Compresseur 1: 77108-77%%",
+                                  "entries":[{
+                                    "kpiDefinitionId":%d,"sourceLabel":"Compresseur 1",
+                                    "sourceLine":"Compresseur 1: 77108-77%%",
+                                    "extractedValue":77108,"currentValue":77108,"confidenceScore":1,
+                                    "editedByUser":false,"capturedUnit":null,"warnings":[],
+                                    "secondaryExtractedValue":77,"secondaryCurrentValue":77,"secondaryUnit":"%%"
+                                  }],"unrecognizedLines":[]
+                                }
+                                """.formatted(compressorId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.entries[0].secondaryExtractedValue").value(77))
+                .andExpect(jsonPath("$.entries[0].secondaryCurrentValue").value(77))
+                .andReturn().getResponse().getContentAsString();
+        long reportId = objectMapper.readTree(draftBody).get("id").asLong();
+
+        mockMvc.perform(post("/api/reports/{id}/confirm", reportId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries":[{"kpiDefinitionId":%d,"finalValue":77108,"secondaryFinalValue":77}],
+                                 "unrecognizedLineResolutions":[]}
+                                """.formatted(compressorId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].finalValue").value(77108))
+                .andExpect(jsonPath("$.entries[0].secondaryFinalValue").value(77));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT secondary_extracted_value FROM kpi_entries WHERE report_id = ?",
+                BigDecimal.class, reportId
+        )).isEqualByComparingTo("77");
+        assertThat(jdbc.queryForObject(
+                "SELECT secondary_final_value FROM kpi_entries WHERE report_id = ?",
+                BigDecimal.class, reportId
+        )).isEqualByComparingTo("77");
+    }
+
+    @Test
+    void ownedDraftCanBeDeletedButConfirmedReportCannot() throws Exception {
+        String email = "delete-" + UUID.randomUUID() + "@example.com";
+        users.saveAndFlush(UserAccount.create("Draft Engineer", email, passwordEncoder.encode("flow-password")));
+        String token = login(email);
+
+        String request = """
+                {
+                  "effectiveDate":"2026-08-13",
+                  "source":"MANUAL",
+                  "rawText":null,
+                  "entries":[],
+                  "unrecognizedLines":[]
+                }
+                """;
+        long deletedDraftId = objectMapper.readTree(mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(delete("/api/reports/{id}/draft", deletedDraftId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM maintenance_reports WHERE id = ?", Integer.class, deletedDraftId
+        )).isZero();
+
+        long confirmedReportId = objectMapper.readTree(mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+        mockMvc.perform(post("/api/reports/{id}/confirm", confirmedReportId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries":[],"unrecognizedLineResolutions":[]}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/reports/{id}/draft", confirmedReportId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM maintenance_reports WHERE id = ? AND status = 'CONFIRMED'",
+                Integer.class, confirmedReportId
+        )).isEqualTo(1);
     }
 
     private String draftRequest(Long vracId, Long unknownAssignmentId, boolean assignedByUser) {

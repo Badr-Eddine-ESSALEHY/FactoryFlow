@@ -462,8 +462,7 @@ A mobile application therefore offers important advantages:
 - direct access from the device receiving source information
 - Android Share Intent
 - gallery import
-- CameraX
-- on-device OCR
+- backend PaddleOCR
 - notifications
 - quick review
 - report access while mobile
@@ -482,8 +481,7 @@ This decision supports deeper integration with:
 
 - Android Share Intent
 - FileProvider
-- CameraX
-- ML Kit
+- PaddleOCR backend runtime
 - Firebase Cloud Messaging
 - Android lifecycle
 - system permissions
@@ -564,8 +562,8 @@ FactoryFlow's core scope includes:
 - pasted WhatsApp text
 - gallery image import
 - Android Share Intent image import
-- CameraX acquisition
-- on-device OCR
+- gallery image acquisition
+- private backend OCR
 - deterministic KPI parser
 - fuzzy label recognition
 - numeric extraction
@@ -617,9 +615,9 @@ The engineer shares an image directly from WhatsApp or another Android app into 
 
 ---
 
-## 20.5 Camera
+## 20.5 Shared and Gallery Images
 
-The engineer photographs the relevant report/message using CameraX.
+The engineer selects or shares the relevant report image from Android.
 
 ---
 
@@ -634,7 +632,6 @@ Manual
 Paste
 Gallery
 Share
-Camera
    ↓
 Common reporting pipeline
    ↓
@@ -647,7 +644,7 @@ For images:
 
 ```text
 Image
-→ ML Kit OCR
+→ PaddleOCR API
 → Raw Text
 ```
 
@@ -1260,8 +1257,7 @@ Retrofit / Room
 
 Android-specific integrations include:
 
-- CameraX
-- ML Kit OCR
+- PaddleOCR backend OCR
 - Share Intent
 - FileProvider
 - FCM
@@ -1314,8 +1310,7 @@ Room
 Coroutines
 Flow / StateFlow
 Navigation Compose
-CameraX
-ML Kit OCR
+PaddleOCR backend OCR
 Android Share Intent
 FileProvider
 FCM
@@ -1665,8 +1660,7 @@ The developer should be able to explain:
 - MVVM
 - Retrofit
 - Room
-- CameraX
-- ML Kit
+- PaddleOCR backend runtime
 - Share Intent
 - FileProvider
 - Quartz
