@@ -96,8 +96,11 @@ class ParserRegressionTest {
                 Compresseur 1: 77108-77%
                 """);
 
-        assertThat(find(result, "FUEL").extractedValue()).isEqualByComparingTo("30197");
-        assertThat(find(result, "FUEL").warnings()).extracting("code").contains("AMBIGUOUS_NUMBER");
+        assertThat(find(result, "FUEL").extractedValue()).isNull();
+assertThat(find(result, "FUEL").reviewState()).isEqualTo("ATTENTION");
+assertThat(find(result, "FUEL").warnings())
+        .extracting("code")
+        .contains("AMBIGUOUS_NUMBER");
         assertThat(result.entries()).hasSize(2);
         assertThat(result.entries().get(1).extractedValue()).isEqualByComparingTo("77108");
         assertThat(result.entries().get(1).secondaryExtractedValue()).isEqualByComparingTo("77");

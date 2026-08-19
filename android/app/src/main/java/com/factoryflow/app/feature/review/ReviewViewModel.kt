@@ -19,6 +19,7 @@ import com.factoryflow.app.core.util.toUiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -93,6 +94,8 @@ class ReviewViewModel @Inject constructor(
     private val reportId: Long = checkNotNull(savedStateHandle.get<String>("reportId")?.toLongOrNull())
     private val _state = MutableStateFlow(ReviewUiState())
     val state = _state.asStateFlow()
+    private var saveJob: Job? = null
+    private var confirmJob: Job? = null
 
     init { load() }
 
@@ -179,8 +182,11 @@ class ReviewViewModel @Inject constructor(
 
     fun clearNotice() = _state.update { it.copy(savedNotice = false) }
 
-    fun save(onSaved: (() -> Unit)? = null) = viewModelScope.launch {
+    fun save(onSaved: (() -> Unit)? = null) {
+        if (saveJob?.isActive == true || confirmJob?.isActive == true) return
+        saveJob = viewModelScope.launch {
         val current = _state.value
+        if (current.saving || current.confirming) return@launch
         val report = current.report ?: return@launch
         _state.update { it.copy(saving = true, error = null) }
         runCatching {
@@ -191,11 +197,14 @@ class ReviewViewModel @Inject constructor(
             _state.update { it.copy(report = updated, saving = false, dirty = false, savedNotice = true) }
             onSaved?.invoke()
         }.onFailure { error -> _state.update { it.copy(saving = false, error = error.toUiError()) } }
+        }
     }
 
-    fun confirm(onConfirmed: (Long) -> Unit) = viewModelScope.launch {
+    fun confirm(onConfirmed: (Long) -> Unit) {
+        if (confirmJob?.isActive == true || saveJob?.isActive == true) return
+        confirmJob = viewModelScope.launch {
         val current = _state.value
-        if (!current.canConfirm) return@launch
+        if (!current.canConfirm || current.saving || current.confirming) return@launch
         _state.update { it.copy(confirming = true, error = null) }
         runCatching {
             if (current.dirty) reports.updateDraft(reportId, current.toDraftRequest(checkNotNull(current.report)))
@@ -217,6 +226,7 @@ class ReviewViewModel @Inject constructor(
             _state.update { it.copy(confirming = false, dirty = false) }
             onConfirmed(report.id)
         }.onFailure { error -> _state.update { it.copy(confirming = false, error = error.toUiError()) } }
+        }
     }
 
     private suspend fun approveAliases(state: ReviewUiState) {
@@ -242,7 +252,7 @@ private fun ReportEntryDto.toReview() = ReviewEntry(
     suggestedKpiDefinitionId = suggestedKpiDefinitionId,
     suggestedKpiDisplayName = suggestedKpiDisplayName,
     suggestedKpiUnit = suggestedKpiUnit,
-    suggestionScore = suggestionScore?.multiply(java.math.BigDecimal("100"))?.setScale(0)?.toPlainString(),
+    suggestionScore = suggestionScore?.multiply(java.math.BigDecimal("100"))?.setScale(0, java.math.RoundingMode.HALF_UP)?.toPlainString(),
     secondaryValue = (secondaryCurrentValue ?: secondaryExtractedValue)?.stripTrailingZeros()?.toPlainString(),
     secondaryExtractedValue = secondaryExtractedValue?.stripTrailingZeros()?.toPlainString(),
     secondaryUnit = secondaryUnit,

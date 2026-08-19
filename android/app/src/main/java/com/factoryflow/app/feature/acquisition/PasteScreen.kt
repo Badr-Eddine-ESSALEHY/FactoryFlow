@@ -12,26 +12,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
 import com.factoryflow.app.core.design.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun PasteScreen(onBack: () -> Unit, onReview: (Long) -> Unit, initialText: String? = null, viewModel: PasteViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(initialText) { if (state.text.isBlank() && !initialText.isNullOrBlank()) viewModel.text(initialText) }
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.paste_title), onBack) }) { padding ->
         PasteContent(
             state = state,
             onTextChanged = viewModel::text,
-            onPasteClipboard = { clipboard.getText()?.text?.let(viewModel::text) },
+            onPasteClipboard = {
+                scope.launch {
+                    clipboard.getClipEntry()?.clipData?.let { clip ->
+                        if (clip.itemCount > 0) clip.getItemAt(0).text?.toString()?.let(viewModel::text)
+                    }
+                }
+            },
             onAnalyze = { viewModel.analyze(onReview) },
             modifier = Modifier.padding(padding),
         )

@@ -39,7 +39,7 @@ fun GalleryOcrScreen(
                 onAction = { picker.launch("image/*") },
             )
         } else {
-            OcrResultContent(state, OcrSource.GALLERY, viewModel::editText, { viewModel.analyze(OcrSource.GALLERY, onReview) }, { picker.launch("image/*") }, Modifier.padding(padding))
+            OcrResultContent(state, OcrSource.GALLERY, viewModel::editText, { viewModel.analyze(OcrSource.GALLERY, onReview) }, { picker.launch("image/*") }, viewModel::retry, Modifier.padding(padding))
         }
     }
 }
@@ -54,7 +54,7 @@ fun SharedImageOcrScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(uri) { viewModel.process(uri) }
     FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.shared_content), onBack) }) { padding ->
-        OcrResultContent(state, OcrSource.SHARE, viewModel::editText, { viewModel.analyze(OcrSource.SHARE, onReview) }, null, Modifier.padding(padding))
+        OcrResultContent(state, OcrSource.SHARE, viewModel::editText, { viewModel.analyze(OcrSource.SHARE, onReview) }, null, viewModel::retry, Modifier.padding(padding))
     }
 }
 
@@ -65,6 +65,7 @@ fun OcrResultContent(
     onEditText: (String) -> Unit,
     onAnalyze: () -> Unit,
     onReplace: (() -> Unit)?,
+    onRetry: () -> Unit,
     modifier: Modifier,
 ) {
     FlowContentSurface(modifier) {
@@ -119,7 +120,10 @@ fun OcrResultContent(
         }
         state.error?.let { error ->
             Spacer(Modifier.height(10.dp))
-            Text(stringResource(error.detail), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(error.detail), Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            }
         }
         Spacer(Modifier.height(14.dp))
         PrimaryAction(stringResource(R.string.analyze_and_review), state.creatingDraft, state.extractedText.isNotBlank(), onAnalyze)

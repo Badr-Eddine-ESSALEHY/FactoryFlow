@@ -9,12 +9,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 interface AuthRepository {
     suspend fun login(email: String, password: String): UserDto
     suspend fun currentUser(): UserDto
-    fun hasSession(): Boolean
+    suspend fun hasSession(): Boolean
     val authenticated: StateFlow<Boolean>
     fun logout()
 }
@@ -27,10 +29,12 @@ class DefaultAuthRepository @Inject constructor(
 ) : AuthRepository {
     override val authenticated: StateFlow<Boolean> = tokens.authenticated
     override suspend fun login(email: String, password: String): UserDto = executor.execute {
-        api.login(LoginRequest(email.trim(), password)).also { tokens.save(it.accessToken) }.user
+        api.login(LoginRequest(email.trim(), password)).also {
+            withContext(Dispatchers.IO) { tokens.save(it.accessToken) }
+        }.user
     }
     override suspend fun currentUser(): UserDto = executor.execute { api.me() }
-    override fun hasSession() = tokens.accessToken() != null
+    override suspend fun hasSession() = withContext(Dispatchers.IO) { tokens.hasStoredToken() }
     override fun logout() = tokens.clear()
 }
 
@@ -81,13 +85,17 @@ class DefaultGeneratedReportsRepository @Inject constructor(
     override suspend fun detail(id: Long) = executor.execute { api.generatedReport(id) }
     override suspend fun generate(request: GenerateReportRequest) = executor.execute { api.generateReport(request) }
     override suspend fun download(report: GeneratedReportDto): File = executor.execute {
-        val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }
-        directory.listFiles()?.sortedByDescending(File::lastModified)?.drop(12)?.forEach(File::delete)
-        val safeName = report.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
-            .ifBlank { "factoryflow-${report.id}.${if (report.format == "PDF") "pdf" else "xlsx"}" }
-        val target = File(directory, safeName)
-        api.generatedFile(report.id).use { body -> target.outputStream().use { output -> body.byteStream().copyTo(output) } }
-        target
+        withContext(Dispatchers.IO) {
+            val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }
+            directory.listFiles()?.sortedByDescending(File::lastModified)?.drop(12)?.forEach(File::delete)
+            val safeName = report.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
+                .ifBlank { "factoryflow-${report.id}.${if (report.format == "PDF") "pdf" else "xlsx"}" }
+            val target = File(directory, safeName)
+            api.generatedFile(report.id).use { body ->
+                target.outputStream().buffered().use { output -> body.byteStream().use { it.copyTo(output) } }
+            }
+            target
+        }
     }
 }
 

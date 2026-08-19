@@ -59,4 +59,19 @@ class ReviewViewModelTest {
         )
         assertTrue(ReviewUiState(loading = false, report = reportDto(), entries = listOf(missing)).canConfirm)
     }
+
+    @Test fun repeatedConfirmationTapsCreateOneAuthoritativeOutcome() = runTest(dispatcher.dispatcher) {
+        val repository = FakeReportsRepository().apply {
+            draftValue = reportDto()
+            confirmed = reportDto("CONFIRMED")
+        }
+        val viewModel = ReviewViewModel(SavedStateHandle(mapOf("reportId" to "12")), repository)
+        advanceUntilIdle()
+
+        viewModel.confirm { }
+        viewModel.confirm { }
+        advanceUntilIdle()
+
+        assertEquals(1, repository.confirmCalls)
+    }
 }

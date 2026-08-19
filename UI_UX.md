@@ -5457,4 +5457,15 @@ That feeling is more important than any individual animation or component.
 
 ---
 
+## 322. Delivery Stabilization Behavior
+
+- Statistics is a top-level bottom-navigation destination and therefore has no nested-screen back affordance.
+- A successful report confirmation clears the completed acquisition/review workflow from the back stack.
+- Both the confirmation back action and system Back leave the terminal screen without reopening completed review work.
+- Create Report keeps its title at the top and vertically balances acquisition actions inside the remaining responsive viewport; compact screens and larger fonts remain scrollable.
+- Statistics renders a trend only when at least two valid confirmed observations exist. Otherwise it explicitly displays “Données insuffisantes”.
+- Notification rows open their related confirmed report or generated document when the backend supplies that relationship.
+
+---
+
 # End of UI_UX.md

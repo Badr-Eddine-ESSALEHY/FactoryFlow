@@ -3916,4 +3916,17 @@ The final application should feel like:
 
 ---
 
+## Delivery Stabilization Notes
+
+The Android file boundaries follow these release rules:
+
+- ContentResolver image reads, generated-document downloads, and user-selected document writes execute on Dispatchers.IO.
+- Retrofit error-body parsing also executes away from Main.
+- OCR, analysis, draft submission, confirmation, generation, download, and refresh actions guard active jobs to prevent duplicate concurrent requests.
+- Share intents are consumed once by SharedAcquisitionStore; recomposition does not repeat acquisition processing.
+- The terminal confirmation route clears the completed acquisition/review stack before exposing report and document actions.
+- Android app and splash branding use the FactoryFlow identity. Alf Mabrouk artwork remains reserved for backend-generated PDF and Excel documents.
+
+---
+
 # End of 07_Android.md

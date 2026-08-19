@@ -7,6 +7,7 @@ import com.factoryflow.app.core.data.GeneratedReportsRepository
 import com.factoryflow.app.core.data.ReportsRepository
 import com.factoryflow.app.core.network.dto.*
 import com.factoryflow.app.core.util.UiError
+import com.factoryflow.app.core.util.toDocumentDownloadUiError
 import com.factoryflow.app.core.util.toUiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -14,6 +15,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ReportsUiState(val loading: Boolean = true, val reports: List<ReportSummaryDto> = emptyList(), val filter: String? = null, val error: UiError? = null)
@@ -80,17 +82,22 @@ data class GeneratedDetailUiState(
 class GeneratedDetailViewModel @Inject constructor(savedState: SavedStateHandle, private val repository: GeneratedReportsRepository) : ViewModel() {
     private val id = checkNotNull(savedState.get<String>("generatedId")?.toLongOrNull())
     private val _state = MutableStateFlow(GeneratedDetailUiState()); val state = _state.asStateFlow()
+    private var downloadJob: Job? = null
     init { load() }
     fun load() = viewModelScope.launch {
         _state.value = GeneratedDetailUiState()
         runCatching { repository.detail(id) }.onSuccess { _state.value = GeneratedDetailUiState(loading = false, document = it) }
             .onFailure { _state.value = GeneratedDetailUiState(loading = false, error = it.toUiError()) }
     }
-    fun download(action: GeneratedFileAction = GeneratedFileAction.OPEN) = viewModelScope.launch {
+    fun download(action: GeneratedFileAction = GeneratedFileAction.OPEN) {
+        if (downloadJob?.isActive == true) return
+        downloadJob = viewModelScope.launch {
+        if (_state.value.downloading) return@launch
         val document = _state.value.document ?: return@launch
         _state.update { it.copy(downloading = true, error = null, file = null, fileAction = action) }
         runCatching { repository.download(document) }.onSuccess { file -> _state.update { it.copy(downloading = false, file = file) } }
-            .onFailure { error -> _state.update { it.copy(downloading = false, error = error.toUiError()) } }
+            .onFailure { error -> _state.update { it.copy(downloading = false, error = error.toDocumentDownloadUiError()) } }
+        }
     }
     fun fileHandled() = _state.update { it.copy(file = null, fileAction = null) }
 }

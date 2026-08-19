@@ -14,6 +14,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class PasteUiState(
@@ -28,11 +29,14 @@ data class PasteUiState(
 class PasteViewModel @Inject constructor(private val reports: ReportsRepository) : ViewModel() {
     private val _state = MutableStateFlow(PasteUiState())
     val state = _state.asStateFlow()
+    private var analysisJob: Job? = null
     fun text(value: String) = _state.update { it.copy(text = value, emptyError = false, analysisFailed = false, error = null) }
     fun analyze(onDraftCreated: (Long) -> Unit) {
+        if (analysisJob?.isActive == true) return
+        if (_state.value.analyzing) return
         val raw = _state.value.text.trim()
         if (raw.isBlank()) { _state.update { it.copy(emptyError = true) }; return }
-        viewModelScope.launch {
+        analysisJob = viewModelScope.launch {
             _state.update { it.copy(analyzing = true, analysisFailed = false, error = null) }
             runCatching {
                 val analysis = reports.analyze(raw)

@@ -6,7 +6,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from PIL import Image, ImageOps
 from paddleocr import PaddleOCR
 import numpy as np
@@ -40,7 +40,10 @@ def health() -> dict[str, Any]:
 
 
 @app.post("/v1/ocr")
-async def recognize(file: UploadFile = File(...), mimeType: str | None = None) -> dict[str, Any]:
+async def recognize(
+    file: UploadFile = File(...),
+    mimeType: str | None = Form(None),
+) -> dict[str, Any]:
     content_type = (mimeType or file.content_type or "").lower()
     if content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=415, detail="Unsupported image format")

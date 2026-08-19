@@ -11,6 +11,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -25,10 +27,13 @@ class DefaultOcrRepository @Inject constructor(
 ) : OcrRepository {
     override suspend fun recognize(uri: Uri): OcrResultDto = executor.execute {
         val resolver = context.contentResolver
-        val mime = resolver.getType(uri)?.lowercase() ?: "application/octet-stream"
-        if (mime !in ALLOWED_TYPES) throw AppError.Validation("OCR_INVALID_IMAGE", "Unsupported image format")
-        val bytes = resolver.openInputStream(uri)?.use(::readBounded)
-            ?: error("Unable to read the selected image")
+        val (mime, bytes) = withContext(Dispatchers.IO) {
+            val detectedMime = resolver.getType(uri)?.lowercase() ?: "application/octet-stream"
+            if (detectedMime !in ALLOWED_TYPES) throw AppError.Validation("OCR_INVALID_IMAGE", "Unsupported image format")
+            val content = resolver.openInputStream(uri)?.use(::readBounded)
+                ?: throw AppError.Validation("OCR_IMAGE_UNREADABLE", "Unable to read the selected image")
+            detectedMime to content
+        }
         if (bytes.isEmpty()) throw AppError.Validation("OCR_INVALID_IMAGE", "The selected image is empty")
         val body = bytes.toRequestBody(mime.toMediaType())
         api.recognizeImage(MultipartBody.Part.createFormData("image", "factoryflow-image", body))

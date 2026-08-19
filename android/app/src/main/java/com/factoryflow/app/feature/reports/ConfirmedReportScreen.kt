@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,23 +55,23 @@ fun ConfirmedReportScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val shareSubject = stringResource(R.string.share_report_subject, state.report?.effectiveDate?.toFrenchDate().orEmpty())
-    val shareChooserTitle = stringResource(R.string.share_document)
+    var noViewer by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     state.sharedFile?.let { file ->
         LaunchedEffect(file) {
             val document = state.generatedDocument ?: return@LaunchedEffect
             val type = if (document.format == "PDF") "application/pdf"
             else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-            val share = Intent(Intent.ACTION_SEND)
-                .setType(type)
-                .putExtra(Intent.EXTRA_STREAM, uri)
-                .putExtra(Intent.EXTRA_SUBJECT, shareSubject)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             try {
-                context.startActivity(Intent.createChooser(share, shareChooserTitle))
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(uri, type)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                )
             } catch (_: ActivityNotFoundException) {
-                // The generated document remains available in report history even without a share target.
+                noViewer = true
+            } catch (_: IllegalArgumentException) {
+                noViewer = true
             }
             viewModel.fileHandled()
         }
@@ -87,6 +88,15 @@ fun ConfirmedReportScreen(
                 modifier = Modifier.padding(padding),
             )
         }
+    }
+    if (noViewer) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { noViewer = false },
+            title = { Text(stringResource(R.string.no_viewer)) },
+            confirmButton = {
+                TextButton(onClick = { noViewer = false }) { Text(stringResource(R.string.close)) }
+            },
+        )
     }
 }
 

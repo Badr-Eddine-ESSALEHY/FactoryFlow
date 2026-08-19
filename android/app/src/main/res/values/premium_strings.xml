@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="official_logo_content_description">Logo officiel Alf Mabrouk Nutrition Animale</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_statistics">Stats</string>
     <string name="nav_alerts">Alertes</string>
@@ -40,6 +39,7 @@
     <string name="ocr_extracting">Extraction du texte sur cet appareil</string>
     <string name="ocr_empty">Aucun texte exploitable n’a été détecté.</string>
     <string name="ocr_failed">La lecture de l’image n’a pas abouti.</string>
+    <string name="ocr_image_unreadable">L’image n’a pas pu être lue. Choisissez-la de nouveau ou utilisez une autre image.</string>
     <string name="open_settings">Ouvrir les réglages</string>
     <string name="select_image">Choisir une image</string>
     <string name="use_image">Utiliser cette image</string>
@@ -87,6 +87,7 @@
     <string name="analyze_and_review">Analyser et vérifier</string>
     <string name="save_failed">Enregistrement impossible</string>
     <string name="save_failed_detail">Le document reste disponible dans FactoryFlow. Choisissez un autre emplacement et réessayez.</string>
+    <string name="document_generation_failed">Impossible de générer le document. Réessayez dans quelques instants.</string>
     <string name="period_7_days">7 j</string>
     <string name="dashboard_your_day">Votre journée</string>
     <string name="dashboard_situation">Situation</string>
@@ -116,4 +117,18 @@
     <string name="dashboard_activity_point">%1$s · %2$d confirmés · %3$d manquants</string>
     <string name="statistics_confirmed_trend">Évolution des valeurs confirmées</string>
     <string name="statistics_touch_hint">Touchez la courbe</string>
+    <string name="statistics_insufficient">Données insuffisantes</string>
+    <string name="statistics_insufficient_detail">%1$d observation valide. Au moins deux observations sont nécessaires pour afficher une tendance fiable.</string>
+    <string name="statistics_data_quality">Qualité des données</string>
+    <string name="statistics_observation_context">%1$d observations valides · %2$d rapports confirmés</string>
+    <string name="statistics_minimum_maximum">Minimum — maximum</string>
+    <string name="statistics_minimum_maximum_value">%1$s — %2$s %3$s</string>
+    <string name="statistics_range">Étendue</string>
+    <string name="statistics_standard_deviation">Écart type</string>
+    <string name="statistics_previous_delta">Écart vs période précédente</string>
+    <string name="statistics_trend">Tendance</string>
+    <string name="statistics_completeness">Complétude</string>
+    <string name="statistics_trend_increasing">En hausse</string>
+    <string name="statistics_trend_decreasing">En baisse</string>
+    <string name="statistics_trend_stable">Stable</string>
 </resources>

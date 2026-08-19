@@ -4,6 +4,13 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <path android:fillColor="#0867C9" android:pathData="M8,4h32a4,4 0,0 1,4 4v32a4,4 0,0 1,-4 4H8a4,4 0,0 1,-4 -4V8a4,4 0,0 1,4 -4z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13,13h22v6H19v6h13v6H19v8h-6z" />
+    <group
+        android:name="factoryflowMark"
+        android:pivotX="24"
+        android:pivotY="24">
+        <path android:fillColor="#4E7DFF" android:pathData="M8,4h32a4,4 0,0 1,4 4v32a4,4 0,0 1,-4 4H8a4,4 0,0 1,-4 -4V8a4,4 0,0 1,4 -4z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M13,12h22v6H19v6h12v6H19v9h-6z" />
+        <path android:fillColor="#2DD4BF" android:pathData="M30,33m-2.5,0a2.5,2.5 0,1 0,5 0a2.5,2.5 0,1 0,-5 0M37,33m-2,0a2,2 0,1 0,4 0a2,2 0,1 0,-4 0" />
+        <path android:strokeColor="#2DD4BF" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M30,33L37,33" />
+    </group>
 </vector>

@@ -18,15 +18,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,16 +80,15 @@ import com.factoryflow.app.core.network.dto.KpiStatisticsDto
 import com.factoryflow.app.core.network.dto.StatisticsPointDto
 import com.factoryflow.app.core.util.displayValue
 import com.factoryflow.app.core.util.toFrenchDate
-import com.factoryflow.app.feature.acquisition.FocusedTopBar
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun StatisticsScreen(onBack: () -> Unit, viewModel: StatisticsViewModel = hiltViewModel()) {
+fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.statistics_title), onBack) }) { padding ->
+    FactoryFlowScaffold(topBar = { StatisticsTopBar() }) { padding ->
         when {
             state.loading -> SkeletonRows(Modifier.padding(padding).padding(FlowSpacing.xl), 5)
             state.error != null && state.kpis.isEmpty() -> ErrorPane(
@@ -106,6 +108,16 @@ fun StatisticsScreen(onBack: () -> Unit, viewModel: StatisticsViewModel = hiltVi
             )
             else -> StatisticsContent(state, viewModel::days, viewModel::select, Modifier.padding(padding))
         }
+    }
+}
+
+@Composable
+private fun StatisticsTopBar() {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        com.factoryflow.app.core.design.FlowPageHeader(
+            title = stringResource(R.string.statistics_title),
+            modifier = Modifier.statusBarsPadding().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.sm),
+        )
     }
 }
 
@@ -176,13 +188,14 @@ fun StatisticsContent(
                 }
             }
             item { StatisticsAnalyticsCard(selected) }
-            item { StatisticsIntegrityRow(selected.missingValueCount) }
+            item { StatisticsDataQualityCard(selected) }
         }
     }
 }
 
 @Composable
 private fun StatisticsAnalyticsCard(statistics: KpiStatisticsDto) {
+    val hasTrendData = statistics.validObservationCount() >= 2L && statistics.points.size >= 2
     var selectedIndex by remember(statistics.kpiDefinitionId, statistics.points) {
         mutableIntStateOf(statistics.points.lastIndex.coerceAtLeast(0))
     }
@@ -218,22 +231,55 @@ private fun StatisticsAnalyticsCard(statistics: KpiStatisticsDto) {
                         }
                     }
                     Text(
-                        stringResource(R.string.statistics_touch_hint),
+                        stringResource(
+                            if (hasTrendData) {
+                                R.string.statistics_touch_hint
+                            } else {
+                                R.string.statistics_insufficient
+                            },
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
             Spacer(Modifier.height(FlowSpacing.lg))
-            StatisticsTrendChart(
-                points = statistics.points,
-                selectedIndex = selectedIndex,
-                onSelected = { selectedIndex = it },
-                description = statistics.displayName,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(FlowSpacing.md))
-            StatisticsSummaryStrip(statistics)
+            if (!hasTrendData) {
+                StatisticsInsufficientData(statistics.validObservationCount())
+            } else {
+                StatisticsTrendChart(
+                    points = statistics.points,
+                    selectedIndex = selectedIndex,
+                    onSelected = { selectedIndex = it },
+                    description = statistics.displayName,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(FlowSpacing.md))
+                StatisticsMetrics(statistics)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatisticsInsufficientData(validCount: Long) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(FlowRadius.control),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+    ) {
+        Row(Modifier.padding(FlowSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+            FlowIconTile(Icons.Outlined.QueryStats, null, FlowOrange, size = FlowSize.listIconTile)
+            Spacer(Modifier.width(FlowSpacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.statistics_insufficient), style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(FlowSpacing.xs))
+                Text(
+                    stringResource(R.string.statistics_insufficient_detail, validCount),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
@@ -260,6 +306,7 @@ private fun StatisticsTrendChart(
     val primary = MaterialTheme.colorScheme.primary
     val grid = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
     val surface = MaterialTheme.colorScheme.surface
+    val middle = minimum + (maximum - minimum) / 2f
     val inspection = LocalInspectionMode.current
     var entered by remember(points) { mutableStateOf(inspection) }
     LaunchedEffect(points) { entered = true }
@@ -271,12 +318,29 @@ private fun StatisticsTrendChart(
 
     Column(modifier) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(FlowSize.analyticsChartHeight)) {
+            val axisWidth = 44.dp
             val tooltipWidth = 92.dp
-            val selectedX = if (points.size == 1) maxWidth / 2 else maxWidth * selectedIndex.coerceIn(0, points.lastIndex) / points.lastIndex
+            val plotWidth = maxWidth - axisWidth
+            val selectedX = axisWidth + plotWidth * selectedIndex.coerceIn(0, points.lastIndex) / points.lastIndex
             val tooltipX = (selectedX - tooltipWidth / 2).coerceIn(0.dp, maxWidth - tooltipWidth)
+
+            Column(
+                Modifier.width(axisWidth).fillMaxHeight().padding(top = 38.dp, bottom = 14.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                listOf(maximum, middle, minimum).forEach { value ->
+                    Text(
+                        BigDecimal.valueOf(value.toDouble()).displayValue(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                    )
+                }
+            }
 
             Canvas(
                 Modifier
+                    .padding(start = axisWidth)
                     .fillMaxSize()
                     .semantics { contentDescription = description }
                     .pointerInput(points) {
@@ -350,7 +414,7 @@ private fun StatisticsTrendChart(
                 )
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth().padding(start = 44.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             chartDateLabels(points).forEach { label ->
                 Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             }
@@ -359,76 +423,112 @@ private fun StatisticsTrendChart(
 }
 
 @Composable
-private fun StatisticsSummaryStrip(statistics: KpiStatisticsDto) {
+private fun StatisticsMetrics(statistics: KpiStatisticsDto) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(FlowRadius.control),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
     ) {
-        Row(Modifier.fillMaxWidth().height(74.dp)) {
-            SummaryMetric(stringResource(R.string.latest), statistics.latest, statistics.unit, Modifier.weight(1f))
-            SummaryDivider()
-            SummaryMetric(stringResource(R.string.average), statistics.average, statistics.unit, Modifier.weight(1f))
-            SummaryDivider()
-            SummaryMetric(stringResource(R.string.minimum), statistics.minimum, statistics.unit, Modifier.weight(1f))
-            SummaryDivider()
-            SummaryMetric(stringResource(R.string.maximum), statistics.maximum, statistics.unit, Modifier.weight(1f))
+        Column(Modifier.fillMaxWidth().padding(vertical = FlowSpacing.sm)) {
+            MetricPairRow(
+                stringResource(R.string.latest), statistics.latest.withUnit(statistics.unit),
+                stringResource(R.string.average), statistics.average.withUnit(statistics.unit),
+            )
+            HorizontalDivider(Modifier.padding(horizontal = FlowSpacing.md), color = MaterialTheme.colorScheme.outlineVariant)
+            MetricPairRow(
+                stringResource(R.string.statistics_minimum_maximum),
+                stringResource(R.string.statistics_minimum_maximum_value, statistics.minimum.displayValue(), statistics.maximum.displayValue(), statistics.unit.orEmpty()),
+                stringResource(R.string.statistics_range), statistics.range.withUnit(statistics.unit),
+            )
+            if (statistics.standardDeviation != null || statistics.periodDelta != null) {
+                HorizontalDivider(Modifier.padding(horizontal = FlowSpacing.md), color = MaterialTheme.colorScheme.outlineVariant)
+                MetricPairRow(
+                    stringResource(R.string.statistics_standard_deviation), statistics.standardDeviation.withUnit(statistics.unit),
+                    stringResource(R.string.statistics_previous_delta), statistics.periodDelta.signedWithUnit(statistics.unit),
+                )
+            }
+            HorizontalDivider(Modifier.padding(horizontal = FlowSpacing.md), color = MaterialTheme.colorScheme.outlineVariant)
+            MetricPairRow(
+                stringResource(R.string.statistics_trend), trendLabel(statistics.trend),
+                stringResource(R.string.statistics_completeness), statistics.completenessRate.asPercentage(),
+            )
         }
     }
 }
 
 @Composable
-private fun SummaryMetric(label: String, value: BigDecimal?, unit: String?, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxHeight().padding(horizontal = FlowSpacing.sm, vertical = FlowSpacing.md),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        Spacer(Modifier.height(FlowSpacing.xs))
-        Text(
-            buildString {
-                append(value.displayValue())
-                if (!unit.isNullOrBlank()) append(" ").append(unit)
-            },
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+private fun MetricPairRow(firstLabel: String, firstValue: String, secondLabel: String, secondValue: String) {
+    Row(Modifier.fillMaxWidth()) {
+        MetricText(firstLabel, firstValue, Modifier.weight(1f))
+        Box(Modifier.padding(vertical = FlowSpacing.sm).width(1.dp).height(44.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        MetricText(secondLabel, secondValue, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun SummaryDivider() {
-    Box(
-        Modifier
-            .padding(vertical = FlowSpacing.md)
-            .width(1.dp)
-            .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.outlineVariant),
-    )
+private fun MetricText(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = FlowSpacing.md, vertical = FlowSpacing.sm)) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(FlowSpacing.xs))
+        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 @Composable
-private fun StatisticsIntegrityRow(missingCount: Long) {
+private fun StatisticsDataQualityCard(statistics: KpiStatisticsDto) {
     FlowCard(Modifier.fillMaxWidth(), PaddingValues(horizontal = FlowSpacing.md, vertical = FlowSpacing.sm)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             FlowIconTile(Icons.Outlined.Info, null, FlowOrange, size = FlowSize.listIconTile)
             Spacer(Modifier.width(FlowSpacing.md))
             Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.statistics_data_quality), style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(FlowSpacing.xs))
                 Text(
-                    stringResource(R.string.statistics_integrity),
+                    stringResource(R.string.statistics_observation_context, statistics.validObservationCount(), statistics.reportCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (missingCount > 0) {
+                Text(
+                    stringResource(R.string.statistics_integrity),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (statistics.missingValueCount > 0) {
                     Spacer(Modifier.height(FlowSpacing.xs))
-                    FlowStatusPill(stringResource(R.string.missing_samples, missingCount), FlowWarning, compact = true)
+                    FlowStatusPill(stringResource(R.string.missing_samples, statistics.missingValueCount), FlowWarning, compact = true)
                 }
             }
         }
     }
 }
+
+private fun KpiStatisticsDto.validObservationCount(): Long = validCount.takeIf { it > 0 } ?: sampleCount
+
+private fun BigDecimal?.withUnit(unit: String?): String = buildString {
+    append(this@withUnit.displayValue())
+    if (this@withUnit != null && !unit.isNullOrBlank()) append(" ").append(unit)
+}
+
+private fun BigDecimal?.signedWithUnit(unit: String?): String {
+    if (this == null) return "—"
+    return buildString {
+        if (signum() > 0) append("+")
+        append(this@signedWithUnit.displayValue())
+        if (!unit.isNullOrBlank()) append(" ").append(unit)
+    }
+}
+
+private fun BigDecimal?.asPercentage(): String = if (this == null) "—" else "${displayValue()} %"
+
+@Composable
+private fun trendLabel(trend: String): String = stringResource(
+    when (trend) {
+        "INCREASING" -> R.string.statistics_trend_increasing
+        "DECREASING" -> R.string.statistics_trend_decreasing
+        "STABLE" -> R.string.statistics_trend_stable
+        else -> R.string.statistics_insufficient
+    },
+)
 
 private fun smoothStatisticsPath(points: List<Offset>): Path = Path().apply {
     if (points.isEmpty()) return@apply

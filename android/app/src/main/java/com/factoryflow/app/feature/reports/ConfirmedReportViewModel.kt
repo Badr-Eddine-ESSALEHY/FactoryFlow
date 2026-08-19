@@ -9,6 +9,8 @@ import com.factoryflow.app.core.network.dto.GenerateReportRequest
 import com.factoryflow.app.core.network.dto.GeneratedReportDto
 import com.factoryflow.app.core.network.dto.ReportDto
 import com.factoryflow.app.core.util.UiError
+import com.factoryflow.app.core.util.toDocumentDownloadUiError
+import com.factoryflow.app.core.util.toDocumentGenerationUiError
 import com.factoryflow.app.core.util.toUiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
@@ -16,6 +18,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ConfirmedReportUiState(
@@ -36,6 +39,7 @@ class ConfirmedReportViewModel @Inject constructor(
     private val reportId = checkNotNull(savedState.get<String>("reportId")?.toLongOrNull())
     private val _state = MutableStateFlow(ConfirmedReportUiState())
     val state = _state.asStateFlow()
+    private var exportJob: Job? = null
 
     init { load() }
 
@@ -46,12 +50,14 @@ class ConfirmedReportViewModel @Inject constructor(
             .onFailure { error -> _state.update { it.copy(loading = false, error = error.toUiError()) } }
     }
 
-    fun export(format: String) = viewModelScope.launch {
+    fun export(format: String) {
+        if (exportJob?.isActive == true) return
+        exportJob = viewModelScope.launch {
         val report = _state.value.report?.takeIf { it.status == "CONFIRMED" } ?: return@launch
-        if (_state.value.exportingFormat != null) return@launch
+        if (format !in setOf("PDF", "EXCEL") || _state.value.exportingFormat != null) return@launch
         _state.update { it.copy(exportingFormat = format, error = null, sharedFile = null) }
-        runCatching {
-            val generated = generatedReports.generate(
+        val generated = runCatching {
+            generatedReports.generate(
                 GenerateReportRequest(
                     type = "DAILY",
                     format = format,
@@ -59,11 +65,22 @@ class ConfirmedReportViewModel @Inject constructor(
                     periodEnd = report.effectiveDate,
                 ),
             )
-            generated to generatedReports.download(generated)
-        }.onSuccess { (document, file) ->
-            _state.update { it.copy(exportingFormat = null, generatedDocument = document, sharedFile = file) }
-        }.onFailure { error ->
-            _state.update { it.copy(exportingFormat = null, error = error.toUiError()) }
+        }.getOrElse { error ->
+            _state.update { it.copy(exportingFormat = null, error = error.toDocumentGenerationUiError()) }
+            return@launch
+        }
+        if (generated.generationStatus != "READY") {
+            _state.update { it.copy(exportingFormat = null, generatedDocument = generated, error = UiError(com.factoryflow.app.R.string.invalid_data, com.factoryflow.app.R.string.document_generation_failed)) }
+            return@launch
+        }
+        _state.update { it.copy(generatedDocument = generated) }
+        runCatching { generatedReports.download(generated) }
+            .onSuccess { file ->
+                _state.update { it.copy(exportingFormat = null, sharedFile = file) }
+            }
+            .onFailure { error ->
+                _state.update { it.copy(exportingFormat = null, error = error.toDocumentDownloadUiError()) }
+            }
         }
     }
 

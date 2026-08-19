@@ -13,6 +13,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ManualEntryRow(val definition: KpiDefinitionDto, val value: String = "", val explicitlyMissing: Boolean = false)
@@ -26,6 +27,7 @@ data class ManualEntryUiState(
 class ManualEntryViewModel @Inject constructor(private val reports: ReportsRepository) : ViewModel() {
     private val _state = MutableStateFlow(ManualEntryUiState())
     val state = _state.asStateFlow()
+    private var submissionJob: Job? = null
     init { load() }
     fun load() = viewModelScope.launch {
         _state.update { it.copy(loading = true, error = null) }
@@ -47,12 +49,14 @@ class ManualEntryViewModel @Inject constructor(private val reports: ReportsRepos
         invalidEntryIds = state.invalidEntryIds - id,
     ) }
     fun submit(onDraftCreated: (Long) -> Unit) {
+        if (submissionJob?.isActive == true) return
         val current = _state.value
+        if (current.submitting) return
         if (current.entries.isEmpty()) { _state.update { it.copy(selectionError = true) }; return }
         val invalid = current.entries.filter { !it.explicitlyMissing && it.value.asEditableDecimal() == null }
             .mapTo(linkedSetOf()) { it.definition.id }
         if (invalid.isNotEmpty()) { _state.update { it.copy(invalidEntryIds = invalid) }; return }
-        viewModelScope.launch {
+        submissionJob = viewModelScope.launch {
             _state.update { it.copy(submitting = true, error = null) }
             val request = DraftReportRequest(
                 current.effectiveDate, "MANUAL", null,

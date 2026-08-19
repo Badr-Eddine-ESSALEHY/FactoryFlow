@@ -7,6 +7,7 @@ import com.factoryflow.app.core.data.ReportsRepository
 import com.factoryflow.app.core.data.OcrRepository
 import com.factoryflow.app.core.network.dto.*
 import com.factoryflow.app.core.util.UiError
+import com.factoryflow.app.core.util.toOcrUiError
 import com.factoryflow.app.core.util.toUiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -14,6 +15,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 enum class OcrSource(val apiValue: String) { GALLERY("GALLERY_OCR"), SHARE("SHARE_OCR") }
@@ -37,10 +39,22 @@ class OcrAcquisitionViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(OcrAcquisitionState())
     val state = _state.asStateFlow()
+    private var recognitionJob: Job? = null
+    private var draftJob: Job? = null
 
-    fun process(uri: Uri) {
-        if (_state.value.processing && _state.value.imageUri == uri) return
-        viewModelScope.launch {
+    fun process(uri: Uri) = startRecognition(uri, force = false)
+
+    fun retry() {
+        _state.value.imageUri?.let { startRecognition(it, force = true) }
+    }
+
+    private fun startRecognition(uri: Uri, force: Boolean) {
+        val current = _state.value
+        if (!force && current.imageUri == uri &&
+            (current.processing || current.extractedText.isNotBlank() || current.noTextDetected || current.error != null)
+        ) return
+        recognitionJob?.cancel()
+        recognitionJob = viewModelScope.launch {
             _state.value = OcrAcquisitionState(imageUri = uri, processing = true)
             runCatching { ocr.recognize(uri) }
                 .onSuccess { result ->
@@ -54,7 +68,7 @@ class OcrAcquisitionViewModel @Inject constructor(
                     ) }
                 }
                 .onFailure { error ->
-                    _state.update { it.copy(processing = false, error = error.toUiError()) }
+                    _state.update { it.copy(processing = false, error = error.toOcrUiError()) }
                 }
         }
     }
@@ -64,9 +78,11 @@ class OcrAcquisitionViewModel @Inject constructor(
     fun clear() { _state.value = OcrAcquisitionState() }
 
     fun analyze(source: OcrSource, onDraftCreated: (Long) -> Unit) {
+        if (draftJob?.isActive == true) return
+        if (_state.value.creatingDraft) return
         val raw = _state.value.extractedText.trim()
         if (raw.isBlank()) { _state.update { it.copy(noTextDetected = true) }; return }
-        viewModelScope.launch {
+        draftJob = viewModelScope.launch {
             _state.update { it.copy(creatingDraft = true, error = null) }
             runCatching {
                 val analysis = reports.analyze(raw, source.apiValue)

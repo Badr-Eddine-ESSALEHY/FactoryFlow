@@ -18,8 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 @Singleton
 class SecureTokenStore @Inject constructor(@ApplicationContext context: Context) {
     private val preferences = context.getSharedPreferences("secure_session", Context.MODE_PRIVATE)
-    private val _authenticated = MutableStateFlow(readToken() != null)
+    private val _authenticated = MutableStateFlow(false)
     val authenticated: StateFlow<Boolean> = _authenticated
+
+    fun hasStoredToken(): Boolean = (preferences.contains(TOKEN) && preferences.contains(IV)).also {
+        _authenticated.value = it
+    }
 
     @Synchronized
     fun accessToken(): String? = readToken()

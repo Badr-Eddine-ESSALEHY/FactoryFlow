@@ -114,7 +114,11 @@ fun AuthenticatedApp(
     }
 
     BackHandler(enabled = currentRoute != null && currentRoute != Routes.DASHBOARD) {
-        navigateBack(navController)
+        if (currentRoute == Routes.CONFIRMED) {
+            navigateTopLevel(navController, Routes.REPORTS)
+        } else {
+            navigateBack(navController)
+        }
     }
 
     FactoryFlowAppShell(
@@ -152,9 +156,14 @@ fun AuthenticatedApp(
                     )
                 }
                 composable(Routes.STATISTICS) {
-                    StatisticsScreen(onBack = { navigateBack(navController) })
+                    StatisticsScreen()
                 }
-                composable(Routes.NOTIFICATIONS) { NotificationsScreen() }
+                composable(Routes.NOTIFICATIONS) {
+                    NotificationsScreen(
+                        onReport = { navController.navigate("report/$it") },
+                        onGenerated = { navController.navigate("generated/$it") },
+                    )
+                }
                 composable(Routes.PROFILE) {
                     ProfileScreen(user, themeMode, onThemeMode, { navigateBack(navController) }, onLogout)
                 }
@@ -200,7 +209,7 @@ fun AuthenticatedApp(
                         { navigateBack(navController) },
                         { id ->
                             navController.navigate("confirmed/$id") {
-                                popUpTo(Routes.REVIEW) { inclusive = true }
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
                                 launchSingleTop = true
                             }
                         },
@@ -211,7 +220,7 @@ fun AuthenticatedApp(
                         onBack = { navigateTopLevel(navController, Routes.REPORTS) },
                         onOpenReport = { id ->
                             navController.navigate("report/$id") {
-                                popUpTo(Routes.CONFIRMED) { inclusive = true }
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
                                 launchSingleTop = true
                             }
                         },

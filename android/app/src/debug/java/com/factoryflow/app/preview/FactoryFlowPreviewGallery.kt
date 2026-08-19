@@ -212,7 +212,7 @@ fun FactoryFlowManualDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
 @Composable
 fun FactoryFlowOcrLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
     FocusedPreviewFrame(stringResource(R.string.gallery_ocr)) { modifier ->
-        OcrResultContent(PreviewFixtures.ocr, OcrSource.GALLERY, {}, {}, {}, modifier)
+        OcrResultContent(PreviewFixtures.ocr, OcrSource.GALLERY, {}, {}, {}, {}, modifier)
     }
 }
 
@@ -220,7 +220,7 @@ fun FactoryFlowOcrLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
 @Composable
 fun FactoryFlowOcrDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
     FocusedPreviewFrame(stringResource(R.string.gallery_ocr)) { modifier ->
-        OcrResultContent(PreviewFixtures.ocr, OcrSource.GALLERY, {}, {}, {}, modifier)
+        OcrResultContent(PreviewFixtures.ocr, OcrSource.GALLERY, {}, {}, {}, {}, modifier)
     }
 }
 
@@ -355,13 +355,13 @@ fun FactoryFlowScheduleFormDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DAR
 @Preview(name = "Notifications - Light", showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowNotificationsLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
-    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {})
+    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {}, {})
 }
 
 @Preview(name = "Notifications - Dark", showBackground = true, widthDp = 411, heightDp = 891)
 @Composable
 fun FactoryFlowNotificationsDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
-    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {})
+    NotificationsContent(com.factoryflow.app.feature.notifications.NotificationsUiState(loading = false), {}, {}, {})
 }
 
 @Preview(name = "Profile - Light", showBackground = true, widthDp = 411, heightDp = 891)

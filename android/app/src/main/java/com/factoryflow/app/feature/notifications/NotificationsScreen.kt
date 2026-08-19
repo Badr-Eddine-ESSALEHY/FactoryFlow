@@ -19,9 +19,24 @@ import com.factoryflow.app.core.design.*
 import com.factoryflow.app.core.network.dto.NotificationDto
 
 @Composable
-fun NotificationsScreen(viewModel: NotificationsViewModel = hiltViewModel()) {
+fun NotificationsScreen(
+    onReport: (Long) -> Unit,
+    onGenerated: (Long) -> Unit,
+    viewModel: NotificationsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    FlowScreen { NotificationsContent(state, viewModel::load, viewModel::read, Modifier.weight(1f)) }
+    FlowScreen {
+        NotificationsContent(
+            state = state,
+            onRetry = viewModel::load,
+            onRead = viewModel::read,
+            onOpen = { notification ->
+                notification.relatedGeneratedReportId?.let(onGenerated)
+                    ?: notification.relatedReportId?.let(onReport)
+            },
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 @Composable
@@ -29,6 +44,7 @@ fun NotificationsContent(
     state: NotificationsUiState,
     onRetry: () -> Unit,
     onRead: (Long) -> Unit,
+    onOpen: (NotificationDto) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FlowContentSurface(modifier) {
@@ -47,7 +63,10 @@ fun NotificationsContent(
                 items(state.items, key = NotificationDto::id) { item ->
                     FlowListRow(
                         icon = icon(item.type), title = item.title, meta = item.message,
-                        accent = accent(item.type), modifier = Modifier.fillMaxWidth().clickable { onRead(item.id) },
+                        accent = accent(item.type), modifier = Modifier.fillMaxWidth().clickable {
+                            onRead(item.id)
+                            onOpen(item)
+                        },
                         trailing = { if (item.readAt == null) FlowStatusPill(stringResource(R.string.new_notification), FlowBlue, compact = true) },
                     )
                 }

@@ -12,7 +12,7 @@ class FakeAuthRepository : AuthRepository {
     var loginCalls = 0
     override suspend fun login(email: String, password: String): UserDto { loginCalls++; return loginResult.getOrThrow().also { session.value = true } }
     override suspend fun currentUser() = loginResult.getOrThrow()
-    override fun hasSession() = false
+    override suspend fun hasSession() = false
     override fun logout() { session.value = false }
 }
 
@@ -33,6 +33,7 @@ open class FakeReportsRepository : ReportsRepository {
     val approvedAliasCalls = mutableListOf<Pair<Long, String>>()
     val deletedDraftIds = mutableListOf<Long>()
     var lastConfirmRequest: ConfirmReportRequest? = null
+    var confirmCalls = 0
     override suspend fun definitions() = definitionsValue
     override suspend fun analyze(rawText: String, source: String): AnalyzeReportResponse {
         lastAnalyzedRawText = rawText
@@ -54,6 +55,7 @@ open class FakeReportsRepository : ReportsRepository {
             ?: error("No KPI definition configured for alias approval: $kpiDefinitionId")
     }
     override suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto {
+        confirmCalls++
         lastConfirmRequest = request
         return checkNotNull(confirmed)
     }

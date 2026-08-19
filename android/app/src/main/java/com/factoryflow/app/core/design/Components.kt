@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -79,9 +78,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -759,20 +756,6 @@ private fun flowSmoothPath(points: List<Offset>): Path = Path().apply {
         val midpoint = (current.x + next.x) / 2f
         cubicTo(midpoint, current.y, midpoint, next.y, next.x, next.y)
     }
-}
-
-/** Renders the official report artwork. It is intentionally unused by the Android app shell. */
-@Composable
-fun OfficialAlfMabroukLogo(
-    modifier: Modifier = Modifier,
-    contentDescription: String? = stringResource(R.string.official_logo_content_description),
-) {
-    Image(
-        painter = painterResource(R.drawable.alf_mabrouk_logo),
-        contentDescription = contentDescription,
-        modifier = modifier,
-        contentScale = ContentScale.Fit,
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

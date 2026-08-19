@@ -83,4 +83,42 @@ class ConfirmedReportViewModelTest {
         assertFalse(generated.generationRequests.isNotEmpty())
         assertNull(viewModel.state.value.generatedDocument)
     }
+
+    @Test
+    fun repeatedExportTapsSubmitOneDocumentRequest() = runTest(dispatcher.dispatcher) {
+        val reports = FakeReportsRepository().apply { reportValue = reportDto(status = "CONFIRMED", id = 23) }
+        val document = GeneratedReportDto(
+            id = 92,
+            type = "DAILY",
+            format = "EXCEL",
+            periodStart = "2026-08-12",
+            periodEnd = "2026-08-12",
+            origin = "MANUAL",
+            generationStatus = "READY",
+            emailDeliveryStatus = "NOT_REQUESTED",
+            version = 1,
+            generatedAt = "2026-08-12T09:00:00Z",
+            fileName = "factoryflow-2026-08-12.xlsx",
+            generatedBy = 1,
+            regeneratedFromId = null,
+            scheduleId = null,
+        )
+        val generated = FakeGeneratedReportsRepository().apply {
+            generatedValue = document
+            downloadedFile = File("factoryflow-2026-08-12.xlsx")
+        }
+        val viewModel = ConfirmedReportViewModel(
+            SavedStateHandle(mapOf("reportId" to "23")),
+            reports,
+            generated,
+        )
+        advanceUntilIdle()
+
+        viewModel.export("EXCEL")
+        viewModel.export("EXCEL")
+        advanceUntilIdle()
+
+        assertEquals(1, generated.generationRequests.size)
+        assertEquals(1, generated.downloadedReports.size)
+    }
 }

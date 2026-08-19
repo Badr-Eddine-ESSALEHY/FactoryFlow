@@ -29,6 +29,9 @@ import com.factoryflow.app.core.design.*
 import com.factoryflow.app.core.network.dto.*
 import com.factoryflow.app.core.util.*
 import com.factoryflow.app.feature.acquisition.FocusedTopBar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ReportsScreen(onReport: (Long) -> Unit, onGenerated: (Long) -> Unit) {
@@ -289,16 +292,24 @@ fun GeneratedDetailScreen(onBack: () -> Unit, viewModel: GeneratedDetailViewMode
     var noViewer by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
     var pendingSaveFile by remember { mutableStateOf<java.io.File?>(null) }
+    val scope = rememberCoroutineScope()
     val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { destination ->
         val source = pendingSaveFile
         if (destination != null && source != null) {
-            runCatching {
-                context.contentResolver.openOutputStream(destination)?.use { output ->
-                    source.inputStream().use { input -> input.copyTo(output) }
-                } ?: error("Destination unavailable")
-            }.onFailure { saveFailed = true }
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(destination)?.buffered()?.use { output ->
+                            source.inputStream().buffered().use { input -> input.copyTo(output) }
+                        } ?: error("Destination unavailable")
+                    }.isSuccess
+                }
+                saveFailed = !saved
+                pendingSaveFile = null
+            }
+        } else {
+            pendingSaveFile = null
         }
-        pendingSaveFile = null
     }
     state.file?.let { file -> LaunchedEffect(file) {
         val document = state.document ?: return@LaunchedEffect

@@ -15,3 +15,27 @@ fun Throwable.toUiError(): UiError = when (this) {
     is AppError.Server -> UiError(R.string.server_error, R.string.server_error)
     else -> UiError(R.string.unknown_error, R.string.unknown_error)
 }
+
+fun Throwable.toOcrUiError(): UiError = when (this) {
+    is AppError.Validation -> when (code) {
+        "OCR_IMAGE_UNREADABLE", "OCR_INVALID_IMAGE" -> UiError(R.string.invalid_data, R.string.ocr_image_unreadable)
+        else -> UiError(R.string.invalid_data, R.string.ocr_failed)
+    }
+    AppError.NetworkUnavailable -> UiError(R.string.network_unavailable, R.string.server_error)
+    is AppError.Server -> UiError(R.string.server_error, R.string.ocr_failed)
+    else -> UiError(R.string.unknown_error, R.string.ocr_failed)
+}
+
+fun Throwable.toDocumentGenerationUiError(): UiError = when (this) {
+    AppError.NetworkUnavailable -> UiError(R.string.network_unavailable, R.string.server_error)
+    is AppError.Validation, is AppError.Conflict -> UiError(R.string.invalid_data, R.string.document_generation_failed)
+    is AppError.Server -> UiError(R.string.server_error, R.string.document_generation_failed)
+    else -> UiError(R.string.unknown_error, R.string.document_generation_failed)
+}
+
+fun Throwable.toDocumentDownloadUiError(): UiError = when (this) {
+    AppError.NetworkUnavailable -> UiError(R.string.network_unavailable, R.string.server_error)
+    is AppError.Validation, is AppError.Conflict -> UiError(R.string.invalid_data, R.string.download_failed)
+    is AppError.Server -> UiError(R.string.server_error, R.string.download_failed)
+    else -> UiError(R.string.unknown_error, R.string.download_failed)
+}

@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class LoginUiState(
     val email: String = "", val password: String = "", val emailError: Boolean = false,
@@ -26,19 +28,22 @@ data class LoginUiState(
 class LoginViewModel @Inject constructor(private val repository: AuthRepository) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
+    private var loginJob: Job? = null
 
     fun email(value: String) = _state.update { it.copy(email = value, emailError = false, error = null) }
     fun password(value: String) = _state.update { it.copy(password = value, passwordError = false, error = null) }
 
     fun login(onSuccess: () -> Unit) {
+        if (loginJob?.isActive == true) return
         val current = _state.value
+        if (current.submitting) return
         val emailInvalid = !current.email.isValidEmail()
         val passwordInvalid = current.password.isBlank()
         if (emailInvalid || passwordInvalid) {
             _state.update { it.copy(emailError = emailInvalid, passwordError = passwordInvalid) }
             return
         }
-        viewModelScope.launch {
+        loginJob = viewModelScope.launch {
             _state.update { it.copy(submitting = true, error = null) }
             runCatching { repository.login(current.email, current.password) }
                 .onSuccess {
@@ -57,31 +62,64 @@ sealed interface SessionUiState {
 }
 
 @HiltViewModel
-class SessionViewModel @Inject constructor(private val repository: AuthRepository) : ViewModel() {
-    private val _state = MutableStateFlow<SessionUiState>(SessionUiState.Loading)
+class SessionViewModel @Inject constructor(
+    private val repository: AuthRepository
+) : ViewModel() {
+
+    private val _state =
+        MutableStateFlow<SessionUiState>(SessionUiState.Loading)
+
     val state = _state.asStateFlow()
+
+    private var restoreJob: Job? = null
 
     init {
         restore()
-        viewModelScope.launch {
-            repository.authenticated.drop(1).collect { authenticated ->
-                if (!authenticated) _state.value = SessionUiState.SignedOut
-            }
-        }
-    }
 
-    fun restore() {
-        if (!repository.hasSession()) { _state.value = SessionUiState.SignedOut; return }
         viewModelScope.launch {
-            _state.value = SessionUiState.Loading
-            runCatching { repository.currentUser() }
-                .onSuccess { _state.value = SessionUiState.SignedIn(it) }
-                .onFailure {
-                    if (it is AppError.Unauthorized) repository.logout()
-                    _state.value = SessionUiState.SignedOut
+            repository.authenticated
+                .drop(1)
+                .collect { authenticated ->
+                    if (!authenticated) {
+                        _state.value = SessionUiState.SignedOut
+                    }
                 }
         }
     }
 
-    fun logout() { repository.logout(); _state.value = SessionUiState.SignedOut }
+    fun restore() {
+        if (restoreJob?.isActive == true) return
+
+        restoreJob = viewModelScope.launch {
+            _state.value = SessionUiState.Loading
+
+            // Startup must never remain blocked forever.
+            val hasSession = withTimeoutOrNull(1500) {
+                repository.hasSession()
+            } ?: false
+
+            if (!hasSession) {
+                _state.value = SessionUiState.SignedOut
+                return@launch
+            }
+
+            val user = withTimeoutOrNull(5000) {
+                runCatching {
+                    repository.currentUser()
+                }.getOrNull()
+            }
+
+            if (user != null) {
+                _state.value = SessionUiState.SignedIn(user)
+            } else {
+                repository.logout()
+                _state.value = SessionUiState.SignedOut
+            }
+        }
+    }
+
+    fun logout() {
+        repository.logout()
+        _state.value = SessionUiState.SignedOut
+    }
 }
