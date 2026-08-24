@@ -131,7 +131,7 @@ This lifecycle includes:
 - Collecting raw KPI information
 - Parsing heterogeneous text messages
 - Importing screenshots
-- Performing OCR on-device
+- Performing OCR through the authenticated backend and private PaddleOCR runtime
 - Accepting manual KPI entry
 - Receiving shared images through Android Share Intent
 - Validating extracted values
@@ -644,11 +644,11 @@ Firebase Cloud Messaging is the selected SHOULD-level push mechanism.
 
 ## OCR
 
-Google ML Kit
+PaddleOCR PP-OCRv5 through the private backend OCR runtime.
 
-Executed on-device.
+Android uploads gallery and shared images to the authenticated backend OCR endpoint.
 
-The backend never performs OCR.
+Direct CameraX acquisition and on-device ML Kit OCR are not part of the current implementation.
 
 ---
 
@@ -1406,13 +1406,13 @@ chore
 Examples:
 
 ```text
-feat(auth): implement JWT login and refresh flow
+feat(auth): implement JWT access-token login
 
 feat(parser): add fuzzy KPI label matching
 
 feat(android): add report acquisition method selector
 
-feat(ocr): integrate ML Kit text recognition
+feat(ocr): integrate PaddleOCR through the backend provider boundary
 
 feat(report): generate Excel workbook with Apache POI
 
@@ -1658,7 +1658,7 @@ Examples:
 - Spring dependency injection
 - JPA relationships
 - Spring Security filter chain
-- JWT refresh flow
+- JWT access-token session flow
 - Kotlin coroutines
 - `StateFlow`
 - Compose state
@@ -1669,7 +1669,7 @@ Examples:
 - RabbitMQ
 - Android Share Intent
 - `FileProvider`
-- ML Kit OCR
+- backend `OcrProvider` / PaddleOCR boundary
 
 Explanations should be concise and implementation-focused.
 
@@ -1707,7 +1707,7 @@ Examples of report-worthy decisions include:
 - Quartz instead of Spring Batch
 - RabbitMQ as deliberate asynchronous architecture learning
 - WebSocket/STOMP for real-time synchronization
-- on-device ML Kit OCR
+- private PaddleOCR recognition behind the backend provider boundary
 - separate device-side manual email sharing from backend scheduled email delivery
 
 Do not allow these engineering decisions to disappear from project history.
@@ -2431,13 +2431,15 @@ Swagger is not optional documentation.
 
 # 35. Authentication and Security Rules
 
-FactoryFlow uses JWT-based authentication with refresh token support.
+FactoryFlow currently uses short-lived JWT access-token authentication.
+
+Refresh-token rotation is not implemented and must not be described as current behavior.
 
 ---
 
 # 35.1 Authentication
 
-The authentication flow should include:
+The implemented authentication flow is:
 
 ```text
 Login
@@ -2445,17 +2447,10 @@ Login
 Access Token
     ↓
 Authenticated API Requests
-    ↓
-Access Token Expires
-    ↓
-Refresh Token
-    ↓
-New Access Token
 ```
 
-Refresh tokens are opaque random values. The server stores only their hashes with
-expiration and revocation metadata, rotates them on refresh, and revokes the active
-refresh/session token through `POST /api/auth/logout`. This lifecycle must be tested.
+When the access token expires, Android clears the session and requires login again.
+A future refresh-token design would require an explicit documented contract and tests.
 
 ---
 
@@ -2582,9 +2577,9 @@ Manual input is not a privileged path that can bypass integrity controls.
 
 # 37. OCR Constitution
 
-OCR is performed on-device using Google ML Kit.
-
-The backend does not perform OCR.
+OCR is performed by the private PaddleOCR runtime behind the Spring Boot `OcrProvider`
+boundary. Images are accepted from Android gallery and Share Intent workflows through
+the authenticated OCR endpoint.
 
 ---
 
@@ -2593,8 +2588,8 @@ The backend does not perform OCR.
 Android is responsible for:
 
 - selecting or receiving image
-- running text recognition
-- obtaining extracted text
+- uploading the supported image to the authenticated OCR endpoint
+- receiving the extracted text and OCR metadata
 - forwarding extracted text into the same backend parsing flow
 
 The OCR layer must not decide KPI business meaning.
@@ -3008,7 +3003,7 @@ Keep both mechanisms distinct.
 Spring WebSocket with STOMP is the preferred SHOULD-level mechanism if realtime
 synchronization is implemented after the trusted core is stable.
 
-This is a deliberate technical feature intended to provide real-time behavior similar to SignalR in the previous industrial project.
+SignalR belongs to a separate industrial project and is not a FactoryFlow technology.
 
 ---
 
@@ -3109,7 +3104,7 @@ Potential candidates include:
 
 Do not wrap normal in-process methods in circuit breakers.
 
-Do not apply it to on-device OCR from the backend because that interaction does not exist.
+Do not wrap the local authenticated OCR call in a circuit breaker without a measured failure need.
 
 ---
 
@@ -3182,7 +3177,8 @@ Notifications may exist in multiple channels.
 
 Used while users are connected.
 
-Powered through application state and WebSocket events where appropriate.
+Currently powered through persisted backend notification records and ordinary REST refresh.
+WebSocket events are a future option only.
 
 ---
 
@@ -3580,8 +3576,8 @@ The project is not considered complete without:
 - Text paste input
 - Gallery image import
 - WhatsApp/Android Share Intent image input
-- Camera image acquisition
-- On-device OCR
+- Gallery and Share Intent image acquisition
+- Private backend PaddleOCR recognition
 - Deterministic parser
 - Fuzzy KPI label recognition
 - Numeric normalization
@@ -3709,9 +3705,6 @@ This allows deeper use of:
 
 - Android Share Intent
 - FileProvider
-- CameraX
-- ML Kit
-- FCM
 - Android lifecycle APIs
 - native platform behavior
 
@@ -3760,11 +3753,11 @@ This is the real data-quality guarantee of FactoryFlow.
 
 ---
 
-## 60.6 ML Kit OCR
+## 60.6 PaddleOCR
 
-OCR is performed on-device with Google ML Kit.
-
-This reduces backend complexity and integrates naturally with Android image acquisition.
+OCR is performed by the private PaddleOCR runtime behind the backend `OcrProvider`.
+Android sends gallery/shared images to the authenticated endpoint; deterministic KPI
+interpretation remains separate in the parser.
 
 ---
 
@@ -3824,9 +3817,8 @@ Never collapse these into one mechanism.
 
 ## 60.12 WebSocket/STOMP
 
-Spring WebSocket with STOMP is the approved SHOULD-level real-time mechanism.
-
-It is used only for genuinely real-time events.
+Spring WebSocket with STOMP is the approved SHOULD-level real-time mechanism if it is
+implemented later. It is not part of the current deployed FactoryFlow path.
 
 REST remains the primary authoritative request/response channel.
 
@@ -4072,11 +4064,11 @@ Unless replaced by the authoritative API specification, the approved conceptual 
 
 ```text
 POST /api/auth/login
-POST /api/auth/refresh
+GET  /api/users/me
 
 POST /api/reports/analyze
 POST /api/reports/drafts
-PATCH /api/reports/{id}/draft
+PUT  /api/reports/{id}/draft
 POST /api/reports/{id}/confirm
 GET  /api/reports
 
@@ -4084,6 +4076,7 @@ GET  /api/kpi-definitions
 POST /api/kpi-definitions
 
 POST /api/generated-reports
+POST /api/generated-reports/individual
 
 GET  /api/statistics
 ```
@@ -5066,15 +5059,11 @@ Follow Android platform conventions.
 
 ---
 
-# 112. Camera Rule
+# 112. Image Acquisition Rule
 
-Camera acquisition should use CameraX.
-
-The camera feature exists to acquire report screenshots/documents.
-
-Do not build a general-purpose camera application.
-
-After capture, move directly into the OCR/validation workflow.
+Current Android image acquisition uses gallery selection and Android Share Intent.
+CameraX and the direct camera route were removed by the approved M3 scope decision and
+must not be described as implemented.
 
 ---
 
@@ -5472,7 +5461,7 @@ Quartz has a clear purpose.
 
 PDFBox has a clear purpose.
 
-ML Kit has a clear purpose.
+PaddleOCR has a clear purpose behind the private backend provider boundary.
 
 RabbitMQ is acceptable only if its deliberate asynchronous architecture value justifies its complexity.
 

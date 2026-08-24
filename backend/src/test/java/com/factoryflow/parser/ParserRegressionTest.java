@@ -2,12 +2,12 @@ package com.factoryflow.parser;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.factoryflow.kpi.domain.KpiDefinition;
+import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
 import com.factoryflow.parser.api.AnalyzeReportRequest;
 import com.factoryflow.parser.api.AnalyzeReportResponse;
 import com.factoryflow.parser.api.ParsedEntry;
 import com.factoryflow.parser.application.ReportAnalysisService;
-import com.factoryflow.kpi.domain.KpiDefinition;
-import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
 import com.factoryflow.report.domain.AcquisitionSource;
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,6 +45,8 @@ class ParserRegressionTest {
                 Arguments.of("colon", "Vrac: 15,8", "VRAC", "15.8"),
                 Arguments.of("equals", "Vrac = 12.5", "VRAC", "12.5"),
                 Arguments.of("arrow", "Choline -> 295456", "CHOLINE", "295456"),
+                Arguments.of("unicode arrow", "Choline → 295456", "CHOLINE", "295456"),
+                Arguments.of("fat arrow", "Choline => 295456", "CHOLINE", "295456"),
                 Arguments.of("whitespace", "Sac   18,2", "SAC", "18.2"),
                 Arguments.of("attached unit", "Total: 33,4t", "TOTAL", "33.4"),
                 Arguments.of("uppercase and Windows line ending", "VRAC : 16\r\n", "VRAC", "16"),
@@ -66,31 +68,46 @@ class ParserRegressionTest {
 
         AnalyzeReportResponse result = analyze(input);
 
-        assertThat(result.entries()).hasSize(3);
+        assertThat(result.entries()).hasSize(4);
         assertThat(find(result, "VRAC").extractedValue()).isNull();
         assertThat(find(result, "VRAC").warnings()).extracting("code").contains("MISSING_VALUE");
         assertThat(result.entries().stream().filter(entry -> "SAC".equals(entry.kpiCode())))
                 .allSatisfy(entry -> assertThat(entry.warnings()).extracting("code").contains("DUPLICATE_KPI"));
-        assertThat(result.unrecognizedLines()).extracting("sourceLine")
-                .contains("[10:52] Maintenance group", "Unexpected metric 44");
-        assertThat(result.unrecognizedCount()).isEqualTo(2);
+        assertThat(result.entries().stream().filter(entry -> "UNRESOLVED".equals(entry.reviewState())))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.sourceLine()).isEqualTo("Unexpected metric 44");
+                    assertThat(entry.kpiDefinitionId()).isNull();
+                    assertThat(entry.extractedValue()).isEqualByComparingTo("44");
+                    assertThat(entry.matchMethod()).isEqualTo("UNKNOWN");
+                    assertThat(entry.warnings()).extracting("code").contains("UNKNOWN_KPI");
+                });
+        assertThat(result.unresolvedCount()).isEqualTo(1);
+        assertThat(result.unrecognizedCount()).isZero();
+        assertThat(result.unrecognizedLines()).isEmpty();
+        assertThat(result.ignoredLines()).anySatisfy(line -> {
+            assertThat(line.sourceLine()).isEqualTo("[10:52] Maintenance group");
+            assertThat(line.classification()).isEqualTo("WHATSAPP_METADATA");
+        });
     }
 
     @Test
-    void handlesAmbiguousThousandsAndMultipleValuesWithoutCombiningThem() {
+    void handlesAmbiguousThousandsAndKeepsCompressorPercentageLinked() {
         AnalyzeReportResponse result = analyze("""
                 Fuel : 30.197
                 Compresseur 1: 77108-77%
                 """);
 
-        assertThat(find(result, "FUEL").extractedValue()).isEqualByComparingTo("30197");
-        assertThat(find(result, "FUEL").warnings()).extracting("code").contains("AMBIGUOUS_NUMBER");
-        assertThat(result.entries()).hasSize(3);
+        assertThat(find(result, "FUEL").extractedValue()).isEqualByComparingTo("30.197");
+        assertThat(find(result, "FUEL").reviewState()).isEqualTo("ATTENTION");
+        assertThat(find(result, "FUEL").warnings())
+                .extracting("code")
+                .contains("AMBIGUOUS_NUMBER");
+        assertThat(result.entries()).hasSize(2);
         assertThat(result.entries().get(1).extractedValue()).isEqualByComparingTo("77108");
-        assertThat(result.entries().get(2).extractedValue()).isEqualByComparingTo("77");
-        assertThat(result.entries().get(2).kpiDefinitionId()).isNull();
-        assertThat(result.entries().get(2).warnings()).extracting("code")
-                .contains("ADDITIONAL_VALUE_REQUIRES_ASSIGNMENT");
+        assertThat(result.entries().get(1).secondaryExtractedValue()).isEqualByComparingTo("77");
+        assertThat(result.entries().get(1).secondaryUnit()).isEqualTo("%");
+        assertThat(result.entries().get(1).reviewState()).isEqualTo("READY");
     }
 
     @Test
@@ -116,7 +133,12 @@ class ParserRegressionTest {
         AnalyzeReportResponse result = analyze(input);
 
         assertThat(result.entries()).extracting(ParsedEntry::kpiCode).containsExactly("VRAC", "CHOLINE");
-        assertThat(result.unrecognizedLines()).extracting("sourceLine").containsExactly("10:52", "10:53");
+        assertThat(result.unresolvedCount()).isZero();
+        assertThat(result.unrecognizedLines()).isEmpty();
+        assertThat(result.ignoredLines()).extracting("sourceLine").containsExactly("10:52", "10:53");
+        assertThat(result.ignoredLines()).allSatisfy(line ->
+                assertThat(line.classification()).isEqualTo("WHATSAPP_METADATA")
+        );
         assertThat(result.rawText()).isEqualTo(input);
     }
 
@@ -150,6 +172,52 @@ class ParserRegressionTest {
                 """);
 
         assertThat(result.entries()).extracting(ParsedEntry::kpiCode).containsExactly("TOTAL", "SAC", "VRAC");
+    }
+
+    @Test
+    void preservesBusinessValuesAndFiltersSafeNoiseFromRealOcrTranscript() {
+        AnalyzeReportResponse result = analyze("""
+                KPI PRODUCTION
+                M
+                :
+                ahmed, Amine Elboukhari Alf,...
+                PF
+                Recyclage 20y
+                15:01
+                Ayman Charge Alf
+                Aymane
+                1:13
+                C
+                Vrac 118,2t
+                Sac:59,2t
+                Total:177,80t
+                23:01
+                Aujourd'hui
+                Reda Mzn Alf
+                Suivi des consommations liquides.
+                De 23/07/26
+                Choline : 295456
+                Fuel : 30.197
+                00:40
+                S
+                Kbich Alf Eni
+                Varc -> 45.000 T
+                Sac => 127.400 T
+                Message
+                0
+                """);
+
+        assertThat(find(result, "FUEL").extractedValue()).isEqualByComparingTo("30.197");
+        assertThat(find(result, "FUEL").reviewState()).isEqualTo("ATTENTION");
+        assertThat(result.entries().stream().filter(entry -> "VRAC".equals(entry.kpiCode())))
+                .hasSize(2)
+                .allSatisfy(entry -> assertThat(entry.warnings()).extracting("code").contains("DUPLICATE_KPI"));
+        assertThat(result.entries().stream().filter(entry -> "SAC".equals(entry.kpiCode())))
+                .hasSize(2)
+                .allSatisfy(entry -> assertThat(entry.extractedValue()).isNotNull());
+        assertThat(result.ignoredLines()).extracting("sourceLine")
+                .contains("KPI PRODUCTION", "M", ":", "15:01", "Aujourd'hui", "De 23/07/26", "Message");
+        assertThat(result.rawText()).contains("Varc -> 45.000 T", "Sac => 127.400 T");
     }
 
     private AnalyzeReportResponse analyze(String input) {

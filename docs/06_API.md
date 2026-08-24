@@ -59,9 +59,8 @@ The API should be:
 - clear about errors
 - clear about authoritative vs non-authoritative operations
 
-Realtime WebSocket/STOMP complements REST.
-
-It does not replace REST.
+WebSocket/STOMP is not implemented. If added later, it may provide small invalidation
+events but must never replace REST.
 
 ---
 
@@ -130,7 +129,7 @@ Authorization: Bearer <access_token>
 
 The access token is a JWT.
 
-Refresh token handling is described below.
+The current contract returns an access token only. Expiry returns the user to login.
 
 ---
 
@@ -142,7 +141,6 @@ Core public endpoints:
 
 ```text
 POST /api/auth/login
-POST /api/auth/refresh
 ```
 
 Potential development/documentation endpoints:
@@ -395,7 +393,6 @@ password required
 ```json
 {
   "accessToken": "<jwt>",
-  "refreshToken": "<refresh-token>",
   "tokenType": "Bearer",
   "expiresInSeconds": 900,
   "user": {
@@ -418,64 +415,11 @@ Do not distinguish unknown email from wrong password in the user-facing authenti
 
 ---
 
-# 17. POST `/api/auth/refresh`
+# 17. Refresh and Logout Status
 
-Obtains a new access token.
-
-## Request
-
-```json
-{
-  "refreshToken": "<refresh-token>"
-}
-```
-
-## Success
-
-```text
-200 OK
-```
-
-```json
-{
-  "accessToken": "<new-jwt>",
-  "refreshToken": "<rotated-refresh-token>",
-  "tokenType": "Bearer",
-  "expiresInSeconds": 900
-}
-```
-
-Refresh tokens are opaque random values. The server stores only their hashes with
-expiration/revocation metadata and rotates the token on every successful refresh.
-
-## Errors
-
-```text
-401 AUTH_REFRESH_INVALID
-401 AUTH_TOKEN_EXPIRED
-```
-
----
-
-# 18. POST `/api/auth/logout`
-
-Revokes the active refresh/session token.
-
-## Request
-
-```json
-{
-  "refreshToken": "<refresh-token>"
-}
-```
-
-## Success
-
-```text
-204 No Content
-```
-
-The backend marks the stored token hash revoked. Android also clears local session material.
+`POST /api/auth/refresh` and backend refresh-token revocation are not implemented.
+Android logout is currently local session clearing. Adding refresh rotation later requires
+an explicit API, hashed-token persistence, security review, and integration tests.
 
 ---
 
@@ -699,7 +643,6 @@ Allowed sources for text analysis:
 PASTE
 GALLERY_OCR
 SHARE_OCR
-CAMERA_OCR
 ```
 
 Manual entry does not require this endpoint.
@@ -964,6 +907,22 @@ Must reject deletion of confirmed reports through this endpoint.
 409 REPORT_INVALID_STATE
 ```
 
+## Inline Review Resolution Endpoints
+
+`POST /api/reports/{id}/draft/entries/{entryId}/add-kpi` creates or reuses a KPI
+definition from the unresolved draft entry's detected label and captured unit,
+then associates that entry in the same transaction. Equivalent normalized display
+names, codes, or approved aliases are reused instead of duplicated. The response is
+the updated draft.
+
+`POST /api/reports/{id}/draft/unrecognized-lines/ignore-safe` reclassifies unresolved
+source lines with the authoritative deterministic `SourceLineClassifier` and marks
+only safe header/WhatsApp/OCR noise as `IGNORED`. Uncertain content remains
+`UNRESOLVED`. The response is the updated draft.
+
+Both endpoints require ownership of a non-confirmed draft and preserve raw source
+text for traceability.
+
 ---
 
 # 37. Report Confirmation API
@@ -996,6 +955,8 @@ Request:
 
 The backend preserves extracted/current values and writes final confirmed values
 transactionally. Confirmation requires every unknown line to be `ASSIGNED` or `IGNORED`.
+Every retained non-missing parser warning must also have been explicitly validated
+(and therefore removed from the reviewed draft) before confirmation.
 
 ---
 
@@ -1293,7 +1254,8 @@ Only confirmed final values are used.
 
 # 54. POST `/api/generated-reports`
 
-Canonical period-based generation endpoint.
+Canonical consolidated period-based generation endpoint. Supported types are
+`DAILY`, `WEEKLY`, `MONTHLY`, and `CUSTOM`.
 
 ## Request
 
@@ -1307,6 +1269,10 @@ Canonical period-based generation endpoint.
 ```
 
 This route is preferable for period-based generation because weekly/monthly files may aggregate multiple maintenance reports.
+
+`CUSTOM` accepts any inclusive range where `periodStart <= periodEnd`. Daily requires
+the same start/end date, weekly requires an exact Monday-through-Sunday range, and
+monthly requires a complete calendar month.
 
 ## Success
 
@@ -1351,13 +1317,31 @@ status.
 
 ---
 
-# 55. Canonical Generation Rule
+# 55. POST `/api/generated-reports/individual`
 
-Daily, weekly, and monthly documents may aggregate multiple maintenance reports.
-The only production generation contract is:
+Exports exactly one selected confirmed maintenance report.
+
+```json
+{
+  "reportId": 2401,
+  "format": "PDF"
+}
+```
+
+The backend loads the exact ID, rejects any non-`CONFIRMED` report with
+`409 REPORT_INVALID_STATE`, and records only that report in `sourceReportIds`.
+It never substitutes every confirmed report sharing the same effective date.
+
+---
+
+# 55.1 Canonical Generation Rule
+
+Daily, weekly, monthly, and custom documents may aggregate multiple confirmed
+maintenance reports. Individual export remains an explicit ID-scoped contract:
 
 ```text
-POST /api/generated-reports
+POST /api/generated-reports             consolidated period
+POST /api/generated-reports/individual  one confirmed report ID
 ```
 
 Do not implement competing report-specific `generate/excel`, `generate/pdf`,
@@ -1736,6 +1720,9 @@ Do not add merely because it is common.
 ---
 
 # 75. Device Token API
+
+Future design only. FCM and device-token endpoints are not implemented in the current
+FactoryFlow API.
 
 ---
 
@@ -2139,9 +2126,10 @@ Do not conflate them.
 
 ---
 
-# 98. WebSocket/STOMP Contract
+# 98. Future WebSocket/STOMP Contract
 
-Realtime endpoint/channel details belong primarily in `08_Backend.md` and `07_Android.md`.
+WebSocket/STOMP is not implemented. The following is design-only and must not appear in
+the implemented endpoint inventory until code and tests exist.
 
 Recommended conceptual endpoint:
 
@@ -2184,9 +2172,10 @@ Do not create a second independent identity model.
 
 ---
 
-# 101. FCM Contract
+# 101. Future FCM Contract
 
-FCM payloads should contain only enough information for safe routing.
+FCM is not implemented. If added later, payloads should contain only enough information
+for safe routing.
 
 Example data payload:
 
@@ -2243,8 +2232,6 @@ Required for core MVP:
 
 ```text
 POST /api/auth/login
-POST /api/auth/refresh
-POST /api/auth/logout
 GET  /api/users/me
 
 GET  /api/kpi-definitions
@@ -2267,6 +2254,7 @@ GET  /api/dashboard
 GET  /api/statistics
 
 POST /api/generated-reports
+POST /api/generated-reports/individual
 GET  /api/generated-reports
 GET  /api/generated-reports/{id}
 GET  /api/generated-reports/{id}/file
@@ -2645,13 +2633,20 @@ SKIPPED
 
 # 129. Partial Success Meaning
 
-Use only if needed.
-
-Example:
+Implemented schedule semantics:
 
 ```text
-file generation succeeded
-email failed
+all requested formats generated + email failed
+→ every file remains READY
+→ every schedule run is PARTIAL_SUCCESS / email FAILED
+→ one failure notification
+
+one requested format generated + another format failed
+→ valid file remains READY
+→ no partial e-mail is sent
+→ successful format run is PARTIAL_SUCCESS
+→ failed format run is FAILED
+→ one schedule failure notification
 ```
 
 The generated report remains available.
@@ -2675,11 +2670,14 @@ This preserves one report lifecycle.
 
 # 131. OCR Acquisition Contract
 
-OCR itself is not an API endpoint.
+Android submits gallery/shared images to the authenticated backend endpoint:
 
-Android performs OCR.
+```text
+POST /api/ocr/recognize
+```
 
-Backend receives resulting text through:
+The backend delegates text recognition to the private PaddleOCR runtime and returns
+ordered text/line metadata. Android then sends the recognized text through:
 
 ```text
 POST /api/reports/analyze
@@ -2707,19 +2705,18 @@ after OCR.
 
 ---
 
-# 133. Camera Contract
+# 133. Image OCR Contract
 
-CameraX is Android-local behavior.
-
-No camera upload endpoint required in current architecture.
+Gallery and shared images are submitted to the authenticated `/api/ocr/recognize` endpoint. The backend delegates only text recognition to the private PaddleOCR runtime; deterministic KPI interpretation remains in the parser.
 
 ---
 
 # 134. Image Upload Non-Requirement
 
-FactoryFlow does not need to upload original images to backend for the core workflow.
+FactoryFlow uploads selected image bytes transiently to the authenticated OCR endpoint.
+The current workflow does not archive or persist the original image on the backend.
 
-Do not add multipart image upload API unless a future requirement explicitly requires image archival/backend OCR.
+Do not add image archival unless a future requirement explicitly requires it.
 
 ---
 
@@ -2806,6 +2803,33 @@ without reading backend implementation details.
 The API is not just a transport layer.
 
 It is the stable contract that keeps the Android product and Spring Boot information system evolving as one coherent FactoryFlow platform.
+
+---
+
+## Review Completion Contract
+
+Draft entries preserve `suggestionScore`, `suggestionStrength` (`WEAK` or `STRONG`) and `suggestionMatchMethod`. A non-null suggestion is never equivalent to an authoritative match.
+
+Unknown lines preserve:
+
+```text
+kind: KPI_LIKE | SAFE_NOISE
+classificationReason: deterministic classifier reason
+safeToIgnore: boolean
+sourceLine: original trace
+resolution: UNRESOLVED | ASSIGNED | IGNORED
+```
+
+Only unresolved lines with `kind = SAFE_NOISE` and `safeToIgnore = true` are eligible for `POST /api/reports/{id}/draft/unrecognized-lines/ignore-safe`.
+
+Single-item draft mutations are persisted immediately through:
+
+```text
+PUT    /api/reports/{id}/draft/unrecognized-lines/{lineId}
+DELETE /api/reports/{id}/draft/entries/{entryId}
+```
+
+Confirmation entries identify observations by both `entryId` and `kpiDefinitionId`. `entryId` is the authoritative observation identity; the KPI ID is validated against it. Multiple retained observations may therefore reference the same KPI definition without being merged or overwritten.
 
 ---
 

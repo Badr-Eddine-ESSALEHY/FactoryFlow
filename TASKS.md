@@ -576,7 +576,6 @@ Must define every important screen and flow.
 [x] Manual entry
 [x] Gallery import
 [x] Share Intent
-[x] Camera
 [x] OCR processing
 [x] Analyze state
 [x] Confirmation
@@ -645,8 +644,7 @@ M2 — Operational Product
 M3 — Mobile Acquisition & Realtime
      Gallery OCR
      Share Intent
-     CameraX
-     ML Kit
+     PaddleOCR backend runtime
      WebSocket/STOMP
      FCM
      Statistics
@@ -763,8 +761,7 @@ Room
 Coroutines
 Flow / StateFlow
 Navigation Compose
-CameraX
-ML Kit eventually
+Backend PaddleOCR runtime
 FCM eventually
 
 Only include dependencies when their milestone begins unless base setup genuinely requires them.
@@ -1171,8 +1168,10 @@ The parser must preserve/report content it does not understand.
 [x] confirmation UI can surface them later
 [x] drafts and confirmed reports persist `UNRESOLVED`, `ASSIGNED`, or `IGNORED` resolution
 
-One source line may produce zero, one, or multiple KPI candidates. Do not force
-multi-measurement lines such as `Compresseur 1: 77108-77%` into one composite value.
+One source line may produce zero, one, or multiple KPI candidates. A recognized
+composite pattern such as `Compresseur 1: 77108-77%` must preserve both linked
+measurements in one review entry. Other multi-measurement lines remain separate
+candidates unless a deterministic, configured composite rule applies.
 
 Suggested commit:
 
@@ -1292,7 +1291,6 @@ Source concepts:
 paste
 gallery_ocr
 share_ocr
-camera_ocr
 manual
 
 Suggested commit:
@@ -2058,30 +2056,30 @@ FF-3001 — Gallery Image Picker
 
 Priority: MUST
 
-[ ] choose image
-[ ] content URI handling
-[ ] preview
-[ ] cancellation
-[ ] invalid image state
+[x] choose image
+[x] content URI handling
+[x] OCR inspection state
+[x] cancellation
+[x] invalid image state
 
 Suggested commit:
 
 feat(android): add KPI screenshot gallery import
-FF-3002 — ML Kit OCR Integration
+FF-3002 — PaddleOCR Integration
 
 Priority: MUST
 
-OCR occurs on-device.
+OCR is processed by the private FactoryFlow PaddleOCR runtime.
 
 Image
-→ ML Kit
+→ authenticated OCR API
 → Extracted text
 → Analyze API
 → Confirmation
 
 Suggested commit:
 
-feat(ocr): integrate on-device ML Kit text recognition
+feat(ocr): integrate PaddleOCR PP-OCRv5 through the backend provider boundary
 
 Report evidence:
 
@@ -2117,42 +2115,19 @@ Report evidence:
 
 VERY HIGH
 FF-3102 — Share Intent Error Handling
-[ ] unsupported type
-[ ] unreadable URI
-[ ] missing permissions
-[ ] OCR failure
-[ ] retry
+[x] unsupported type
+[x] unreadable URI
+[x] missing permissions
+[x] OCR failure
+[x] retry
 
 Suggested commit:
 
 fix(android): harden shared-image acquisition flow
-37. CameraX
-FF-3201 — Camera Permission UX
+37. Direct Camera Acquisition — Removed
 
-Priority: MUST
-
-[ ] request when needed
-[ ] denial
-[ ] permanent denial
-[ ] settings path if appropriate
-[ ] app remains usable without camera
-
-Suggested commit:
-
-feat(android): add camera permission workflow
-FF-3202 — CameraX Capture
-
-Priority: MUST
-
-Capture
-→ preview
-→ OCR
-→ parser
-→ confirmation
-
-Suggested commit:
-
-feat(camera): capture KPI reports with CameraX
+[x] CameraX dependencies, permission, route, UI and state removed by approved M3 scope.
+[x] Supported image sources are gallery import and Android Share Intent.
 38. Unified Acquisition Entry Point
 FF-3301 — Acquisition Method Selector
 
@@ -2163,7 +2138,6 @@ Quick options:
 Paste text
 Manual entry
 Gallery
-Camera
 
 Share Intent may enter directly from outside the app.
 
@@ -2314,7 +2288,7 @@ Demonstrate:
 
 WhatsApp screenshot
 → Share to FactoryFlow
-→ ML Kit OCR
+→ PaddleOCR backend runtime
 → deterministic parser
 → warning/confirmation
 → user correction
@@ -2537,6 +2511,8 @@ Review every screen against DESIGN.md and UI_UX.md.
 [ ] system bars
 [ ] dark/light theme if supported
 [ ] orientation/configuration behavior where relevant
+[ ] compare final Vivo screenshots against the 13 August 2026 BEFORE-state baseline
+[ ] verify no clipping or bottom-navigation occlusion at the baseline Vivo display/font settings
 
 Suggested commit:
 
@@ -2566,9 +2542,9 @@ FF-5403 — WhatsApp Share Flow
 [ ] OCR
 [ ] Analyze
 [ ] Confirm
-FF-5404 — Camera Flow
-[ ] Camera
-[ ] Capture
+FF-5404 — Gallery Image Flow
+[x] Gallery selection
+[x] Bounded image upload
 [ ] OCR
 [ ] Analyze
 [ ] Confirm
@@ -2648,7 +2624,6 @@ Manual
 Paste
 Gallery
 Share Intent
-Camera
    ↓
 Unified processing
    ↓
@@ -2769,7 +2744,7 @@ Show extracted vs corrected vs final value.
 
 Evidence E06 — Mobile Integration
 
-Show Share Intent / ML Kit / CameraX.
+Show Share Intent and the PaddleOCR-backed image workflow.
 
 Evidence E07 — Reporting
 
@@ -2891,8 +2866,7 @@ FactoryFlow is Android-only.
 Native Kotlin provides better alignment with:
 
 Share Intent
-CameraX
-ML Kit
+PaddleOCR backend runtime
 FileProvider
 FCM
 Android lifecycle
@@ -3017,11 +2991,11 @@ Additional tables for schedules, notifications, refresh tokens, device tokens, e
 
 61. Current Conceptual API Baseline
 POST /api/auth/login
-POST /api/auth/refresh
+GET  /api/users/me
 
 POST /api/reports/analyze
 POST /api/reports/drafts
-PATCH /api/reports/{id}/draft
+PUT /api/reports/{id}/draft
 POST /api/reports/{id}/confirm
 
 GET  /api/reports
@@ -3030,6 +3004,7 @@ GET  /api/kpi-definitions
 POST /api/kpi-definitions
 
 POST /api/generated-reports
+POST /api/generated-reports/individual
 
 GET /api/statistics
 
@@ -3057,7 +3032,7 @@ Image flows prepend:
 
 Image
  ↓
-On-device OCR
+Authenticated backend OCR / private PaddleOCR runtime
  ↓
 Raw text
 
@@ -3069,7 +3044,6 @@ Manual entry	No	No/limited	Yes	Yes
 Paste text	No	Yes	Yes	Yes
 Gallery screenshot	Yes	Yes	Yes	Yes
 Android/WhatsApp Share	Yes	Yes	Yes	Yes
-CameraX photo	Yes	Yes	Yes	Yes
 
 The important architectural fact is not that FactoryFlow has five features.
 
@@ -3129,9 +3103,9 @@ When implementation begins, unless a blocking dependency requires adjustment, us
 24. Scheduled email
 25. Gallery OCR
 26. Share Intent acquisition
-27. CameraX
+27. Backend PaddleOCR
 28. Realtime
-29. FCM
+29. In-app notifications
 30. Statistics
 31. Optional RabbitMQ/resilience
 32. Monitoring/performance
@@ -3145,25 +3119,42 @@ Do not silently reorder the project because a different feature looks more excit
 
 67. Current Work
 Current milestone:
-M0/M1 — Backend Foundation
+Final client completion pass before physical-device acceptance
 
 Current task:
-Verified Spring Boot, PostgreSQL/Flyway, OpenAPI, shared error, and user persistence foundation
+Run the PostgreSQL-backed integration suite with valid local test credentials, then
+complete real-device acceptance on the target Vivo device
 
 Last completed:
-FF-1001 — User Entity and Persistence
+Exact confirmed-report export; daily/weekly/monthly/custom consolidated export; one-sheet
+Excel and manager PDF cleanup; conditional weekly/monthly PDF analytics; grouped scheduled
+email attachments; truthful partial/SMTP failure states; Android period/format generation
+UX; navigation-safe schedule action; narrow PF/Aymane/Lokbiche safe-noise classification;
+implementation-status documentation; representative PDF/XLSX artifacts; refreshed debug APK
 
 In progress:
-None
+Environment-dependent verification only: PostgreSQL integration tests, live SMTP delivery,
+real release HTTPS URL configuration, and Vivo end-to-end/visual acceptance
 
 Next:
-FF-1002 — JWT Authentication, only when explicitly started
+Provide `TEST_DB_PASSWORD`/`DB_PASSWORD` for the local `factoryflow_test` database and
+rerun `mvnw test`; configure SMTP credentials in environment variables; install the
+debug APK and validate the supplied WhatsApp screenshot on the Vivo device
 
 Primary blocker:
-None
+The local PostgreSQL server rejects the available `postgres` connection because no valid
+test password is present in the environment. Production installation additionally
+requires the real HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL` and environment-only SMTP
+credentials.
 
 Implementation status:
-Backend foundation implemented; remaining product features not started
+Backend compile/test-compile pass. The database-independent backend suite reports 126
+tests, 0 failures, 0 errors, 1 opt-in PaddleOCR test skipped. The complete backend suite
+discovers 161 tests and currently reports 0 failures, 35 Spring context errors, and 1
+skip; every error follows PostgreSQL authentication failure before test execution.
+Android `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug` pass;
+the unit suite reports 41 tests with 0 failures/errors/skips. Real-device acceptance and
+live SMTP delivery remain external verification steps.
 
 Update this section after every meaningful development session.
 
@@ -3199,45 +3190,45 @@ FactoryFlow cannot be considered presentation-ready until:
 
 [ ] Real business problem clearly demonstrated
 
-[ ] Authentication works
+[x] Authentication works
 
 [ ] Five KPI acquisition methods work
 
-[ ] OCR works on-device
+[ ] Authenticated backend PaddleOCR flow verified end-to-end on the Vivo device
 
-[ ] Deterministic parser handles realistic variations
+[x] Deterministic parser handles realistic variations
 
-[ ] Parser regression tests exist
+[x] Parser regression tests exist
 
-[ ] Human confirmation cannot be bypassed
+[x] Human confirmation cannot be bypassed
 
-[ ] Drafts work
+[x] Drafts work
 
-[ ] PostgreSQL stores trusted structured values
+[x] PostgreSQL stores trusted structured values
 
-[ ] Dashboard uses confirmed data
+[x] Dashboard uses confirmed data
 
-[ ] History/search/filter works
+[x] History/search/filter works
 
-[ ] Excel report is professional
+[x] Excel report is professional
 
-[ ] PDF report is professional
+[x] PDF report is professional
 
-[ ] Daily Quartz scheduling works
+[x] Daily Quartz scheduling works
 
-[ ] Weekly Quartz scheduling works
+[x] Weekly Quartz scheduling works
 
-[ ] Monthly Quartz scheduling works
+[x] Monthly Quartz scheduling works
 
 [ ] Android user sharing works
 
-[ ] Scheduled backend email works
+[x] Scheduled backend email works
 
 [ ] Swagger/OpenAPI is complete
 
 [ ] Critical security review complete
 
-[ ] Core tests pass
+[x] Core tests pass
 
 [ ] Android UI follows DESIGN.md
 

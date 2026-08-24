@@ -20,6 +20,7 @@ import com.factoryflow.report.persistence.MaintenanceReportRepository;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.poi.ss.usermodel.CellType;
@@ -51,7 +52,7 @@ class HistoryAndExcelIntegrationTest {
     @Autowired GeneratedReportRepository generatedReports;
 
     @Test
-    void historyAndExcelUseConfirmedDataWhileExcludingDraftsAndPreservingMissingValues() throws Exception {
+    void individualExportIsIdScopedWhileDailyExcelConsolidatesConfirmedReportsOnly() throws Exception {
         String email = "excel-" + UUID.randomUUID() + "@example.com";
         UserAccount user = users.saveAndFlush(UserAccount.create(
                 "Excel Engineer", email, passwordEncoder.encode("excel-password")
@@ -61,6 +62,7 @@ class HistoryAndExcelIntegrationTest {
 
         MaintenanceReport confirmedValue = report(user, vrac, true, new BigDecimal("15.8"), "confirmed value");
         MaintenanceReport confirmedMissing = report(user, vrac, true, null, "confirmed missing");
+        MaintenanceReport confirmedOther = report(user, vrac, true, new BigDecimal("23.4"), "other same-day report");
         MaintenanceReport draft = report(user, vrac, false, new BigDecimal("999"), "draft must be excluded");
         String token = login(email);
 
@@ -71,7 +73,7 @@ class HistoryAndExcelIntegrationTest {
                         .param("submittedBy", user.getId().toString())
                         .param("page", "0").param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.content[0].status").value("CONFIRMED"));
 
         mockMvc.perform(get("/api/reports/{id}", confirmedValue.getId())
@@ -84,6 +86,46 @@ class HistoryAndExcelIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.entries[0].finalValue").doesNotExist());
+
+        String individualJson = mockMvc.perform(post("/api/generated-reports/individual")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reportId":%d,
+                                  "format":"EXCEL"
+                                }
+                                """.formatted(confirmedValue.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("INDIVIDUAL"))
+                .andExpect(jsonPath("$.sourceReportIds.length()").value(1))
+                .andExpect(jsonPath("$.sourceReportIds[0]").value(confirmedValue.getId()))
+                .andReturn().getResponse().getContentAsString();
+
+        long individualId = objectMapper.readTree(individualJson).get("id").asLong();
+        byte[] individualWorkbook = mockMvc.perform(get("/api/generated-reports/{id}/file", individualId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("_report-" + confirmedValue.getId())))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(individualWorkbook))) {
+            var sheet = workbook.getSheet("Rapport");
+            int detailHeader = findRow(sheet, 0, "Date");
+            assertThat(detailHeader).isGreaterThanOrEqualTo(0);
+            assertThat(sheet.getRow(detailHeader + 1).getCell(2).getNumericCellValue()).isEqualTo(15.8);
+            assertThat(sheet.getRow(detailHeader + 3).getCell(0).getStringCellValue())
+                    .isEqualTo("QUALITÉ DES DONNÉES");
+        }
+
+        mockMvc.perform(post("/api/generated-reports/individual")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"reportId":%d,"format":"PDF"}
+                                """.formatted(draft.getId())))
+                .andExpect(status().isConflict());
 
         String generatedJson = mockMvc.perform(post("/api/generated-reports")
                         .header("Authorization", "Bearer " + token)
@@ -99,7 +141,7 @@ class HistoryAndExcelIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.generationStatus").value("READY"))
                 .andExpect(jsonPath("$.format").value("EXCEL"))
-                .andExpect(jsonPath("$.sourceReportIds.length()").value(2))
+                .andExpect(jsonPath("$.sourceReportIds.length()").value(3))
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode generated = objectMapper.readTree(generatedJson);
@@ -114,18 +156,32 @@ class HistoryAndExcelIntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(downloaded))) {
-            var sheet = workbook.getSheet("Maintenance KPIs");
-            assertThat(sheet).isNotNull();
-            assertThat(sheet.getRow(0).getCell(0).getStringCellValue())
-                    .isEqualTo("FactoryFlow Maintenance KPI Report");
-            assertThat(sheet.getLastRowNum()).isEqualTo(7);
-            assertThat(sheet.getRow(6).getCell(5).getCellType()).isEqualTo(CellType.NUMERIC);
-            assertThat(sheet.getRow(6).getCell(5).getNumericCellValue()).isEqualTo(15.8);
-            assertThat(sheet.getRow(7).getCell(5).getCellType()).isEqualTo(CellType.STRING);
-            assertThat(sheet.getRow(7).getCell(5).getStringCellValue()).isEqualTo("Missing");
-            sheet.forEach(row -> row.forEach(cell -> {
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(1);
+            var reportSheet = workbook.getSheet("Rapport");
+            assertThat(reportSheet).isNotNull();
+            assertThat(reportSheet.getDrawingPatriarch().getShapes()).hasSize(1);
+            assertThat(reportSheet.getDrawingPatriarch().getCharts()).isEmpty();
+            assertThat(workbook.getAllPictures()).hasSize(1);
+            try (var officialLogo = getClass().getResourceAsStream("/reporting/alf-mabrouk-logo.png")) {
+                assertThat(officialLogo).isNotNull();
+                byte[] expectedLogo = officialLogo.readAllBytes();
+                assertThat(workbook.getAllPictures()).allSatisfy(picture ->
+                        assertThat(picture.getData()).isEqualTo(expectedLogo));
+            }
+            int detailHeader = findRow(reportSheet, 0, "Date");
+            assertThat(detailHeader).isGreaterThanOrEqualTo(0);
+            assertThat(reportSheet.getRow(detailHeader).getLastCellNum()).isEqualTo((short) 5);
+            assertThat(reportSheet.getRow(detailHeader + 1).getCell(2).getCellType()).isEqualTo(CellType.NUMERIC);
+            assertThat(reportSheet.getRow(detailHeader + 1).getCell(2).getNumericCellValue()).isEqualTo(15.8);
+            assertThat(reportSheet.getRow(detailHeader + 2).getCell(2).getCellType()).isEqualTo(CellType.BLANK);
+            assertThat(reportSheet.getRow(detailHeader + 3).getCell(2).getNumericCellValue()).isEqualTo(23.4);
+            reportSheet.forEach(row -> row.forEach(cell -> {
                 if (cell.getCellType() == CellType.NUMERIC) {
                     assertThat(cell.getNumericCellValue()).isNotEqualTo(999.0);
+                }
+                if (cell.getCellType() == CellType.STRING) {
+                    assertThat(cell.getStringCellValue()).doesNotContain(
+                            "PASTE", "CONFIRMED", "Contrôle de cohérence Excel");
                 }
             }));
         }
@@ -133,7 +189,8 @@ class HistoryAndExcelIntegrationTest {
         assertThat(generatedReports.findById(generatedId)).isPresent().get().satisfies(metadata -> {
             assertThat(metadata.getFilePath()).doesNotContain(":").doesNotStartWith("/");
             assertThat(metadata.getSourceReports()).extracting(MaintenanceReport::getId)
-                    .containsExactlyInAnyOrder(confirmedValue.getId(), confirmedMissing.getId());
+                    .containsExactlyInAnyOrder(
+                            confirmedValue.getId(), confirmedMissing.getId(), confirmedOther.getId());
         });
 
         mockMvc.perform(get("/api/generated-reports")
@@ -149,9 +206,71 @@ class HistoryAndExcelIntegrationTest {
                 .andExpect(jsonPath("$.generatedBy").value(user.getId()));
     }
 
+    @Test
+    void weeklyMonthlyAndCustomPeriodsRespectInclusiveCalendarBoundaries() throws Exception {
+        String email = "periods-" + UUID.randomUUID() + "@example.com";
+        UserAccount user = users.saveAndFlush(UserAccount.create(
+                "Period Engineer", email, passwordEncoder.encode("excel-password")
+        ));
+        KpiDefinition vrac = definitions.findAllByActiveOrderByDisplayNameAsc(true).stream()
+                .filter(definition -> definition.getCode().equals("VRAC")).findFirst().orElseThrow();
+        MaintenanceReport january = report(user, vrac, LocalDate.of(2099, 1, 31), true,
+                new BigDecimal("1"), "January boundary");
+        MaintenanceReport februaryStart = report(user, vrac, LocalDate.of(2099, 2, 1), true,
+                new BigDecimal("2"), "February start");
+        MaintenanceReport weekly = report(user, vrac, LocalDate.of(2099, 2, 4), true,
+                new BigDecimal("3"), "Weekly middle");
+        MaintenanceReport februaryEnd = report(user, vrac, LocalDate.of(2099, 2, 28), true,
+                new BigDecimal("4"), "February end");
+        report(user, vrac, LocalDate.of(2099, 3, 1), true, new BigDecimal("5"), "March boundary");
+        report(user, vrac, LocalDate.of(2099, 2, 4), false, new BigDecimal("999"), "Draft excluded");
+        String token = login(email);
+
+        assertThat(generateSourceIds(token, "WEEKLY", "2099-02-02", "2099-02-08"))
+                .containsExactly(weekly.getId());
+        assertThat(generateSourceIds(token, "MONTHLY", "2099-02-01", "2099-02-28"))
+                .containsExactlyInAnyOrder(februaryStart.getId(), weekly.getId(), februaryEnd.getId());
+        assertThat(generateSourceIds(token, "CUSTOM", "2099-01-31", "2099-02-01"))
+                .containsExactlyInAnyOrder(january.getId(), februaryStart.getId());
+    }
+
+    private Set<Long> generateSourceIds(String token, String type, String start, String end) throws Exception {
+        String response = mockMvc.perform(post("/api/generated-reports")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"%s","format":"PDF","periodStart":"%s","periodEnd":"%s"}
+                                """.formatted(type, start, end)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value(type))
+                .andReturn().getResponse().getContentAsString();
+        Set<Long> ids = new HashSet<>();
+        objectMapper.readTree(response).get("sourceReportIds").forEach(node -> ids.add(node.asLong()));
+        return ids;
+    }
+
+    private int findRow(org.apache.poi.xssf.usermodel.XSSFSheet sheet, int column, String expected) {
+        for (int index = 0; index <= sheet.getLastRowNum(); index++) {
+            var row = sheet.getRow(index);
+            if (row == null || row.getCell(column) == null) {
+                continue;
+            }
+            var cell = row.getCell(column);
+            if (cell.getCellType() == CellType.STRING && expected.equals(cell.getStringCellValue())) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
     private MaintenanceReport report(UserAccount user, KpiDefinition definition, boolean confirmed,
                                      BigDecimal value, String rawText) {
-        MaintenanceReport report = MaintenanceReport.draft(user, EFFECTIVE_DATE, AcquisitionSource.PASTE, rawText);
+        return report(user, definition, EFFECTIVE_DATE, confirmed, value, rawText);
+    }
+
+    private MaintenanceReport report(UserAccount user, KpiDefinition definition, LocalDate effectiveDate,
+                                     boolean confirmed, BigDecimal value, String rawText) {
+        MaintenanceReport report = MaintenanceReport.draft(user, effectiveDate, AcquisitionSource.PASTE, rawText);
         report.addEntry(definition, "Vrac", "Vrac: " + value, value, value, BigDecimal.ONE, false, "t", Set.of());
         if (confirmed) {
             report.getEntries().getFirst().confirm(value);

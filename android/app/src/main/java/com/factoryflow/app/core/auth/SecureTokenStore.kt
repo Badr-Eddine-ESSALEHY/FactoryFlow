@@ -18,8 +18,14 @@ import kotlinx.coroutines.flow.StateFlow
 @Singleton
 class SecureTokenStore @Inject constructor(@ApplicationContext context: Context) {
     private val preferences = context.getSharedPreferences("secure_session", Context.MODE_PRIVATE)
-    private val _authenticated = MutableStateFlow(readToken() != null)
+    private val _authenticated = MutableStateFlow(false)
     val authenticated: StateFlow<Boolean> = _authenticated
+    private val _sessionExpired = MutableStateFlow(false)
+    val sessionExpired: StateFlow<Boolean> = _sessionExpired
+
+    fun hasStoredToken(): Boolean = (preferences.contains(TOKEN) && preferences.contains(IV)).also {
+        _authenticated.value = it
+    }
 
     @Synchronized
     fun accessToken(): String? = readToken()
@@ -33,11 +39,20 @@ class SecureTokenStore @Inject constructor(@ApplicationContext context: Context)
             .putString(IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .apply()
         _authenticated.value = true
+        _sessionExpired.value = false
     }
 
     @Synchronized
     fun clear() {
         preferences.edit().clear().apply()
+        _sessionExpired.value = false
+        _authenticated.value = false
+    }
+
+    @Synchronized
+    fun expire() {
+        preferences.edit().clear().apply()
+        _sessionExpired.value = true
         _authenticated.value = false
     }
 

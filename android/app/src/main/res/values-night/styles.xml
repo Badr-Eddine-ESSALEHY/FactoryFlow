@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FactoryFlow.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0F131C</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_factoryflow_splash</item>
+        <item name="windowSplashScreenAnimationDuration">320</item>
+        <item name="postSplashScreenTheme">@style/Theme.FactoryFlow</item>
+    </style>
+</resources>

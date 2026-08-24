@@ -6,9 +6,9 @@
 >
 > Status: Active
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-22
 >
-> This document defines the **Android application architecture, package organization, implementation rules, state-management patterns, navigation behavior, data access, OCR integration, CameraX integration, Share Intent handling, FileProvider usage, FCM integration, Room usage, Retrofit contracts, testing expectations, and premium Compose implementation standards** for FactoryFlow.
+> This document defines the **Android application architecture, package organization, implementation rules, state-management patterns, navigation behavior, data access, backend OCR integration, Share Intent handling, FileProvider usage, notifications, Room usage, Retrofit contracts, testing expectations, and premium Compose implementation standards** for FactoryFlow.
 >
 > This document must remain aligned with:
 >
@@ -43,8 +43,7 @@
 > Coroutines
 > Flow / StateFlow
 > Navigation Compose
-> CameraX
-> Google ML Kit OCR
+> PaddleOCR backend integration
 > Android Share Intent
 > FileProvider
 > Firebase Cloud Messaging (SHOULD after the trusted core)
@@ -801,7 +800,8 @@ Avoid every failed request starting its own token refresh concurrently.
 
 Use secure Android storage appropriate to selected Android SDK/library stack.
 
-Do not store access/refresh tokens in plain shared preferences.
+Do not store the current access token in plain shared preferences. Refresh tokens are
+not part of the current client/backend contract.
 
 Do not log tokens.
 
@@ -1101,7 +1101,6 @@ dashboard
 create
 paste
 gallery
-camera
 manual
 confirmation/{draftId?}
 reports
@@ -1167,7 +1166,7 @@ Hide during focused workflows:
 
 ```text
 Login
-Camera
+Gallery OCR
 OCR processing
 Confirmation
 Schedule edit
@@ -1326,8 +1325,8 @@ For OCR:
 
 ```text
 URI
-→ InputImage
-→ ML Kit
+→ authenticated multipart upload
+→ PaddleOCR runtime
 → text
 ```
 
@@ -1363,89 +1362,60 @@ Do not create unnecessary extra steps if image is clearly selected and OCR can b
 
 ---
 
-# 80. CameraX Architecture
+# 80. Image Acquisition Architecture
 
-Camera feature owns:
+Android acquisition owns:
 
-- permission
-- preview
-- capture
-- temporary image
-- return captured URI/file
+- gallery selection
+- shared content URI validation
+- lifecycle-safe handoff
+- authenticated multipart upload
 
 It does not own OCR business logic.
 
 ---
 
-# 81. Camera Permission
+# 81. URI Permission
 
-Request only when user taps Camera.
+Consume only the read permission granted with the picker or Share Intent.
 
-If denied:
+If the URI is unreadable, show a recoverable error and keep the other acquisition methods available.
 
-Other acquisition methods remain available.
-
----
-
-# 82. CameraX Use Cases
-
-Likely:
+# 82. Gallery and Share-Image Use Cases
 
 ```text
-Preview
-ImageCapture
+Select or receive image
+→ validate MIME and bounded size
+→ upload to OCR API
+→ inspect recognized text
+→ deterministic parser
+→ human review
 ```
 
-ImageAnalysis is not required if OCR occurs after capture.
+# 85. Image Rotation
 
-Do not introduce live frame OCR unless deliberately scoped.
-
----
-
-# 83. Camera Capture Flow
-
-```text
-Open Camera
-→ Capture
-→ Preview result
-→ Retake / Use Photo
-→ OCR
-```
-
----
-
-# 84. Camera File Storage
-
-Use app cache/files suitable for temporary capture.
-
-Do not expose raw paths externally.
-
----
-
-# 85. Camera Rotation
-
-Handle image orientation correctly.
+The OCR runtime applies EXIF orientation before recognition.
 
 OCR should receive properly oriented input.
 
 ---
 
-# 86. Camera Error Handling
+# 86. Image Error Handling
 
 Handle:
 
-- permission denied
-- camera unavailable
-- capture error
-- storage error
+- unsupported MIME type
+- unreadable or missing URI
+- oversized upload
+- OCR timeout or unavailability
 
 Gracefully.
 
 ---
 
-# 87. ML Kit OCR Architecture
+# 87. Backend PaddleOCR Architecture
 
-Use on-device text recognition.
+Use the private PaddleOCR runtime through the authenticated backend endpoint.
 
 OCR responsibility:
 
@@ -1491,7 +1461,7 @@ data class OcrResult(
 
 For FactoryFlow core, full recognized text may be enough.
 
-Do not over-model ML Kit blocks if not used.
+Do not interpret OCR blocks as KPI semantics on Android.
 
 One screenshot feeds one review flow in MVP even when OCR sees multiple WhatsApp
 bubbles. Preserve all recognized content and unknown lines; do not auto-split it into
@@ -1915,6 +1885,9 @@ Do not provide edit action unless future correction workflow exists.
 
 Generated report feature handles:
 
+- consolidated generation for daily, weekly, monthly, or custom periods
+- Excel/PDF multi-selection for consolidated generation
+- exact single-report Excel/PDF export from a confirmed report detail
 - list
 - detail
 - download/cache file
@@ -1925,6 +1898,10 @@ Generated report feature handles:
 It does not generate Excel/PDF locally.
 
 Backend generates documents.
+
+The two generation intents are visibly distinct. “Exporter ce rapport uniquement”
+uses the report-ID endpoint. “Générer un rapport consolidé” uses explicit period dates.
+The app never implements single-report export by substituting a daily date query.
 
 ---
 
@@ -2053,7 +2030,7 @@ calendar month. Do not expose a `dayOfMonth` field for MVP.
 
 In-app notification list comes from backend if implemented.
 
-FCM is delivery transport.
+FCM is not implemented. Sections 133–137 are future design guidance only.
 
 ---
 
@@ -2410,7 +2387,7 @@ Do not mix server UTC and local time labels without conversion.
 Potential runtime permissions:
 
 ```text
-Camera
+Gallery / Share image
 Notifications
 ```
 
@@ -2428,7 +2405,7 @@ Provide alternatives.
 
 ---
 
-# 164. Camera Permanent Denial
+# 164. Shared URI Permission Loss
 
 If user permanently denies:
 
@@ -2452,9 +2429,11 @@ Notifications screen may show a subtle enable prompt.
 
 # 166. Image Privacy
 
-Do not upload original images unless a future requirement adds image archival/backend OCR.
+Selected gallery/shared image bytes are uploaded transiently to the authenticated OCR
+endpoint. Do not persist or archive the original image unless a future requirement adds
+that capability.
 
-The current architecture performs OCR locally.
+The current backend delegates recognition to the private PaddleOCR runtime.
 
 ---
 
@@ -2614,7 +2593,7 @@ Select based on:
 
 - modern Android feature requirements
 - device availability
-- CameraX/ML Kit compatibility
+- gallery/share URI and OCR API compatibility
 - notification permission behavior
 
 Do not invent a device-support requirement without checking actual project needs.
@@ -2826,6 +2805,13 @@ Single vertical scroll hierarchy.
 
 Preserve scroll state when returning from detail if practical.
 
+Review uses stable item keys and a remembered `LazyListState`. The selected Review
+tab is explicit ViewModel state and is not derived again from changing counts.
+Ignoring, assigning, validating, or creating an inline KPI therefore keeps the user
+on the current tab and near the same list position. Inline creation and bulk safe
+ignore call draft-scoped backend operations; Android does not duplicate source-line
+classification or KPI-equivalence rules.
+
 ---
 
 # 199. Performance
@@ -2844,7 +2830,7 @@ Measure actual problems.
 
 Use efficient decoding.
 
-Do not load full camera-resolution image into memory for tiny preview.
+Do not load a full-resolution shared image into memory for a tiny preview.
 
 ---
 
@@ -2988,7 +2974,7 @@ Test manually/on emulator/device:
 
 ---
 
-# 214. Camera Tests
+# 214. Gallery and Shared-Image Tests
 
 Test on physical device if possible.
 
@@ -3063,6 +3049,30 @@ For every major screen:
 [ ] accessibility acceptable
 ```
 
+## 219.1 Vivo real-device before-state baseline
+
+The 12 Vivo screenshots supplied on 13 August 2026 are the explicit BEFORE-state
+reference for final Android visual acceptance. The original WhatsApp images remain
+outside the repository because they are private QA evidence.
+
+The final Vivo pass must compare the same representative screens and verify:
+
+```text
+[ ] no clipped headings, cards, chips, KPI values, or acquisition descriptions
+[ ] the canonical four-destination bottom navigation is balanced and legible
+[ ] focused workflows and detail screens do not show the bottom navigation
+[ ] scroll content remains clear of app navigation and Vivo system navigation
+[ ] report lists and KPI rows use compact, value-first hierarchy
+[ ] empty states have restrained scale and intentional vertical balance
+[ ] dark-theme surfaces, text, status tones, and accent colors retain clear contrast
+[ ] screenshots are captured at the Vivo display/font settings used for the baseline
+```
+
+The baseline covers Dashboard, recent/history content, confirmed and draft report
+detail, Reports, Create Report, Statistics, Notifications, and Profile. Final QA
+should preserve business-state differences while comparing layout, hierarchy,
+density, clipping, and navigation behavior.
+
 ---
 
 # 220. Dashboard Screen Implementation
@@ -3081,6 +3091,23 @@ UpcomingScheduleCard
 ```
 
 Do not create one 600-line `DashboardScreen`.
+
+The production Dashboard visual foundation is documented in
+`docs/14_Android_Design_System.md`. Its route continues to consume the existing
+`DashboardViewModel` and `DashboardDto`; the redesign is presentation-only. The
+screen uses the shared Flow components for daily summary cards, quick actions,
+list rows, progress, smooth charting, empty state, and the common bottom shell.
+
+The navigation shell presents four destinations around one centered creation
+action:
+
+```text
+Accueil | Rapports | + | Stats | Alertes
+```
+
+The blue creation FAB is a system-level action and is not a fifth labeled tab.
+Dashboard previews must wrap the production `DashboardContent` in the production
+`FactoryFlowAppShell`; debug fixtures provide data only and must not duplicate UI.
 
 ---
 
@@ -3215,6 +3242,11 @@ Initial simple implementation may redownload on explicit open.
 Use typed values.
 
 Do not store day/time as raw unvalidated strings where Material pickers can provide structured data.
+
+The implemented schedule form supports daily/weekly/monthly frequency, execution time,
+weekday for weekly schedules, Excel/PDF toggles, e-mail enablement, recipients, and
+enabled/paused state. Its save CTA lives in the navigation-safe scaffold bottom action
+bar so system navigation does not cover it.
 
 ---
 
@@ -3785,7 +3817,7 @@ Recommended:
 17. Scheduling
 18. Gallery OCR
 19. Share Intent
-20. CameraX
+20. Backend OCR
 21. Notifications/FCM
 22. Realtime/STOMP
 23. Statistics
@@ -3873,8 +3905,8 @@ Why Hilt?
 How Retrofit authentication works?
 How token refresh works?
 Why Room is not authoritative?
-How CameraX works?
-How ML Kit OCR integrates?
+How gallery and Share Intent acquisition work?
+How PaddleOCR integrates through the backend?
 How Share Intent is received?
 How FileProvider protects files?
 How FCM token registration works?
@@ -3903,6 +3935,46 @@ while keeping all uncertainty visible and all official decisions under human con
 The final application should feel like:
 
 > **a premium native Android productivity tool built for real industrial maintenance work, not a generic student mobile app.**
+
+---
+
+## Delivery Stabilization Notes
+
+The Android file boundaries follow these release rules:
+
+- ContentResolver image reads, generated-document downloads, and user-selected document writes execute on Dispatchers.IO.
+- Retrofit error-body parsing also executes away from Main.
+- OCR, analysis, draft submission, confirmation, generation, download, and refresh actions guard active jobs to prevent duplicate concurrent requests.
+- Share intents are consumed once by SharedAcquisitionStore; recomposition does not repeat acquisition processing.
+- The terminal confirmation route clears the completed acquisition/review stack before exposing report and document actions.
+- Android app and splash branding use the FactoryFlow identity. Alf Mabrouk artwork remains reserved for backend-generated PDF and Excel documents.
+
+### Review completion state model
+
+The Review ViewModel, not Compose warning text, determines the presentation state:
+
+```text
+READY
+ATTENTION_ACKNOWLEDGE
+ATTENTION_DUPLICATE
+MISSING
+MISSING_CORRECTED
+UNRESOLVED_STRONG_SUGGESTION
+UNRESOLVED_WEAK_SUGGESTION
+UNRESOLVED_NEW
+SAFE_NOISE_PENDING
+SAFE_NOISE_IGNORED
+```
+
+Untouched `MISSING` is legitimate and nonblocking. `MISSING_CORRECTED` blocks until explicit validation. Every attention state blocks until validation. Safe noise remains blocking until ignored. The Non tab keeps bulk ignore pinned below the tab control whenever any unresolved line has `safeToIgnore = true`; the endpoint remains flag-scoped and never includes unflagged KPI-like content, even when flagged lines appear in a different visual subsection.
+
+Paste, Manual Entry, and Review apply IME resizing at the focused scaffold boundary. Persistent CTAs use the shared `FlowBottomActionBar`, which owns navigation-bar clearance without adding redundant content gaps. Report Detail uses the same safe bottom-action container.
+
+The launcher identity is a vector factory silhouette crossed by a three-node process path. Android uses adaptive foreground, gradient background, monochrome themed-icon, standard fallback, and round fallback resources; the Alf Mabrouk corporate logo remains excluded from launcher and in-app branding.
+
+The KPI picker owns real editable query state, filters names/codes/aliases case- and accent-insensitively, and remains IME-safe. The Review screen owns its Back handling and displays Save/leave/cancel choices when dirty.
+
+Debug builds use `FACTORYFLOW_API_BASE_URL` or `factoryflow.apiBaseUrl`. Release builds require an HTTPS target through `FACTORYFLOW_RELEASE_API_BASE_URL` (Gradle property or environment variable) or `factoryflow.releaseApiBaseUrl`; no localhost release fallback exists.
 
 ---
 

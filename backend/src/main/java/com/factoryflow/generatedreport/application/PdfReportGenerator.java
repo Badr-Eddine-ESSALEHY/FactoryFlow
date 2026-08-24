@@ -1,115 +1,2183 @@
 package com.factoryflow.generatedreport.application;
 
+import com.factoryflow.analytics.domain.AnalyticsSnapshot;
+import com.factoryflow.generatedreport.domain.GeneratedReportType;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PdfReportGenerator {
 
-    private static final PDType1Font REGULAR = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-    private static final PDType1Font BOLD = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-    private static final float LEFT = 42;
-    private static final float ROW_HEIGHT = 18;
+    private static final Color NAVY = new Color(64, 72, 77);
+    private static final Color NAVY_SOFT = new Color(212, 229, 220);
+    private static final Color TEAL = new Color(99, 139, 117);
+    private static final Color TEAL_DARK = new Color(55, 101, 75);
+    private static final Color INK = new Color(48, 56, 60);
+    private static final Color MUTED = new Color(108, 118, 114);
+    private static final Color BORDER = new Color(217, 222, 220);
+    private static final Color SOFT = new Color(247, 248, 247);
+    private static final Color SOFT_ALT = new Color(231, 240, 235);
+    private static final Color WARM_WHITE = new Color(252, 251, 248);
+    private static final Color TABLE_HEADER = new Color(212, 229, 220);
+    private static final Color WHITE = Color.WHITE;
+
+    private static final PDType1Font REGULAR =
+            new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+    private static final PDType1Font BOLD =
+            new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+    private static final PDType1Font ITALIC =
+            new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE);
+
+    private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
+    private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
+    private static final float LEFT = 42f;
+    private static final float RIGHT = PAGE_WIDTH - 42f;
+    private static final float WIDTH = RIGHT - LEFT;
+    private static final float FOOTER_LINE_Y = 43f;
+
+    private static final DateTimeFormatter SHORT_DATE =
+            DateTimeFormatter.ofPattern("dd/MM", Locale.FRENCH);
 
     public byte[] generate(ReportGenerationData data) {
-        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            PDDocumentInformation info = new PDDocumentInformation();
-            info.setTitle("FactoryFlow Maintenance KPI Report");
-            info.setSubject(data.type() + " report for " + data.period().start() + " to " + data.period().end());
-            info.setCreator("FactoryFlow");
-            document.setDocumentInformation(info);
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
 
-            PageWriter writer = newPage(document, data);
-            for (ReportGenerationData.Row row : data.rows()) {
-                if (writer.y < 120) {
-                    writer.close();
-                    writer = newPage(document, data);
+            applyMetadata(document, data);
+
+            PDImageXObject wordmark = loadCorporateWordmark(document);
+
+            PageWriter summary = createPage(document, data, wordmark);
+            summary.renderSummaryPage();
+            summary.close();
+
+            if (!data.rows().isEmpty()) {
+                PageWriter detail = createPage(document, data, wordmark);
+                detail.renderDetailHeader();
+
+                int index = 0;
+                for (ReportGenerationData.Row row : data.rows()) {
+                    float rowHeight = detail.requiredRowHeight(row);
+
+                    if (!detail.canFit(rowHeight)) {
+                        detail.close();
+                        detail = createPage(document, data, wordmark);
+                        detail.renderDetailHeader();
+                    }
+
+                    detail.renderRow(row, index++ % 2 == 1, rowHeight);
                 }
-                writer.row(row);
+
+                detail.renderEligibleTrendChart();
+                detail.close();
             }
-            if (data.rows().isEmpty()) writer.message("No confirmed maintenance data exists for this period.");
-            writer.close();
+
+            addFooters(document, data);
             document.save(output);
             return output.toByteArray();
+
         } catch (IOException exception) {
             throw new IllegalStateException("PDF generation failed", exception);
         }
     }
 
-    private PageWriter newPage(PDDocument document, ReportGenerationData data) throws IOException {
-        PDPage page = new PDPage(PDRectangle.A4);
-        document.addPage(page);
-        PDPageContentStream stream = new PDPageContentStream(document, page);
-        PageWriter writer = new PageWriter(stream, page.getMediaBox().getHeight() - 46);
-        writer.text(BOLD, 17, "FactoryFlow Maintenance KPI Report");
-        writer.gap(8);
-        writer.text(REGULAR, 10, "Report type: " + data.type());
-        writer.text(REGULAR, 10, "Reporting period: " + data.period().start() + " to " + data.period().end());
-        writer.text(REGULAR, 10, "Generated at: " + data.generatedAt());
-        writer.gap(10);
-        writer.text(BOLD, 9, String.format("%-12s %-8s %-18s", "Date", "Report", "Confirmed value"));
-        writer.line();
-        return writer;
+    private void applyMetadata(
+            PDDocument document,
+            ReportGenerationData data
+    ) {
+        PDDocumentInformation info = new PDDocumentInformation();
+        info.setTitle(ReportDocumentText.title(data.type()));
+        info.setSubject(
+                "Indicateurs de maintenance confirmés · "
+                        + ReportDocumentText.period(data)
+        );
+        info.setAuthor(ReportDocumentText.BRAND);
+        info.setCreator(ReportDocumentText.PRODUCT);
+        info.setKeywords(
+                "maintenance, KPI, FactoryFlow, Alf Mabrouk, rapport confirmé"
+        );
+        document.setDocumentInformation(info);
     }
 
-    private static List<String> wrap(String value, int max) {
-        String remaining = value == null || value.isBlank() ? "-" : value.replace('\n', ' ').replace('\r', ' ');
-        List<String> lines = new ArrayList<>();
-        while (remaining.length() > max) {
-            int split = remaining.lastIndexOf(' ', max);
-            if (split < 1) split = max;
-            lines.add(remaining.substring(0, split));
-            remaining = remaining.substring(split).stripLeading();
+    private PageWriter createPage(
+            PDDocument document,
+            ReportGenerationData data,
+            PDImageXObject wordmark
+    ) throws IOException {
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+
+        return new PageWriter(
+                new PDPageContentStream(document, page),
+                data,
+                wordmark
+        );
+    }
+
+    private PDImageXObject loadCorporateWordmark(PDDocument document) throws IOException {
+        try (var input = new ClassPathResource("reporting/alf-mabrouk-logo.png").getInputStream()) {
+            return PDImageXObject.createFromByteArray(document, input.readAllBytes(), "alf-mabrouk-logo");
         }
-        lines.add(remaining);
+    }
+
+    private void addFooters(
+            PDDocument document,
+            ReportGenerationData data
+    ) throws IOException {
+        int total = document.getNumberOfPages();
+
+        for (int index = 0; index < total; index++) {
+            PDPage page = document.getPage(index);
+
+            try (PDPageContentStream stream =
+                         new PDPageContentStream(
+                                 document,
+                                 page,
+                                 PDPageContentStream.AppendMode.APPEND,
+                                 true,
+                                 true
+                         )) {
+
+                stream.setStrokingColor(BORDER);
+                stream.setLineWidth(0.7f);
+                stream.moveTo(LEFT, FOOTER_LINE_Y);
+                stream.lineTo(RIGHT, FOOTER_LINE_Y);
+                stream.stroke();
+
+                drawText(
+                        stream,
+                        REGULAR,
+                        7.4f,
+                        MUTED,
+                        LEFT,
+                        27,
+                        "Alf Mabrouk · FactoryFlow · "
+                                + ReportDocumentText.instant(
+                                data.generatedAt()
+                        )
+                );
+
+                String pageLabel =
+                        "Page " + (index + 1) + " / " + total;
+
+                drawText(
+                        stream,
+                        BOLD,
+                        7.4f,
+                        NAVY,
+                        RIGHT
+                                - textWidth(
+                                BOLD,
+                                7.4f,
+                                pageLabel
+                        ),
+                        27,
+                        pageLabel
+                );
+            }
+        }
+    }
+
+    private static final class PageWriter
+            implements AutoCloseable {
+
+        private final PDPageContentStream stream;
+        private final ReportGenerationData data;
+        private final PDImageXObject wordmark;
+
+        private float y;
+
+        private PageWriter(
+                PDPageContentStream stream,
+                ReportGenerationData data,
+                PDImageXObject wordmark
+        ) {
+            this.stream = stream;
+            this.data = data;
+            this.wordmark = wordmark;
+            this.y = PAGE_HEIGHT;
+        }
+
+        private void renderSummaryPage()
+                throws IOException {
+
+            renderHeroHeader();
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    9.5f,
+                    INK,
+                    LEFT,
+                    y,
+                    data.type() == GeneratedReportType.INDIVIDUAL
+                            ? "Export du seul rapport de maintenance confirmé sélectionné."
+                            : "Vue consolidée des indicateurs de maintenance confirmés pour la période sélectionnée."
+            );
+
+            y -= 28;
+
+            renderSummaryCards();
+
+            y -= 18;
+
+            renderDataQuality();
+
+            y -= 20;
+
+            renderExecutiveAnalysis();
+
+            y -= 18;
+            renderTraceability();
+
+        }
+
+        private void renderDetailHeader()
+                throws IOException {
+
+            renderCompactHeader();
+
+            sectionHeading(
+                    "DÉTAIL DES INDICATEURS CONFIRMÉS"
+            );
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    8.2f,
+                    MUTED,
+                    LEFT,
+                    y - 13,
+                    "Seules les valeurs confirmées sont présentées. "
+                            + "Une valeur absente reste « Non renseigné »."
+            );
+
+            y -= 31;
+
+            renderTableHeader();
+        }
+
+        private void renderHeroHeader()
+                throws IOException {
+
+            float headerHeight = 138f;
+            float bottom =
+                    PAGE_HEIGHT - headerHeight;
+
+            stream.setNonStrokingColor(WARM_WHITE);
+            stream.addRect(
+                    0,
+                    bottom,
+                    PAGE_WIDTH,
+                    headerHeight
+            );
+            stream.fill();
+
+            float logoHeight = 112f;
+            float logoWidth = logoHeight
+                    * wordmark.getWidth()
+                    / wordmark.getHeight();
+
+            float logoY =
+                    PAGE_HEIGHT
+                            - 22
+                            - logoHeight;
+
+            stream.drawImage(
+                    wordmark,
+                    LEFT,
+                    logoY,
+                    logoWidth,
+                    logoHeight
+            );
+
+            String title =
+                    ReportDocumentText.title(
+                                    data.type()
+                            )
+                            .toUpperCase(
+                                    Locale.FRENCH
+                            );
+
+            drawRight(
+                    BOLD,
+                    15.5f,
+                    INK,
+                    title,
+                    PAGE_HEIGHT - 46
+            );
+
+            drawRight(
+                    REGULAR,
+                    9.3f,
+                    MUTED,
+                    ReportDocumentText.period(data),
+                    PAGE_HEIGHT - 66
+            );
+
+            drawStatusPill(
+                    RIGHT - 128,
+                    PAGE_HEIGHT - 100,
+                    128,
+                    22,
+                    "DONNÉES CONFIRMÉES"
+            );
+
+            stream.setNonStrokingColor(TEAL);
+            stream.addRect(
+                    0,
+                    bottom,
+                    PAGE_WIDTH,
+                    2
+            );
+            stream.fill();
+
+            y = bottom - 24;
+        }
+
+        private void renderCompactHeader()
+                throws IOException {
+
+            float headerHeight = 86f;
+            float bottom =
+                    PAGE_HEIGHT - headerHeight;
+
+            stream.setNonStrokingColor(WARM_WHITE);
+            stream.addRect(
+                    0,
+                    bottom,
+                    PAGE_WIDTH,
+                    headerHeight
+            );
+            stream.fill();
+
+            float logoHeight = 62f;
+            float logoWidth = logoHeight
+                    * wordmark.getWidth()
+                    / wordmark.getHeight();
+
+            stream.drawImage(
+                    wordmark,
+                    LEFT,
+                    PAGE_HEIGHT - 18 - logoHeight,
+                    logoWidth,
+                    logoHeight
+            );
+
+            drawRight(
+                    BOLD,
+                    11.5f,
+                    INK,
+                    ReportDocumentText.title(
+                                    data.type()
+                            )
+                            .toUpperCase(
+                                    Locale.FRENCH
+                            ),
+                    PAGE_HEIGHT - 32
+            );
+
+            drawRight(
+                    REGULAR,
+                    8f,
+                    MUTED,
+                    ReportDocumentText.period(data),
+                    PAGE_HEIGHT - 49
+            );
+
+            stream.setNonStrokingColor(TEAL);
+            stream.addRect(
+                    0,
+                    bottom,
+                    PAGE_WIDTH,
+                    2
+            );
+            stream.fill();
+
+            y = bottom - 22;
+        }
+
+        private void drawStatusPill(
+                float x,
+                float top,
+                float width,
+                float height,
+                String label
+        ) throws IOException {
+
+            float bottom = top - height;
+
+            fillRoundedRect(
+                    stream,
+                    x,
+                    bottom,
+                    width,
+                    height,
+                    9,
+                    NAVY_SOFT
+            );
+
+            float size = 7.2f;
+
+            drawText(
+                    stream,
+                    BOLD,
+                    size,
+                    TEAL_DARK,
+                    x
+                            + (width
+                            - textWidth(
+                            BOLD,
+                            size,
+                            label
+                    )) / 2f,
+                    bottom + 7.5f,
+                    label
+            );
+        }
+
+        private void renderSummaryCards()
+                throws IOException {
+
+            long sourceReports =
+                    data.rows()
+                            .stream()
+                            .map(
+                                    ReportGenerationData.Row
+                                            ::sourceReportId
+                            )
+                            .distinct()
+                            .count();
+
+            long missing =
+                    data.rows()
+                            .stream()
+                            .filter(
+                                    row ->
+                                            row.confirmedValue()
+                                                    == null
+                            )
+                            .count();
+
+            String completeness =
+                    data.analytics()
+                                    .completenessRate()
+                            == null
+                            ? "—"
+                            : data.analytics()
+                            .completenessRate()
+                            .stripTrailingZeros()
+                            .toPlainString()
+                            + " %";
+
+            float gap = 8f;
+            float cardWidth =
+                    (WIDTH - gap * 3) / 4f;
+            float height = 58f;
+
+            renderCard(
+                    LEFT,
+                    cardWidth,
+                    height,
+                    "RAPPORTS SOURCES",
+                    Long.toString(sourceReports),
+                    TEAL
+            );
+
+            renderCard(
+                    LEFT + cardWidth + gap,
+                    cardWidth,
+                    height,
+                    "INDICATEURS",
+                    Integer.toString(
+                            data.rows().size()
+                    ),
+                    TEAL
+            );
+
+            renderCard(
+                    LEFT
+                            + (cardWidth + gap) * 2,
+                    cardWidth,
+                    height,
+                    "COMPLÉTUDE",
+                    completeness,
+                    TEAL
+            );
+
+            renderCard(
+                    LEFT
+                            + (cardWidth + gap) * 3,
+                    cardWidth,
+                    height,
+                    "NON RENSEIGNÉS",
+                    Long.toString(missing),
+                    TEAL
+            );
+
+            y -= height;
+        }
+
+        private void renderCard(
+                float x,
+                float width,
+                float height,
+                String label,
+                String value,
+                Color accent
+        ) throws IOException {
+
+            float bottom = y - height;
+
+            fillRoundedRect(
+                    stream,
+                    x,
+                    bottom,
+                    width,
+                    height,
+                    7,
+                    SOFT
+            );
+
+            strokeRoundedRect(
+                    stream,
+                    x,
+                    bottom,
+                    width,
+                    height,
+                    7,
+                    BORDER
+            );
+
+            stream.setNonStrokingColor(accent);
+            stream.addRect(
+                    x + 9,
+                    y - 32,
+                    3,
+                    20
+            );
+            stream.fill();
+
+            drawText(
+                    stream,
+                    BOLD,
+                    6.8f,
+                    MUTED,
+                    x + 19,
+                    y - 20,
+                    label
+            );
+
+            drawText(
+                    stream,
+                    BOLD,
+                    15.2f,
+                    NAVY,
+                    x + 19,
+                    y - 43,
+                    value
+            );
+        }
+
+        private void renderDataQuality()
+                throws IOException {
+
+            sectionHeading(
+                    "QUALITÉ DES DONNÉES"
+            );
+
+            float panelHeight = 66f;
+            float bottom =
+                    y - panelHeight;
+
+            fillRoundedRect(
+                    stream,
+                    LEFT,
+                    bottom,
+                    WIDTH,
+                    panelHeight,
+                    7,
+                    SOFT_ALT
+            );
+
+            BigDecimalWrapper rate =
+                    completeness();
+
+            drawText(
+                    stream,
+                    BOLD,
+                    8.3f,
+                    NAVY,
+                    LEFT + 12,
+                    y - 18,
+                    "Complétude des données"
+            );
+
+            drawText(
+                    stream,
+                    BOLD,
+                    17f,
+                    NAVY,
+                    RIGHT - 70,
+                    y - 19,
+                    rate.label()
+            );
+
+            float barX = LEFT + 12;
+            float barY = y - 38;
+            float barWidth = WIDTH - 24;
+            float barHeight = 7;
+
+            fillRoundedRect(
+                    stream,
+                    barX,
+                    barY,
+                    barWidth,
+                    barHeight,
+                    3.5f,
+                    BORDER
+            );
+
+            if (rate.percent() != null
+                    && rate.percent() > 0) {
+
+                fillRoundedRect(
+                        stream,
+                        barX,
+                        barY,
+                        (float) (
+                                barWidth
+                                        * Math.min(
+                                        100d,
+                                        rate.percent()
+                                )
+                                        / 100d
+                        ),
+                        barHeight,
+                        3.5f,
+                        TEAL
+                );
+            }
+
+            String qualityText =
+                    data.analytics()
+                            .measurementCount()
+                            + " mesures confirmées · "
+                            + data.analytics()
+                            .missingValueCount()
+                            + " non renseignées";
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    7.8f,
+                    MUTED,
+                    LEFT + 12,
+                    bottom + 9,
+                    qualityText
+            );
+
+            y = bottom;
+        }
+
+        private BigDecimalWrapper completeness() {
+
+            if (data.analytics()
+                            .completenessRate()
+                    == null) {
+                return new BigDecimalWrapper(
+                        null,
+                        "—"
+                );
+            }
+
+            return new BigDecimalWrapper(
+                    data.analytics()
+                            .completenessRate()
+                            .doubleValue(),
+                    data.analytics()
+                            .completenessRate()
+                            .stripTrailingZeros()
+                            .toPlainString()
+                            + " %"
+            );
+        }
+
+        private void renderExecutiveAnalysis()
+                throws IOException {
+
+            sectionHeading(
+                    "SYNTHÈSE EXÉCUTIVE"
+            );
+
+            if (data.analytics()
+                    .kpis()
+                    .isEmpty()) {
+
+                renderSoftMessage(
+                        "Aucune donnée de maintenance confirmée "
+                                + "pour cette période."
+                );
+                return;
+            }
+
+            float[] widths =
+                    {
+                            152f,
+                            72f,
+                            72f,
+                            86f,
+                            72f,
+                            57f
+                    };
+
+            String[] headers =
+                    {
+                            "INDICATEUR",
+                            "DERNIÈRE",
+                            "MOYENNE",
+                            "MIN / MAX",
+                            "TENDANCE",
+                            "COMPL."
+                    };
+
+            renderMiniTableHeader(
+                    widths,
+                    headers
+            );
+
+            List<AnalyticsSnapshot.KpiAnalytics> kpis =
+                    data.analytics()
+                            .kpis()
+                            .stream()
+                            .limit(4)
+                            .toList();
+
+            int index = 0;
+
+            for (AnalyticsSnapshot.KpiAnalytics kpi
+                    : kpis) {
+
+                renderExecutiveRow(
+                        kpi,
+                        widths,
+                        index++ % 2 == 1
+                );
+            }
+
+            int remaining =
+                    data.analytics()
+                            .kpis()
+                            .size()
+                            - kpis.size();
+
+            if (remaining > 0) {
+                drawText(
+                        stream,
+                        ITALIC,
+                        7.5f,
+                        MUTED,
+                        LEFT,
+                        y - 12,
+                        "+ "
+                                + remaining
+                                + " autre"
+                                + (remaining > 1
+                                ? "s"
+                                : "")
+                                + " indicateur"
+                                + (remaining > 1
+                                ? "s"
+                                : "")
+                                + " disponible"
+                                + (remaining > 1
+                                ? "s"
+                                : "")
+                                + " dans le détail."
+                );
+
+                y -= 18;
+            }
+        }
+
+        private void renderMiniTableHeader(
+                float[] widths,
+                String[] headers
+        ) throws IOException {
+
+            float height = 22f;
+            float x = LEFT;
+
+            stream.setNonStrokingColor(TABLE_HEADER);
+            stream.addRect(
+                    LEFT,
+                    y - height,
+                    WIDTH,
+                    height
+            );
+            stream.fill();
+
+            for (int index = 0;
+                 index < headers.length;
+                 index++) {
+
+                drawText(
+                        stream,
+                        BOLD,
+                        6.6f,
+                        INK,
+                        x + 6,
+                        y - 14,
+                        headers[index]
+                );
+
+                x += widths[index];
+            }
+
+            y -= height;
+        }
+
+        private void renderExecutiveRow(
+                AnalyticsSnapshot.KpiAnalytics kpi,
+                float[] widths,
+                boolean alternate
+        ) throws IOException {
+
+            float height = 27f;
+
+            if (alternate) {
+                stream.setNonStrokingColor(SOFT);
+                stream.addRect(
+                        LEFT,
+                        y - height,
+                        WIDTH,
+                        height
+                );
+                stream.fill();
+            }
+
+            stream.setStrokingColor(BORDER);
+            stream.setLineWidth(0.4f);
+            stream.moveTo(
+                    LEFT,
+                    y - height
+            );
+            stream.lineTo(
+                    RIGHT,
+                    y - height
+            );
+            stream.stroke();
+
+            float x = LEFT;
+
+            drawCell(
+                    kpi.displayName(),
+                    BOLD,
+                    7.4f,
+                    INK,
+                    x,
+                    widths[0],
+                    y,
+                    1
+            );
+
+            x += widths[0];
+
+            drawCell(
+                    valueWithUnit(
+                            kpi.latest(),
+                            kpi.unit()
+                    ),
+                    REGULAR,
+                    7.3f,
+                    INK,
+                    x,
+                    widths[1],
+                    y,
+                    1
+            );
+
+            x += widths[1];
+
+            drawCell(
+                    valueWithUnit(
+                            kpi.mean(),
+                            kpi.unit()
+                    ),
+                    REGULAR,
+                    7.3f,
+                    INK,
+                    x,
+                    widths[2],
+                    y,
+                    1
+            );
+
+            x += widths[2];
+
+            String minMax =
+                    kpi.minimum() == null
+                            || kpi.maximum() == null
+                            ? "—"
+                            : ReportDocumentText.value(
+                            kpi.minimum()
+                    )
+                            + " / "
+                            + ReportDocumentText.value(
+                            kpi.maximum()
+                    );
+
+            drawCell(
+                    minMax,
+                    REGULAR,
+                    7.2f,
+                    MUTED,
+                    x,
+                    widths[3],
+                    y,
+                    1
+            );
+
+            x += widths[3];
+
+            drawCell(
+                    trendLabel(
+                            kpi.trend()
+                    ),
+                    BOLD,
+                    7f,
+                    trendColor(
+                            kpi.trend()
+                    ),
+                    x,
+                    widths[4],
+                    y,
+                    1
+            );
+
+            x += widths[4];
+
+            String completeness =
+                    kpi.completenessRate()
+                            == null
+                            ? "—"
+                            : kpi.completenessRate()
+                            .stripTrailingZeros()
+                            .toPlainString()
+                            + "%";
+
+            drawCell(
+                    completeness,
+                    BOLD,
+                    7.2f,
+                    NAVY,
+                    x,
+                    widths[5],
+                    y,
+                    1
+            );
+
+            y -= height;
+        }
+
+        private AnalyticsSnapshot.KpiAnalytics
+        bestChartCandidate() {
+
+            return data.analytics()
+                    .kpis()
+                    .stream()
+                    .filter(
+                            kpi ->
+                                    kpi.points()
+                                            .size()
+                                            >= 2
+                    )
+                    .max(
+                            Comparator.comparingInt(
+                                    kpi ->
+                                            kpi.points()
+                                                    .size()
+                            )
+                    )
+                    .orElse(null);
+        }
+
+        private void renderEligibleTrendChart() throws IOException {
+            AnalyticsSnapshot.KpiAnalytics chartKpi = bestChartCandidate();
+            if (chartKpi == null
+                    || (data.type() != GeneratedReportType.WEEKLY
+                    && data.type() != GeneratedReportType.MONTHLY)
+                    || !canFit(150f)) {
+                return;
+            }
+            y -= 18f;
+            renderTrendChart(chartKpi);
+        }
+
+        private void renderTrendChart(
+                AnalyticsSnapshot.KpiAnalytics kpi
+        ) throws IOException {
+
+            sectionHeading(
+                    "ÉVOLUTION — "
+                            + kpi.displayName()
+                            .toUpperCase(
+                                    Locale.FRENCH
+                            )
+            );
+
+            float cardHeight = 100f;
+            float bottom = y - cardHeight;
+
+            fillRoundedRect(
+                    stream,
+                    LEFT,
+                    bottom,
+                    WIDTH,
+                    cardHeight,
+                    7,
+                    SOFT
+            );
+
+            strokeRoundedRect(
+                    stream,
+                    LEFT,
+                    bottom,
+                    WIDTH,
+                    cardHeight,
+                    7,
+                    BORDER
+            );
+
+            float plotLeft = LEFT + 42;
+            float plotRight = RIGHT - 16;
+            float plotBottom = bottom + 24;
+            float plotTop = y - 20;
+            float plotWidth =
+                    plotRight - plotLeft;
+            float plotHeight =
+                    plotTop - plotBottom;
+
+            double minimum =
+                    kpi.points()
+                            .stream()
+                            .mapToDouble(
+                                    point ->
+                                            point.value()
+                                                    .doubleValue()
+                            )
+                            .min()
+                            .orElse(0d);
+
+            double maximum =
+                    kpi.points()
+                            .stream()
+                            .mapToDouble(
+                                    point ->
+                                            point.value()
+                                                    .doubleValue()
+                            )
+                            .max()
+                            .orElse(minimum);
+
+            double range = maximum - minimum;
+
+            if (Math.abs(range) < 0.000001d) {
+                range = 1d;
+                minimum -= 0.5d;
+                maximum += 0.5d;
+            }
+
+            stream.setStrokingColor(BORDER);
+            stream.setLineWidth(0.6f);
+
+            stream.moveTo(
+                    plotLeft,
+                    plotBottom
+            );
+            stream.lineTo(
+                    plotRight,
+                    plotBottom
+            );
+            stream.stroke();
+
+            stream.moveTo(
+                    plotLeft,
+                    plotBottom
+            );
+            stream.lineTo(
+                    plotLeft,
+                    plotTop
+            );
+            stream.stroke();
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    6.7f,
+                    MUTED,
+                    LEFT + 8,
+                    plotTop - 2,
+                    ReportDocumentText.value(
+                            java.math.BigDecimal
+                                    .valueOf(maximum)
+                    )
+            );
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    6.7f,
+                    MUTED,
+                    LEFT + 8,
+                    plotBottom - 2,
+                    ReportDocumentText.value(
+                            java.math.BigDecimal
+                                    .valueOf(minimum)
+                    )
+            );
+
+            stream.setStrokingColor(TEAL);
+            stream.setLineWidth(1.8f);
+
+            for (int index = 0;
+                 index < kpi.points().size();
+                 index++) {
+
+                var point =
+                        kpi.points().get(index);
+
+                float x =
+                        plotLeft
+                                + plotWidth
+                                * index
+                                / (kpi.points()
+                                .size()
+                                - 1f);
+
+                float pointY =
+                        plotBottom
+                                + (float) (
+                                (point.value()
+                                        .doubleValue()
+                                        - minimum)
+                                        / range
+                        )
+                                * plotHeight;
+
+                if (index == 0) {
+                    stream.moveTo(
+                            x,
+                            pointY
+                    );
+                } else {
+                    stream.lineTo(
+                            x,
+                            pointY
+                    );
+                }
+            }
+
+            stream.stroke();
+
+            for (int index = 0;
+                 index < kpi.points().size();
+                 index++) {
+
+                var point =
+                        kpi.points().get(index);
+
+                float x =
+                        plotLeft
+                                + plotWidth
+                                * index
+                                / (kpi.points()
+                                .size()
+                                - 1f);
+
+                float pointY =
+                        plotBottom
+                                + (float) (
+                                (point.value()
+                                        .doubleValue()
+                                        - minimum)
+                                        / range
+                        )
+                                * plotHeight;
+
+                stream.setNonStrokingColor(TEAL);
+                stream.addRect(
+                        x - 1.8f,
+                        pointY - 1.8f,
+                        3.6f,
+                        3.6f
+                );
+                stream.fill();
+            }
+
+            var first =
+                    kpi.points().getFirst();
+
+            var last =
+                    kpi.points().getLast();
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    6.6f,
+                    MUTED,
+                    plotLeft,
+                    bottom + 9,
+                    SHORT_DATE.format(
+                            first.effectiveDate()
+                    )
+            );
+
+            String lastDate =
+                    SHORT_DATE.format(
+                            last.effectiveDate()
+                    );
+
+            drawText(
+                    stream,
+                    REGULAR,
+                    6.6f,
+                    MUTED,
+                    plotRight
+                            - textWidth(
+                            REGULAR,
+                            6.6f,
+                            lastDate
+                    ),
+                    bottom + 9,
+                    lastDate
+            );
+
+            y = bottom;
+        }
+
+        private void renderTraceability()
+                throws IOException {
+
+            sectionHeading(
+                    "TRAÇABILITÉ"
+            );
+
+            Set<String> submitters =
+                    new LinkedHashSet<>();
+
+            data.rows()
+                    .stream()
+                    .map(
+                            ReportGenerationData.Row
+                                    ::submittedBy
+                    )
+                    .filter(
+                            value ->
+                                    value != null
+                                            && !value.isBlank()
+                    )
+                    .forEach(
+                            submitters::add
+                    );
+
+            List<String> confirmations =
+                    data.rows()
+                            .stream()
+                            .map(
+                                    ReportGenerationData.Row
+                                            ::confirmedAt
+                            )
+                            .filter(
+                                    java.util.Objects
+                                            ::nonNull
+                            )
+                            .sorted()
+                            .map(
+                                    ReportDocumentText
+                                            ::instant
+                            )
+                            .distinct()
+                            .toList();
+
+            String confirmationText = "—";
+
+            if (!confirmations.isEmpty()) {
+                confirmationText =
+                        confirmations.getFirst();
+
+                if (confirmations.size() > 1) {
+                    confirmationText +=
+                            " - "
+                                    + confirmations
+                                    .getLast();
+                }
+            }
+
+            String submitterText =
+                    submitters.isEmpty()
+                            ? "—"
+                            : String.join(
+                            ", ",
+                            submitters
+                    );
+
+            List<Long> sourceReportIds = data.rows().stream()
+                    .map(ReportGenerationData.Row::sourceReportId)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            String sourceReportText = sourceReportIds.isEmpty()
+                    ? "—"
+                    : sourceReportIds.stream().limit(6).map(id -> "N°" + id)
+                    .collect(java.util.stream.Collectors.joining(", "))
+                    + (sourceReportIds.size() > 6 ? "… (" + sourceReportIds.size() + " au total)" : "");
+            String acquisitionText = data.rows().stream()
+                    .map(ReportGenerationData.Row::source)
+                    .distinct()
+                    .map(ReportDocumentText::acquisitionSource)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            if (acquisitionText.isBlank()) acquisitionText = "—";
+
+            float panelHeight = 108f;
+            float bottom =
+                    y - panelHeight;
+
+            fillRoundedRect(
+                    stream,
+                    LEFT,
+                    bottom,
+                    WIDTH,
+                    panelHeight,
+                    7,
+                    SOFT_ALT
+            );
+
+            float columnWidth =
+                    (WIDTH - 28) / 2f;
+
+            metadataPair(
+                    LEFT + 12,
+                    y - 17,
+                    columnWidth,
+                    "SOUMIS PAR",
+                    submitterText
+            );
+
+            metadataPair(
+                    LEFT + 16 + columnWidth,
+                    y - 17,
+                    columnWidth,
+                    "CONFIRMÉ LE",
+                    confirmationText
+            );
+
+            metadataPair(
+                    LEFT + 12,
+                    y - 49,
+                    columnWidth,
+                    "RAPPORTS SOURCES",
+                    sourceReportText
+            );
+
+            metadataPair(
+                    LEFT + 16 + columnWidth,
+                    y - 49,
+                    columnWidth,
+                    "ACQUISITION",
+                    acquisitionText
+            );
+
+            metadataPair(
+                    LEFT + 12,
+                    y - 81,
+                    columnWidth,
+                    "PÉRIODE",
+                    ReportDocumentText.period(data)
+            );
+
+            metadataPair(
+                    LEFT + 16 + columnWidth,
+                    y - 81,
+                    columnWidth,
+                    "GÉNÉRÉ LE",
+                    ReportDocumentText.instant(data.generatedAt())
+            );
+
+            y = bottom;
+        }
+
+        private void metadataPair(
+                float x,
+                float top,
+                float width,
+                String label,
+                String value
+        ) throws IOException {
+
+            drawText(
+                    stream,
+                    BOLD,
+                    6.7f,
+                    TEAL_DARK,
+                    x,
+                    top,
+                    label
+            );
+
+            drawCell(
+                    value,
+                    REGULAR,
+                    8f,
+                    INK,
+                    x - 5,
+                    width,
+                    top - 4,
+                    1
+            );
+        }
+
+        private void sectionHeading(
+                String title
+        ) throws IOException {
+
+            stream.setNonStrokingColor(TEAL);
+            stream.addRect(
+                    LEFT,
+                    y - 16,
+                    3,
+                    16
+            );
+            stream.fill();
+
+            drawText(
+                    stream,
+                    BOLD,
+                    9.4f,
+                    NAVY,
+                    LEFT + 11,
+                    y - 13,
+                    title
+            );
+
+            float titleWidth =
+                    textWidth(
+                            BOLD,
+                            9.4f,
+                            title
+                    );
+
+            stream.setStrokingColor(BORDER);
+            stream.setLineWidth(0.6f);
+            stream.moveTo(
+                    LEFT
+                            + 20
+                            + titleWidth,
+                    y - 10
+            );
+            stream.lineTo(
+                    RIGHT,
+                    y - 10
+            );
+            stream.stroke();
+
+            y -= 27;
+        }
+
+        private void renderTableHeader()
+                throws IOException {
+
+            float[] widths =
+                    detailWidths();
+
+            String[] headers = {
+                    "DATE",
+                    "INDICATEUR",
+                    "VALEUR",
+                    "VALEUR ASSOCIÉE",
+                    "UNITÉ"
+            };
+
+            float height = 25f;
+            float x = LEFT;
+
+            stream.setNonStrokingColor(TABLE_HEADER);
+            stream.addRect(
+                    LEFT,
+                    y - height,
+                    WIDTH,
+                    height
+            );
+            stream.fill();
+
+            for (int index = 0;
+                 index < headers.length;
+                 index++) {
+
+                drawText(
+                        stream,
+                        BOLD,
+                        6.9f,
+                        INK,
+                        x + 5,
+                        y - 16,
+                        headers[index]
+                );
+
+                x += widths[index];
+            }
+
+            y -= height;
+        }
+
+        private float requiredRowHeight(
+                ReportGenerationData.Row row
+        ) throws IOException {
+
+            float[] widths =
+                    detailWidths();
+
+            int nameLines =
+                    wrap(
+                            BOLD,
+                            8f,
+                            safe(row.kpiName()),
+                            widths[1] - 10,
+                            2
+                    )
+                            .size();
+
+            int valueLines =
+                    wrap(
+                            BOLD,
+                            8.5f,
+                            ReportDocumentText.value(row.confirmedValue()),
+                            widths[2] - 10,
+                            2
+                    )
+                            .size();
+
+            int associatedValueLines = wrap(
+                    REGULAR,
+                    7.8f,
+                    associatedValue(row),
+                    widths[3] - 10,
+                    2
+            ).size();
+
+            int lines =
+                    Math.max(
+                            nameLines,
+                            Math.max(valueLines, associatedValueLines)
+                    );
+
+            return Math.max(
+                    32f,
+                    18f + lines * 9f
+            );
+        }
+
+        private boolean canFit(
+                float rowHeight
+        ) {
+            return y - rowHeight >= 68f;
+        }
+
+        private void renderRow(
+                ReportGenerationData.Row row,
+                boolean alternate,
+                float height
+        ) throws IOException {
+
+            float[] widths =
+                    detailWidths();
+
+            boolean missing =
+                    row.confirmedValue() == null;
+
+            Color background =
+                    missing
+                            ? SOFT_ALT
+                            : alternate
+                            ? SOFT
+                            : WHITE;
+
+            stream.setNonStrokingColor(background);
+            stream.addRect(
+                    LEFT,
+                    y - height,
+                    WIDTH,
+                    height
+            );
+            stream.fill();
+
+            stream.setStrokingColor(BORDER);
+            stream.setLineWidth(0.45f);
+            stream.addRect(
+                    LEFT,
+                    y - height,
+                    WIDTH,
+                    height
+            );
+            stream.stroke();
+
+            float x = LEFT;
+
+            for (float width : widths) {
+                stream.moveTo(
+                        x,
+                        y
+                );
+                stream.lineTo(
+                        x,
+                        y - height
+                );
+                stream.stroke();
+                x += width;
+            }
+
+            stream.moveTo(
+                    RIGHT,
+                    y
+            );
+            stream.lineTo(
+                    RIGHT,
+                    y - height
+            );
+            stream.stroke();
+
+            x = LEFT;
+
+            drawCell(
+                    ReportDocumentText.date(
+                            row.effectiveDate()
+                    ),
+                    REGULAR,
+                    7.3f,
+                    MUTED,
+                    x,
+                    widths[0],
+                    y,
+                    2
+            );
+
+            x += widths[0];
+
+            drawCell(
+                    row.kpiName(),
+                    BOLD,
+                    8f,
+                    INK,
+                    x,
+                    widths[1],
+                    y,
+                    2
+            );
+
+            x += widths[1];
+
+            drawCell(
+                    ReportDocumentText.value(row.confirmedValue()),
+                    missing
+                            ? ITALIC
+                            : BOLD,
+                    missing
+                            ? 7.3f
+                            : 8.5f,
+                    missing
+                            ? MUTED
+                            : NAVY,
+                    x,
+                    widths[2],
+                    y,
+                    2
+            );
+
+            x += widths[2];
+
+            drawCell(
+                    associatedValue(row),
+                    REGULAR,
+                    7.3f,
+                    MUTED,
+                    x,
+                    widths[3],
+                    y,
+                    2
+            );
+
+            x += widths[3];
+
+            drawCell(
+                    combinedUnit(row),
+                    REGULAR,
+                    7.3f,
+                    MUTED,
+                    x,
+                    widths[4],
+                    y,
+                    1
+            );
+
+            y -= height;
+        }
+
+        private String associatedValue(ReportGenerationData.Row row) {
+            if (row.secondaryConfirmedValue() == null) return "—";
+            return ReportDocumentText.value(row.secondaryConfirmedValue());
+        }
+
+        private String combinedUnit(ReportGenerationData.Row row) {
+            String unit = ReportDocumentText.unit(row.unit());
+            if (row.secondaryConfirmedValue() == null || row.secondaryUnit() == null
+                    || row.secondaryUnit().isBlank() || row.secondaryUnit().equals(row.unit())) {
+                return unit;
+            }
+            return unit + " / " + row.secondaryUnit();
+        }
+
+        private float[] detailWidths() {
+            return new float[]{
+                    58f,
+                    172f,
+                    82f,
+                    106f,
+                    WIDTH - 58f - 172f - 82f - 106f
+            };
+        }
+
+        private void renderSoftMessage(
+                String message
+        ) throws IOException {
+
+            float height = 48f;
+
+            fillRoundedRect(
+                    stream,
+                    LEFT,
+                    y - height,
+                    WIDTH,
+                    height,
+                    7,
+                    SOFT
+            );
+
+            drawText(
+                    stream,
+                    ITALIC,
+                    8.4f,
+                    MUTED,
+                    LEFT + 12,
+                    y - 28,
+                    message
+            );
+
+            y -= height;
+        }
+
+        private void drawCell(
+                String value,
+                PDFont font,
+                float size,
+                Color color,
+                float x,
+                float width,
+                float top,
+                int maxLines
+        ) throws IOException {
+
+            List<String> lines =
+                    wrap(
+                            font,
+                            size,
+                            safe(value),
+                            width - 10,
+                            maxLines
+                    );
+
+            float textY =
+                    top - 12;
+
+            for (String line : lines) {
+                drawText(
+                        stream,
+                        font,
+                        size,
+                        color,
+                        x + 5,
+                        textY,
+                        line
+                );
+
+                textY -= size + 2;
+            }
+        }
+
+        private void drawRight(
+                PDFont font,
+                float size,
+                Color color,
+                String text,
+                float textY
+        ) throws IOException {
+
+            drawText(
+                    stream,
+                    font,
+                    size,
+                    color,
+                    RIGHT
+                            - textWidth(
+                            font,
+                            size,
+                            safe(text)
+                    ),
+                    textY,
+                    text
+            );
+        }
+
+        @Override
+        public void close()
+                throws IOException {
+            stream.close();
+        }
+
+        private record BigDecimalWrapper(
+                Double percent,
+                String label
+        ) {
+        }
+    }
+
+    private static String valueWithUnit(
+            java.math.BigDecimal value,
+            String unit
+    ) {
+        if (value == null) {
+            return ReportDocumentText.MISSING;
+        }
+
+        String formatted =
+                ReportDocumentText.value(value);
+
+        if (unit == null
+                || unit.isBlank()) {
+            return formatted;
+        }
+
+        return formatted
+                + " "
+                + unit;
+    }
+
+    private static String trendLabel(
+            com.factoryflow.analytics.domain.TrendDirection trend
+    ) {
+        return switch (trend) {
+            case INCREASING -> "Hausse";
+            case DECREASING -> "Baisse";
+            case STABLE -> "Stable";
+            case INSUFFICIENT_DATA ->
+                    "Données insuffisantes";
+        };
+    }
+
+    private static Color trendColor(
+            com.factoryflow.analytics.domain.TrendDirection trend
+    ) {
+        return trend == com.factoryflow.analytics.domain.TrendDirection.INSUFFICIENT_DATA
+                ? MUTED
+                : NAVY;
+    }
+
+    private static List<String> wrap(
+            PDFont font,
+            float size,
+            String value,
+            float maxWidth,
+            int maxLines
+    ) throws IOException {
+
+        List<String> lines =
+                new ArrayList<>();
+
+        String remaining = safe(value);
+
+        while (!remaining.isBlank()
+                && lines.size() < maxLines) {
+
+            String line = remaining;
+
+            while (textWidth(
+                    font,
+                    size,
+                    line
+            ) > maxWidth
+                    && line.length() > 1) {
+
+                int split =
+                        line.lastIndexOf(' ');
+
+                if (split > 0) {
+                    line =
+                            line.substring(
+                                    0,
+                                    split
+                            );
+                } else {
+                    line =
+                            line.substring(
+                                    0,
+                                    line.length() - 1
+                            );
+                }
+            }
+
+            if (lines.size()
+                    == maxLines - 1
+                    && line.length()
+                    < remaining.length()) {
+
+                while (textWidth(
+                        font,
+                        size,
+                        line + "..."
+                ) > maxWidth
+                        && line.length() > 1) {
+
+                    line =
+                            line.substring(
+                                    0,
+                                    line.length() - 1
+                            );
+                }
+
+                line += "...";
+                remaining = "";
+
+            } else {
+                remaining =
+                        remaining.substring(
+                                        Math.min(
+                                                line.length(),
+                                                remaining.length()
+                                        )
+                                )
+                                .stripLeading();
+            }
+
+            lines.add(line);
+        }
+
+        if (lines.isEmpty()) {
+            lines.add(
+                    ReportDocumentText.MISSING
+            );
+        }
+
         return lines;
     }
 
-    private static final class PageWriter implements AutoCloseable {
-        private final PDPageContentStream stream;
-        private float y;
+    private static void drawText(
+            PDPageContentStream stream,
+            PDFont font,
+            float size,
+            Color color,
+            float x,
+            float y,
+            String text
+    ) throws IOException {
 
-        private PageWriter(PDPageContentStream stream, float y) { this.stream = stream; this.y = y; }
+        stream.beginText();
+        stream.setFont(font, size);
+        stream.setNonStrokingColor(color);
+        stream.newLineAtOffset(x, y);
+        stream.showText(safe(text));
+        stream.endText();
+    }
 
-        private void text(PDType1Font font, float size, String text) throws IOException {
-            stream.beginText();
-            stream.setFont(font, size);
-            stream.newLineAtOffset(LEFT, y);
-            stream.showText(text.replace('…', '.'));
-            stream.endText();
-            y -= size + 4;
+    private static float textWidth(
+            PDFont font,
+            float size,
+            String text
+    ) throws IOException {
+
+        return font.getStringWidth(
+                        safe(text)
+                )
+                / 1000f
+                * size;
+    }
+
+    private static String safe(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            return ReportDocumentText.MISSING;
         }
 
-        private void row(ReportGenerationData.Row row) throws IOException {
-            String value = row.confirmedValue() == null ? "Missing" : row.confirmedValue().stripTrailingZeros().toPlainString();
-            text(REGULAR, 8.5f, String.format(Locale.ROOT, "%-12s %-8s %-18s",
-                    row.effectiveDate(), row.sourceReportId(), value));
-            for (String line : wrap("KPI: " + row.kpiName() + " | Unit: "
-                    + (row.unit() == null ? "-" : row.unit()) + " | Source: " + row.source(), 100)) {
-                text(REGULAR, 8, "  " + line);
-            }
-            y -= Math.max(0, ROW_HEIGHT - 12.5f);
-        }
+        return value
+                .replace('\u00A0', ' ')
+                .replace('\u202F', ' ')
+                .replace('’', '\'')
+                .replace('–', '-')
+                .replace('…', '.')
+                .replace('\n', ' ')
+                .replace('\r', ' ');
+    }
 
-        private void message(String message) throws IOException { text(REGULAR, 10, message); }
-        private void gap(float amount) { y -= amount; }
-        private void line() throws IOException {
-            stream.moveTo(LEFT, y + 5);
-            stream.lineTo(PDRectangle.A4.getWidth() - LEFT, y + 5);
-            stream.stroke();
-            y -= 4;
-        }
-        @Override public void close() throws IOException { stream.close(); }
+    private static void fillRoundedRect(
+            PDPageContentStream stream,
+            float x,
+            float y,
+            float width,
+            float height,
+            float radius,
+            Color color
+    ) throws IOException {
+
+        stream.setNonStrokingColor(color);
+        roundedRectPath(
+                stream,
+                x,
+                y,
+                width,
+                height,
+                radius
+        );
+        stream.fill();
+    }
+
+    private static void strokeRoundedRect(
+            PDPageContentStream stream,
+            float x,
+            float y,
+            float width,
+            float height,
+            float radius,
+            Color color
+    ) throws IOException {
+
+        stream.setStrokingColor(color);
+        stream.setLineWidth(0.7f);
+
+        roundedRectPath(
+                stream,
+                x,
+                y,
+                width,
+                height,
+                radius
+        );
+
+        stream.stroke();
+    }
+
+    private static void roundedRectPath(
+            PDPageContentStream stream,
+            float x,
+            float y,
+            float width,
+            float height,
+            float radius
+    ) throws IOException {
+
+        float r =
+                Math.min(
+                        radius,
+                        Math.min(
+                                width / 2f,
+                                height / 2f
+                        )
+                );
+
+        float c =
+                r * 0.55228475f;
+
+        float right = x + width;
+        float top = y + height;
+
+        stream.moveTo(
+                x + r,
+                y
+        );
+
+        stream.lineTo(
+                right - r,
+                y
+        );
+
+        stream.curveTo(
+                right - r + c,
+                y,
+                right,
+                y + r - c,
+                right,
+                y + r
+        );
+
+        stream.lineTo(
+                right,
+                top - r
+        );
+
+        stream.curveTo(
+                right,
+                top - r + c,
+                right - r + c,
+                top,
+                right - r,
+                top
+        );
+
+        stream.lineTo(
+                x + r,
+                top
+        );
+
+        stream.curveTo(
+                x + r - c,
+                top,
+                x,
+                top - r + c,
+                x,
+                top - r
+        );
+
+        stream.lineTo(
+                x,
+                y + r
+        );
+
+        stream.curveTo(
+                x,
+                y + r - c,
+                x + r - c,
+                y,
+                x + r,
+                y
+        );
+
+        stream.closePath();
     }
 }

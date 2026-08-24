@@ -1,0 +1,5 @@
+package com.factoryflow.notification.domain;
+
+public enum NotificationType {
+    REPORT_CONFIRMED, SCHEDULED_DOCUMENT_READY, SCHEDULE_FAILED, EMAIL_FAILED, REVIEW_REQUIRED
+}

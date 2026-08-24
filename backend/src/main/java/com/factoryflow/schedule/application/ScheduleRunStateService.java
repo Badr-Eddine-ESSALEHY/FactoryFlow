@@ -34,6 +34,13 @@ public class ScheduleRunStateService {
         run.succeed(report, emailStatus, finishedAt);
     }
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void partial(Long runId, Long reportId, EmailDeliveryStatus emailStatus, String code, String message,
+                        Instant finishedAt) {
+        ScheduleRun run = runs.findById(runId).orElseThrow();
+        GeneratedReport report = reports.findById(reportId).orElseThrow();
+        run.partialSuccess(report, emailStatus, code, message, finishedAt);
+    }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fail(Long runId, String code, String message, Instant finishedAt) {
         runs.findById(runId).orElseThrow().fail(code, message, finishedAt);
     }

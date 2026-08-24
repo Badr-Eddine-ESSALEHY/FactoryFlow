@@ -11,7 +11,7 @@ class AuthInterceptor @Inject constructor(private val tokens: SecureTokenStore) 
         if (request.url.encodedPath == "/api/auth/login") return chain.proceed(request)
         val token = tokens.accessToken() ?: return chain.proceed(request)
         return chain.proceed(request.newBuilder().header("Authorization", "Bearer $token").build()).also { response ->
-            if (response.code == 401) tokens.clear()
+            if (response.code == 401) tokens.expire()
         }
     }
 }

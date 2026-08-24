@@ -75,13 +75,41 @@ public class MaintenanceReport {
     public void addEntry(KpiDefinition definition, String sourceLabel, String sourceLine, BigDecimal extractedValue,
                          BigDecimal currentValue, BigDecimal confidenceScore, boolean edited, String unit, Set<String> warnings) {
         requireEditable();
+        addEntry(definition, sourceLabel, sourceLine, extractedValue, currentValue, confidenceScore, edited, unit,
+                warnings, null, null, null, null, null, null, null);
+    }
+
+    public void addEntry(KpiDefinition definition, String sourceLabel, String sourceLine, BigDecimal extractedValue,
+                         BigDecimal currentValue, BigDecimal confidenceScore, boolean edited, String unit, Set<String> warnings,
+                         KpiDefinition suggestedDefinition, BigDecimal suggestionScore, String suggestionStrength,
+                         String suggestionMatchMethod,
+                         BigDecimal secondaryExtractedValue, BigDecimal secondaryCurrentValue, String secondaryUnit) {
+        requireEditable();
         entries.add(KpiEntry.draft(this, definition, sourceLabel, sourceLine, extractedValue, currentValue,
-                confidenceScore, edited, unit, warnings));
+                confidenceScore, edited, unit, warnings, suggestedDefinition, suggestionScore, suggestionStrength,
+                suggestionMatchMethod,
+                secondaryExtractedValue, secondaryCurrentValue, secondaryUnit));
     }
 
     public void addUnrecognizedLine(String sourceLine, UnknownLineResolution resolution, KpiDefinition definition) {
+        addUnrecognizedLine(sourceLine, resolution, definition, UnknownLineKind.KPI_LIKE, "UNCLASSIFIED", false);
+    }
+
+    public void addUnrecognizedLine(String sourceLine, UnknownLineResolution resolution, KpiDefinition definition,
+                                    UnknownLineKind kind, String classificationReason, boolean safeToIgnore) {
         requireEditable();
-        unrecognizedLines.add(ReportUnrecognizedLine.draft(this, sourceLine, resolution, definition));
+        unrecognizedLines.add(ReportUnrecognizedLine.draft(
+                this, sourceLine, resolution, definition, kind, classificationReason, safeToIgnore));
+    }
+
+    public KpiEntry removeEntry(Long entryId) {
+        requireEditable();
+        KpiEntry entry = entries.stream()
+                .filter(candidate -> candidate.getId().equals(entryId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Draft entry not found."));
+        entries.remove(entry);
+        return entry;
     }
 
     public void confirm() {

@@ -11,17 +11,36 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
 import com.factoryflow.app.core.design.LoadingPane
+import com.factoryflow.app.core.design.ErrorPane
+import com.factoryflow.app.core.design.ThemeMode
 import com.factoryflow.app.core.navigation.AuthenticatedApp
-import com.factoryflow.app.feature.auth.*
+import com.factoryflow.app.feature.auth.LoginScreen
+import com.factoryflow.app.feature.auth.SessionUiState
+import com.factoryflow.app.feature.auth.SessionViewModel
+import com.factoryflow.app.feature.acquisition.SharedAcquisitionStore
 
 @Composable
-fun FactoryFlowApp(viewModel: SessionViewModel = hiltViewModel()) {
+fun FactoryFlowApp(
+    sharedAcquisitions: SharedAcquisitionStore,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    viewModel: SessionViewModel = hiltViewModel(),
+) {
     val session by viewModel.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (val state = session) {
             SessionUiState.Loading -> LoadingPane(stringResource(R.string.app_name))
-            SessionUiState.SignedOut -> LoginScreen(onAuthenticated = viewModel::restore)
-            is SessionUiState.SignedIn -> AuthenticatedApp(state.user, viewModel::logout)
+            is SessionUiState.SignedOut -> LoginScreen(
+                onAuthenticated = viewModel::restore,
+                sessionExpired = state.expired,
+            )
+            is SessionUiState.RestoreFailed -> ErrorPane(
+                stringResource(state.error.title),
+                stringResource(state.error.detail),
+                stringResource(R.string.retry),
+                viewModel::restore,
+            )
+            is SessionUiState.SignedIn -> AuthenticatedApp(state.user, themeMode, onThemeMode, viewModel::logout, sharedAcquisitions)
         }
     }
 }

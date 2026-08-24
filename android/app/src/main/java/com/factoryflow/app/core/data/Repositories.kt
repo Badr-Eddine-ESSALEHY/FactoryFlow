@@ -9,13 +9,16 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 interface AuthRepository {
     suspend fun login(email: String, password: String): UserDto
     suspend fun currentUser(): UserDto
-    fun hasSession(): Boolean
+    suspend fun hasSession(): Boolean
     val authenticated: StateFlow<Boolean>
+    val sessionExpired: StateFlow<Boolean>
     fun logout()
 }
 
@@ -26,11 +29,14 @@ class DefaultAuthRepository @Inject constructor(
     private val tokens: SecureTokenStore,
 ) : AuthRepository {
     override val authenticated: StateFlow<Boolean> = tokens.authenticated
+    override val sessionExpired: StateFlow<Boolean> = tokens.sessionExpired
     override suspend fun login(email: String, password: String): UserDto = executor.execute {
-        api.login(LoginRequest(email.trim(), password)).also { tokens.save(it.accessToken) }.user
+        api.login(LoginRequest(email.trim(), password)).also {
+            withContext(Dispatchers.IO) { tokens.save(it.accessToken) }
+        }.user
     }
     override suspend fun currentUser(): UserDto = executor.execute { api.me() }
-    override fun hasSession() = tokens.accessToken() != null
+    override suspend fun hasSession() = withContext(Dispatchers.IO) { tokens.hasStoredToken() }
     override fun logout() = tokens.clear()
 }
 
@@ -41,10 +47,16 @@ class DefaultDashboardRepository @Inject constructor(private val api: FactoryFlo
 
 interface ReportsRepository {
     suspend fun definitions(): List<KpiDefinitionDto>
-    suspend fun analyze(rawText: String): AnalyzeReportResponse
+    suspend fun analyze(rawText: String, source: String = "PASTE"): AnalyzeReportResponse
     suspend fun createDraft(request: DraftReportRequest): ReportDto
     suspend fun updateDraft(id: Long, request: DraftReportRequest): ReportDto
     suspend fun draft(id: Long): ReportDto
+    suspend fun addDetectedKpi(id: Long, entryId: Long): ReportDto
+    suspend fun ignoreSafeUnrecognizedLines(id: Long): ReportDto
+    suspend fun resolveUnrecognizedLine(id: Long, request: UnknownLineResolutionRequest): ReportDto
+    suspend fun removeDraftEntry(id: Long, entryId: Long): ReportDto
+    suspend fun deleteDraft(id: Long)
+    suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto
     suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto
     suspend fun reports(status: String? = null): PageDto<ReportSummaryDto>
     suspend fun report(id: Long): ReportDto
@@ -52,10 +64,17 @@ interface ReportsRepository {
 
 class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowApi, private val executor: ApiExecutor) : ReportsRepository {
     override suspend fun definitions() = executor.execute { api.kpiDefinitions() }
-    override suspend fun analyze(rawText: String) = executor.execute { api.analyze(AnalyzeReportRequest(rawText)) }
+    override suspend fun analyze(rawText: String, source: String) = executor.execute { api.analyze(AnalyzeReportRequest(rawText, source)) }
     override suspend fun createDraft(request: DraftReportRequest) = executor.execute { api.createDraft(request) }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = executor.execute { api.updateDraft(id, request) }
     override suspend fun draft(id: Long) = executor.execute { api.draft(id) }
+    override suspend fun addDetectedKpi(id: Long, entryId: Long) = executor.execute { api.addDetectedKpi(id, entryId) }
+    override suspend fun ignoreSafeUnrecognizedLines(id: Long) = executor.execute { api.ignoreSafeUnrecognizedLines(id) }
+    override suspend fun resolveUnrecognizedLine(id: Long, request: UnknownLineResolutionRequest) =
+        executor.execute { api.resolveUnrecognizedLine(id, request.lineId, request) }
+    override suspend fun removeDraftEntry(id: Long, entryId: Long) = executor.execute { api.removeDraftEntry(id, entryId) }
+    override suspend fun deleteDraft(id: Long) = executor.execute { api.deleteDraft(id) }
+    override suspend fun approveAlias(kpiDefinitionId: Long, alias: String) = executor.execute { api.approveAlias(kpiDefinitionId, ApproveAliasRequest(alias)) }
     override suspend fun confirm(id: Long, request: ConfirmReportRequest) = executor.execute { api.confirm(id, request) }
     override suspend fun reports(status: String?) = executor.execute { api.reports(status = status) }
     override suspend fun report(id: Long) = executor.execute { api.report(id) }
@@ -64,6 +83,8 @@ class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowA
 interface GeneratedReportsRepository {
     suspend fun list(): PageDto<GeneratedReportDto>
     suspend fun detail(id: Long): GeneratedReportDto
+    suspend fun generateConsolidated(request: GenerateReportRequest): GeneratedReportDto
+    suspend fun generateIndividual(request: IndividualReportExportRequest): GeneratedReportDto
     suspend fun download(report: GeneratedReportDto): File
 }
 
@@ -74,14 +95,22 @@ class DefaultGeneratedReportsRepository @Inject constructor(
 ) : GeneratedReportsRepository {
     override suspend fun list() = executor.execute { api.generatedReports() }
     override suspend fun detail(id: Long) = executor.execute { api.generatedReport(id) }
+    override suspend fun generateConsolidated(request: GenerateReportRequest) =
+        executor.execute { api.generateConsolidatedReport(request) }
+    override suspend fun generateIndividual(request: IndividualReportExportRequest) =
+        executor.execute { api.generateIndividualReport(request) }
     override suspend fun download(report: GeneratedReportDto): File = executor.execute {
-        val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }
-        directory.listFiles()?.sortedByDescending(File::lastModified)?.drop(12)?.forEach(File::delete)
-        val safeName = report.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
-            .ifBlank { "factoryflow-${report.id}.${if (report.format == "PDF") "pdf" else "xlsx"}" }
-        val target = File(directory, safeName)
-        api.generatedFile(report.id).use { body -> target.outputStream().use { output -> body.byteStream().copyTo(output) } }
-        target
+        withContext(Dispatchers.IO) {
+            val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }
+            directory.listFiles()?.sortedByDescending(File::lastModified)?.drop(12)?.forEach(File::delete)
+            val safeName = report.fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
+                .ifBlank { "factoryflow-${report.id}.${if (report.format == "PDF") "pdf" else "xlsx"}" }
+            val target = File(directory, safeName)
+            api.generatedFile(report.id).use { body ->
+                target.outputStream().buffered().use { output -> body.byteStream().use { it.copyTo(output) } }
+            }
+            target
+        }
     }
 }
 
@@ -106,4 +135,14 @@ class DefaultSchedulesRepository @Inject constructor(private val api: FactoryFlo
     override suspend fun update(id: Long, request: ReportScheduleRequest) = executor.execute { api.updateSchedule(id, request) }
     override suspend fun setEnabled(id: Long, enabled: Boolean) = executor.execute { api.setScheduleEnabled(id, ScheduleEnabledRequest(enabled)) }
     override suspend fun runs(id: Long) = executor.execute { api.scheduleRuns(id) }
+}
+
+interface NotificationsRepository {
+    suspend fun list(): List<NotificationDto>
+    suspend fun markRead(id: Long): NotificationDto
+}
+
+class DefaultNotificationsRepository @Inject constructor(private val api: FactoryFlowApi, private val executor: ApiExecutor) : NotificationsRepository {
+    override suspend fun list() = executor.execute { api.notifications() }
+    override suspend fun markRead(id: Long) = executor.execute { api.markNotificationRead(id) }
 }

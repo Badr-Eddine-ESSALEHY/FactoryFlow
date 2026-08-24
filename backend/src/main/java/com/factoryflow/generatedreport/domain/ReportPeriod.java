@@ -15,6 +15,9 @@ public record ReportPeriod(LocalDate start, LocalDate end) {
     public static ReportPeriod validated(GeneratedReportType type, LocalDate start, LocalDate end) {
         ReportPeriod period = new ReportPeriod(start, end);
         switch (type) {
+            case INDIVIDUAL -> {
+                if (!start.equals(end)) throw invalid(type);
+            }
             case DAILY -> {
                 if (!start.equals(end)) throw invalid(type);
             }
@@ -24,7 +27,7 @@ public record ReportPeriod(LocalDate start, LocalDate end) {
             case MONTHLY -> {
                 if (start.getDayOfMonth() != 1 || !end.equals(start.with(TemporalAdjusters.lastDayOfMonth()))) throw invalid(type);
             }
-            case MANUAL -> { }
+            case CUSTOM, MANUAL -> { }
         }
         return period;
     }

@@ -1,26 +1,89 @@
 package com.factoryflow.app.feature.dashboard
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.outlined.AssignmentTurnedIn
+import androidx.compose.material.icons.outlined.AutoGraph
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.TableView
+import androidx.compose.material.icons.outlined.Verified
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
-import com.factoryflow.app.core.design.*
-import com.factoryflow.app.core.network.dto.*
-import com.factoryflow.app.core.util.*
+import com.factoryflow.app.core.design.FlowBlue
+import com.factoryflow.app.core.design.FlowBlueDark
+import com.factoryflow.app.core.design.FlowCard
+import com.factoryflow.app.core.design.FlowCategoryCard
+import com.factoryflow.app.core.design.FlowEmptyState
+import com.factoryflow.app.core.design.FlowGreen
+import com.factoryflow.app.core.design.FlowIconTile
+import com.factoryflow.app.core.design.FlowIndigo
+import com.factoryflow.app.core.design.FlowIndigoTint
+import com.factoryflow.app.core.design.FlowListRow
+import com.factoryflow.app.core.design.FlowMetricBadge
+import com.factoryflow.app.core.design.FlowMiniChart
+import com.factoryflow.app.core.design.FlowMotion
+import com.factoryflow.app.core.design.FlowOrange
+import com.factoryflow.app.core.design.FlowOrangeDark
+import com.factoryflow.app.core.design.FlowOrangeTint
+import com.factoryflow.app.core.design.FlowPurple
+import com.factoryflow.app.core.design.FlowPurpleDark
+import com.factoryflow.app.core.design.FlowPurpleTint
+import com.factoryflow.app.core.design.FlowPink
+import com.factoryflow.app.core.design.FlowRadius
+import com.factoryflow.app.core.design.FlowScreen
+import com.factoryflow.app.core.design.FlowSectionHeader
+import com.factoryflow.app.core.design.FlowSegmentedControl
+import com.factoryflow.app.core.design.FlowSize
+import com.factoryflow.app.core.design.FlowSpacing
+import com.factoryflow.app.core.design.FlowStatusPill
+import com.factoryflow.app.core.design.FlowTeal
+import com.factoryflow.app.core.design.FlowTealDark
+import com.factoryflow.app.core.design.FlowTopBar
+import com.factoryflow.app.core.design.FlowWarning
+import com.factoryflow.app.core.design.ErrorPane
+import com.factoryflow.app.core.design.SkeletonRows
+import com.factoryflow.app.core.network.dto.DashboardActivityDto
+import com.factoryflow.app.core.network.dto.DashboardDto
+import com.factoryflow.app.core.network.dto.LatestKpiDto
+import com.factoryflow.app.core.network.dto.RecentGeneratedReportDto
+import com.factoryflow.app.core.network.dto.RecentReportDto
+import com.factoryflow.app.core.network.dto.UpcomingScheduleDto
+import com.factoryflow.app.core.util.displayValue
+import com.factoryflow.app.core.util.toFrenchDate
+import com.factoryflow.app.core.util.toFrenchInstant
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun DashboardScreen(
@@ -32,159 +95,474 @@ fun DashboardScreen(
     onGenerated: (Long) -> Unit,
     onStatistics: () -> Unit,
     onSchedules: () -> Unit,
-    onLogout: () -> Unit,
+    onProfile: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     when {
-        state.loading -> SkeletonRows(Modifier.fillMaxSize().padding(20.dp), 6)
-        state.data == null && state.error != null -> ErrorPane(stringResource(state.error!!.title), stringResource(state.error!!.detail), stringResource(R.string.retry), { viewModel.load() }, Modifier.fillMaxSize())
-        else -> DashboardContent(userName, state.data!!, onCreate, onPaste, onManual, onReport, onGenerated, onStatistics, onSchedules, { viewModel.load(true) }, onLogout)
+        state.loading -> DashboardLoading()
+        state.data == null && state.error != null -> ErrorPane(
+            title = stringResource(state.error!!.title),
+            detail = stringResource(state.error!!.detail),
+            retry = stringResource(R.string.retry),
+            onRetry = viewModel::load,
+            modifier = Modifier.fillMaxSize().padding(FlowSpacing.xl),
+        )
+        state.data != null -> DashboardContent(
+            userName = userName,
+            data = state.data!!,
+            onCreate = onCreate,
+            onPaste = onPaste,
+            onManual = onManual,
+            onReport = onReport,
+            onGenerated = onGenerated,
+            onStatistics = onStatistics,
+            onSchedules = onSchedules,
+            onRefresh = { viewModel.load(true) },
+            onProfile = onProfile,
+            refreshing = state.refreshing,
+        )
     }
 }
 
 @Composable
-private fun DashboardContent(
-    userName: String, data: DashboardDto, onCreate: () -> Unit, onPaste: () -> Unit, onManual: () -> Unit,
-    onReport: (Long) -> Unit, onGenerated: (Long) -> Unit, onStatistics: () -> Unit, onSchedules: () -> Unit, onRefresh: () -> Unit, onLogout: () -> Unit,
+fun DashboardContent(
+    userName: String,
+    data: DashboardDto,
+    onCreate: () -> Unit,
+    onPaste: () -> Unit,
+    onManual: () -> Unit,
+    onReport: (Long) -> Unit,
+    onGenerated: (Long) -> Unit,
+    onStatistics: () -> Unit,
+    onSchedules: () -> Unit,
+    onRefresh: () -> Unit,
+    onProfile: () -> Unit,
+    refreshing: Boolean = false,
 ) {
-    LazyColumn(
-        Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 110.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.dashboard_greeting, userName.substringBefore(' ')), style = MaterialTheme.typography.headlineMedium)
-                    Spacer(Modifier.height(4.dp)); Text(stringResource(R.string.dashboard_context, data.businessDate.toFrenchDate()), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh)) }
-                IconButton(onClick = onLogout) { Icon(Icons.Outlined.AccountCircle, stringResource(R.string.logout)) }
+    FlowScreen {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(
+                start = FlowSpacing.xl,
+                end = FlowSpacing.xl,
+                top = FlowSpacing.md,
+                bottom = FlowSpacing.screenBottom,
+            ),
+            verticalArrangement = Arrangement.spacedBy(FlowSpacing.lg),
+        ) {
+            item {
+                FlowTopBar(
+                    greeting = stringResource(R.string.dashboard_greeting, userName),
+                    title = stringResource(R.string.dashboard_your_day),
+                    subtitle = dashboardDateLabel(data.businessDate),
+                    initials = userInitials(userName),
+                    actionIcon = Icons.Outlined.Refresh,
+                    actionDescription = stringResource(R.string.refresh),
+                    onAction = onRefresh,
+                    onProfile = onProfile,
+                    actionLoading = refreshing,
+                )
             }
-        }
-        item {
-            FactoryCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (data.todayHasConfirmedReport) Icons.Outlined.TaskAlt else Icons.Outlined.Schedule, null, tint = if (data.todayHasConfirmedReport) Success else Warning)
-                        Spacer(Modifier.width(10.dp)); Text(stringResource(R.string.today_status), style = MaterialTheme.typography.titleMedium)
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Metric(data.todayConfirmedReportCount.toString(), stringResource(R.string.confirmed_reports), Success)
-                        Metric(data.todayDraftOrPendingReportCount.toString(), stringResource(R.string.pending_reports), Warning)
-                        Metric(data.todayConfirmedMissingValueCount.toString(), stringResource(R.string.missing_values), MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+
+            item { EnteringSection { DailySituation(data) } }
+            item { EnteringSection { QuickActions(onCreate, onPaste, onManual) } }
+
+            if (data.activityTrend.isNotEmpty()) {
+                item { EnteringSection { ActivitySection(data.activityTrend, onStatistics) } }
             }
-        }
-        item {
-            Column {
-                SectionHeader(stringResource(R.string.quick_actions))
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction(Icons.Outlined.AddCircleOutline, stringResource(R.string.create_report), onCreate, Modifier.weight(1f))
-                    QuickAction(Icons.Outlined.ContentPaste, stringResource(R.string.paste_text), onPaste, Modifier.weight(1f))
-                    QuickAction(Icons.Outlined.EditNote, stringResource(R.string.manual_entry), onManual, Modifier.weight(1f))
-                }
+            if (data.latestKpis.isNotEmpty()) {
+                item { EnteringSection { LatestKpisSection(data.latestKpis, onStatistics) } }
             }
-        }
-        if (data.latestKpis.isNotEmpty()) item {
-            Column {
-                SectionHeader(stringResource(R.string.latest_kpis), stringResource(R.string.view_statistics), onStatistics)
-                Spacer(Modifier.height(12.dp))
-                data.latestKpis.take(4).chunked(2).forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { KpiCard(it, Modifier.weight(1f)) }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(10.dp))
+            if (data.recentReports.isNotEmpty()) {
+                item { EnteringSection { RecentReportsSection(data.recentReports, onReport) } }
+            }
+            if (data.recentGeneratedReports.isNotEmpty()) {
+                item { EnteringSection { RecentDocumentsSection(data.recentGeneratedReports, onGenerated) } }
+            }
+            item { EnteringSection { UpcomingScheduleSection(data.upcomingSchedule, onSchedules) } }
+            if (data.latestKpis.isEmpty() && data.recentReports.isEmpty() && data.recentGeneratedReports.isEmpty()) {
+                item {
+                    FlowEmptyState(
+                        title = stringResource(R.string.no_dashboard_data),
+                        detail = stringResource(R.string.no_dashboard_data_detail),
+                        action = stringResource(R.string.create_report),
+                        onAction = onCreate,
+                    )
                 }
             }
-        }
-        if (data.recentReports.isNotEmpty()) item {
-            Column {
-                SectionHeader(stringResource(R.string.recent_reports))
-                Spacer(Modifier.height(10.dp))
-                FactoryCard(Modifier.fillMaxWidth()) {
-                    Column {
-                        data.recentReports.take(4).forEachIndexed { index, report ->
-                            RecentReportRow(report, onReport)
-                            if (index < data.recentReports.take(4).lastIndex) HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                        }
-                    }
-                }
-            }
-        }
-        if (data.recentGeneratedReports.isNotEmpty()) item {
-            Column {
-                SectionHeader(stringResource(R.string.recent_documents))
-                Spacer(Modifier.height(10.dp))
-                data.recentGeneratedReports.take(3).forEach { document ->
-                    FactoryCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onGenerated(document.id) }) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(if (document.format == "PDF") Icons.Outlined.PictureAsPdf else Icons.Outlined.TableView, null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) {
-                                Text(documentType(document.type), style = MaterialTheme.typography.titleMedium)
-                                Text(stringResource(R.string.date_range_compact, document.periodStart.toFrenchDate(), document.periodEnd.toFrenchDate()), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            StatusPill(document.format, MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-            }
-        }
-        data.upcomingSchedule?.let { schedule -> item {
-            Column {
-                SectionHeader(stringResource(R.string.upcoming_schedule), stringResource(R.string.manage_schedules), onSchedules)
-                Spacer(Modifier.height(10.dp)); FactoryCard(Modifier.fillMaxWidth().clickable(onClick = onSchedules)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.EventRepeat, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) {
-                            Text(scheduleType(schedule.type), style = MaterialTheme.typography.titleMedium)
-                            Text(schedule.nextRunAt?.toFrenchInstant() ?: "—", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Text(listOfNotNull(if (schedule.generateExcel) stringResource(R.string.excel) else null, if (schedule.generatePdf) stringResource(R.string.pdf) else null).joinToString(" · "), style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-        } }
-        if (data.latestKpis.isEmpty() && data.recentReports.isEmpty()) item {
-            EmptyPane(stringResource(R.string.no_dashboard_data), stringResource(R.string.no_dashboard_data_detail), action = stringResource(R.string.create_report), onAction = onCreate)
         }
     }
 }
 
-@Composable private fun Metric(value: String, label: String, color: androidx.compose.ui.graphics.Color) = Column(Modifier.width(92.dp)) {
-    Text(value, style = MaterialTheme.typography.headlineSmall, color = color); Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+@Composable
+private fun EnteringSection(content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(tween(FlowMotion.standard)) + slideInVertically(tween(FlowMotion.standard)) { it / 12 },
+    ) { content() }
 }
 
-@Composable private fun QuickAction(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier) {
-    Surface(modifier.clickable(onClick = onClick), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.Start) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(12.dp)); Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 2)
-        }
-    }
-}
-
-@Composable private fun KpiCard(kpi: LatestKpiDto, modifier: Modifier) = FactoryCard(modifier) {
+@Composable
+private fun DailySituation(data: DashboardDto) {
     Column {
-        Text(kpi.displayName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-        Spacer(Modifier.height(10.dp)); Row(verticalAlignment = Alignment.Bottom) {
-            Text(kpi.value.displayValue(), style = MaterialTheme.typography.headlineSmall)
-            if (!kpi.unit.isNullOrBlank()) { Spacer(Modifier.width(5.dp)); Text(kpi.unit, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        FlowSectionHeader(stringResource(R.string.dashboard_situation))
+        Spacer(Modifier.height(FlowSpacing.sm))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FlowSpacing.md)) {
+            SituationCard(
+                title = stringResource(R.string.dashboard_reports),
+                meta = dashboardQuantity(R.plurals.dashboard_confirmed_count, data.todayConfirmedReportCount),
+                icon = Icons.Outlined.AssignmentTurnedIn,
+                accent = FlowBlue,
+                modifier = Modifier.weight(1f),
+            )
+            SituationCard(
+                title = stringResource(R.string.pending_review),
+                meta = dashboardQuantity(R.plurals.dashboard_review_count, data.todayDraftOrPendingReportCount),
+                icon = Icons.Outlined.EditNote,
+                accent = FlowOrange,
+                modifier = Modifier.weight(1f),
+            )
+            SituationCard(
+                title = stringResource(R.string.documents_short),
+                meta = dashboardQuantity(R.plurals.dashboard_generated_count, data.todayGeneratedDocumentCount),
+                icon = Icons.Outlined.FolderOpen,
+                accent = FlowTealDark,
+                modifier = Modifier.weight(1f),
+            )
         }
-        Spacer(Modifier.height(6.dp)); Text(kpi.effectiveDate.toFrenchDate(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (data.todayConfirmedMissingValueCount > 0L) {
+            Spacer(Modifier.height(FlowSpacing.sm))
+            FlowStatusPill(
+                label = dashboardQuantity(
+                    R.plurals.dashboard_missing_value_count,
+                    data.todayConfirmedMissingValueCount,
+                ),
+                color = FlowWarning,
+                icon = Icons.Outlined.Schedule,
+                compact = true,
+            )
+        }
     }
 }
 
-@Composable private fun RecentReportRow(report: RecentReportDto, onClick: (Long) -> Unit) = Row(Modifier.fillMaxWidth().clickable { onClick(report.id) }, verticalAlignment = Alignment.CenterVertically) {
-    Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary)
-    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(report.effectiveDate.toFrenchDate(), style = MaterialTheme.typography.titleMedium); Text(report.submittedBy, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium) }
-    StatusPill(statusLabel(report.status), statusColor(report.status))
+@Composable
+private fun SituationCard(
+    title: String,
+    meta: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    FlowCard(
+        modifier = modifier.height(FlowSize.situationCardHeight),
+        contentPadding = PaddingValues(FlowSpacing.sm),
+        radius = FlowRadius.compactCard,
+    ) {
+        Column {
+            FlowIconTile(icon, null, accent)
+            Spacer(Modifier.height(FlowSpacing.sm))
+            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(FlowSpacing.micro))
+            Text(
+                meta,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
 
-@Composable private fun statusColor(status: String) = when (status) { "CONFIRMED" -> Success; "DRAFT" -> MaterialTheme.colorScheme.onSurfaceVariant; else -> Warning }
-@Composable private fun statusLabel(status: String) = stringResource(when (status) { "CONFIRMED" -> R.string.confirmed; "DRAFT" -> R.string.draft; else -> R.string.pending_review })
-@Composable private fun documentType(type: String) = stringResource(when (type) { "DAILY" -> R.string.daily; "WEEKLY" -> R.string.weekly; "MONTHLY" -> R.string.monthly; else -> R.string.manual })
-@Composable private fun scheduleType(type: String) = stringResource(when (type) { "DAILY" -> R.string.schedule_daily; "WEEKLY" -> R.string.schedule_weekly; else -> R.string.schedule_monthly })
+@Composable
+private fun QuickActions(onCreate: () -> Unit, onPaste: () -> Unit, onManual: () -> Unit) {
+    Column {
+        FlowSectionHeader(stringResource(R.string.quick_actions))
+        Spacer(Modifier.height(FlowSpacing.sm))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FlowSpacing.md)) {
+            FlowCategoryCard(
+                icon = Icons.Outlined.Description,
+                title = stringResource(R.string.dashboard_new_report),
+                meta = stringResource(R.string.dashboard_new_report_meta),
+                accent = FlowBlue,
+                tint = FlowIndigoTint,
+                gradientEnd = FlowBlueDark,
+                onClick = onCreate,
+                modifier = Modifier.weight(1f),
+            )
+            FlowCategoryCard(
+                icon = Icons.Outlined.ContentPaste,
+                title = stringResource(R.string.dashboard_paste_title),
+                meta = stringResource(R.string.dashboard_paste_meta),
+                accent = FlowOrange,
+                tint = FlowOrangeTint,
+                gradientEnd = FlowOrangeDark,
+                onClick = onPaste,
+                modifier = Modifier.weight(1f),
+            )
+            FlowCategoryCard(
+                icon = Icons.Outlined.EditNote,
+                title = stringResource(R.string.dashboard_manual_title),
+                meta = stringResource(R.string.dashboard_manual_meta),
+                accent = FlowPurple,
+                tint = FlowPurpleTint,
+                gradientEnd = FlowPurpleDark,
+                onClick = onManual,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActivitySection(points: List<DashboardActivityDto>, onStatistics: () -> Unit) {
+    var selectedIndex by remember(points) { mutableIntStateOf(points.lastIndex) }
+    Column {
+        FlowSectionHeader(
+            title = stringResource(R.string.activity_last_7_days),
+            action = stringResource(R.string.nav_statistics),
+            onAction = onStatistics,
+        )
+        Spacer(Modifier.height(FlowSpacing.sm))
+        FlowCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(FlowSpacing.md),
+        ) {
+            Column {
+                FlowSegmentedControl(
+                    options = points.map { chartDayLabel(it.date) },
+                    selectedIndex = selectedIndex,
+                    onSelected = { selectedIndex = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(FlowSpacing.sm))
+                val selected = points[selectedIndex]
+                Text(
+                    text = stringResource(
+                        R.string.dashboard_activity_point,
+                        selected.date.toFrenchDate(),
+                        selected.confirmedReportCount,
+                        selected.missingValueCount,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(FlowSpacing.sm))
+                FlowMiniChart(
+                    primaryValues = points.map { it.confirmedReportCount.toFloat() },
+                    secondaryValues = points.map { it.missingValueCount.toFloat() },
+                    selectedIndex = selectedIndex,
+                    description = stringResource(R.string.activity_chart_detail),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(FlowSpacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(FlowSpacing.md)) {
+                    ChartLegend(FlowBlue, stringResource(R.string.confirmed_short))
+                    ChartLegend(FlowGreen, stringResource(R.string.missing_short))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartLegend(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(FlowSpacing.sm).background(color, CircleShape))
+        Spacer(Modifier.size(FlowSpacing.sm))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LatestKpisSection(items: List<LatestKpiDto>, onStatistics: () -> Unit) {
+    Column {
+        FlowSectionHeader(
+            title = stringResource(R.string.latest_kpis),
+            action = stringResource(R.string.nav_statistics),
+            onAction = onStatistics,
+        )
+        Spacer(Modifier.height(FlowSpacing.sm))
+        Column(verticalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
+            items.take(3).forEachIndexed { index, kpi ->
+                val accent = listOf(FlowGreen, FlowIndigo, FlowPink)[index % 3]
+                FlowListRow(
+                    icon = Icons.Outlined.AutoGraph,
+                    title = kpi.displayName,
+                    meta = kpi.effectiveDate.toFrenchDate(),
+                    accent = accent,
+                    onClick = onStatistics,
+                    trailing = {
+                        FlowMetricBadge(
+                            label = listOfNotNull(kpi.value.displayValue(), kpi.unit).joinToString(" "),
+                            color = accent,
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentReportsSection(reports: List<RecentReportDto>, onReport: (Long) -> Unit) {
+    Column {
+        FlowSectionHeader(stringResource(R.string.recent_reports))
+        Spacer(Modifier.height(FlowSpacing.sm))
+        Column(verticalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
+            reports.take(3).forEach { report ->
+                val confirmed = report.status == "CONFIRMED"
+                FlowListRow(
+                    icon = if (confirmed) Icons.Outlined.Verified else Icons.Outlined.EditNote,
+                    title = report.effectiveDate.toFrenchDate(),
+                    meta = report.submittedBy,
+                    accent = if (confirmed) FlowGreen else FlowOrange,
+                    onClick = { onReport(report.id) },
+                    trailing = {
+                        FlowStatusPill(
+                            label = statusLabel(report.status),
+                            color = statusColor(report.status),
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentDocumentsSection(documents: List<RecentGeneratedReportDto>, onGenerated: (Long) -> Unit) {
+    Column {
+        FlowSectionHeader(stringResource(R.string.recent_documents))
+        Spacer(Modifier.height(FlowSpacing.sm))
+        Column(verticalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
+            documents.take(3).forEach { document ->
+                val pdf = document.format == "PDF"
+                FlowListRow(
+                    icon = if (pdf) Icons.Outlined.PictureAsPdf else Icons.Outlined.TableView,
+                    title = documentType(document.type),
+                    meta = document.generatedAt.toFrenchInstant(),
+                    accent = if (pdf) FlowIndigo else FlowPurple,
+                    onClick = { onGenerated(document.id) },
+                    trailing = { FlowMetricBadge(document.format, if (pdf) FlowIndigo else FlowPurple) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingScheduleSection(schedule: UpcomingScheduleDto?, onSchedules: () -> Unit) {
+    Column {
+        FlowSectionHeader(
+            title = stringResource(if (schedule == null) R.string.schedules_title else R.string.upcoming_schedule),
+            action = stringResource(if (schedule == null) R.string.new_schedule else R.string.manage_schedules),
+            onAction = onSchedules,
+        )
+        Spacer(Modifier.height(FlowSpacing.sm))
+        if (schedule == null) {
+            FlowListRow(
+                icon = Icons.Outlined.EventRepeat,
+                title = stringResource(R.string.new_schedule),
+                meta = stringResource(R.string.no_schedules),
+                accent = FlowTealDark,
+                gradientEnd = FlowTeal,
+                onClick = onSchedules,
+            )
+            return@Column
+        }
+        FlowListRow(
+            icon = Icons.Outlined.EventRepeat,
+            title = scheduleType(schedule.type),
+            meta = schedule.nextRunAt?.toFrenchInstant() ?: stringResource(R.string.not_provided),
+            accent = FlowTealDark,
+            gradientEnd = FlowTeal,
+            onClick = onSchedules,
+            trailing = {
+                FlowMetricBadge(
+                    label = scheduleFormats(schedule),
+                    color = FlowTealDark,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun DashboardLoading() {
+    FlowScreen {
+        SkeletonRows(
+            modifier = Modifier.fillMaxWidth().padding(FlowSpacing.xl),
+            count = 7,
+        )
+    }
+}
+
+private fun userInitials(userName: String): String = userName
+    .trim()
+    .split(" ", "-")
+    .filter(String::isNotBlank)
+    .take(2)
+    .mapNotNull { it.firstOrNull()?.uppercase() }
+    .joinToString("")
+
+private fun dashboardDateLabel(value: String): String = runCatching {
+    LocalDate.parse(value)
+        .format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.FRANCE))
+        .replaceFirstChar { it.titlecase(Locale.FRANCE) }
+}.getOrElse { value.toFrenchDate() }
+
+private fun chartDayLabel(value: String): String = runCatching {
+    LocalDate.parse(value).dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.FRANCE)
+}.getOrDefault(value)
+
+@Composable
+private fun dashboardQuantity(resourceId: Int, count: Long): String {
+    val quantity = count.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+    return pluralStringResource(resourceId, quantity, quantity)
+}
+
+@Composable
+private fun statusLabel(status: String): String = stringResource(
+    when (status) {
+        "CONFIRMED" -> R.string.confirmed
+        "DRAFT" -> R.string.draft
+        else -> R.string.pending_review
+    },
+)
+
+private fun statusColor(status: String): Color = when (status) {
+    "CONFIRMED" -> FlowGreen
+    "DRAFT" -> FlowIndigo
+    else -> FlowWarning
+}
+
+@Composable
+private fun documentType(type: String): String = stringResource(
+    when (type) {
+        "DAILY" -> R.string.daily
+        "WEEKLY" -> R.string.weekly
+        "MONTHLY" -> R.string.monthly
+        "INDIVIDUAL" -> R.string.individual_report
+        "CUSTOM" -> R.string.custom_period
+        else -> R.string.manual
+    },
+)
+
+@Composable
+private fun scheduleType(type: String): String = stringResource(
+    when (type) {
+        "DAILY" -> R.string.schedule_daily
+        "WEEKLY" -> R.string.schedule_weekly
+        else -> R.string.schedule_monthly
+    },
+)
+
+@Composable
+private fun scheduleFormats(schedule: UpcomingScheduleDto): String = listOfNotNull(
+    stringResource(R.string.excel).takeIf { schedule.generateExcel },
+    stringResource(R.string.pdf).takeIf { schedule.generatePdf },
+).joinToString(" · ").ifBlank { stringResource(R.string.not_provided) }

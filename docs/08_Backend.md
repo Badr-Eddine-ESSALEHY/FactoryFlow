@@ -6,7 +6,7 @@
 >
 > Status: Active
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-22
 >
 > This document defines the **backend architecture, package organization, implementation rules, Spring patterns, security model, parser architecture, persistence behavior, report generation, scheduling, email, realtime communication, optional messaging, error handling, observability, performance, and testing standards** for FactoryFlow.
 >
@@ -38,7 +38,6 @@
 > - report generation
 > - scheduling
 > - automatic email
-> - realtime event publication
 > - notification state
 >
 > The repository `assets/` folder contains the real WhatsApp screenshots that motivated the project.
@@ -72,7 +71,7 @@ The backend must protect the project's strongest guarantee:
 
 # 2. Approved Core Stack
 
-Core backend technologies:
+Implemented core backend technologies:
 
 ```text
 Java
@@ -85,7 +84,6 @@ PostgreSQL
 Flyway
 MapStruct
 OpenAPI / Swagger
-Spring WebSocket / STOMP
 Apache POI
 Apache PDFBox
 Quartz
@@ -95,6 +93,7 @@ JavaMailSender
 Optional/late:
 
 ```text
+Spring WebSocket / STOMP
 Firebase Admin SDK
 RabbitMQ
 Resilience4j
@@ -586,8 +585,6 @@ AuthenticationManager / authentication service
 Password verification
     ↓
 JWT access token
-    ↓
-Refresh token
 ```
 
 Protected request:
@@ -652,9 +649,9 @@ Do not make tokens permanent.
 
 ---
 
-# 30. Refresh Token Strategy
+# 30. Future Refresh Token Strategy
 
-Choose and document one strategy.
+Refresh tokens are not implemented. If approved later, choose and document one strategy.
 
 Recommended secure approach:
 
@@ -925,6 +922,11 @@ Do not guess silently.
 
 Return warning/lower confidence or unresolved candidate.
 
+For a token such as `30.197`, preserve the decimal reading as the editable detected
+value while returning `AMBIGUOUS_NUMBER` and both deterministic alternatives. It is
+an attention candidate, never a missing value, and becomes authoritative only after
+explicit human validation.
+
 ---
 
 # 50. Missing Numeric Value
@@ -977,6 +979,12 @@ reason
 ```
 
 No silent discard.
+
+`SourceLineClassifier` may safely classify WhatsApp timestamps, day separators,
+source-date headers, isolated punctuation/single OCR characters, known conversation
+headers, and other deterministic metadata as ignored source lines. The raw source
+remains preserved. Bulk ignore must call this backend classifier rather than
+reimplementing its rules in Android.
 
 ---
 
@@ -1364,6 +1372,11 @@ Responsibilities:
 - link source reports if implemented
 - publish completion/failure event
 
+Current manual generation has two explicit entry points: period-based consolidated
+generation (`DAILY`, `WEEKLY`, `MONTHLY`, `CUSTOM`) and exact-ID `INDIVIDUAL` export.
+Both load confirmed source data only. Individual generation binds precisely one source
+report; consolidated generation uses every confirmed report in the inclusive period.
+
 ---
 
 # 85. Generator Interface
@@ -1397,6 +1410,11 @@ Responsibilities:
 - period
 - metadata
 - readable styles
+
+The implemented workbook contains one sheet named `Rapport`. Its main detail table is
+limited to Date, Indicateur, Valeur, Valeur associée, and Unité. The official packaged
+Alf Mabrouk PNG is the only drawing; no Excel charts or visible internal audit formulas
+are generated.
 
 ---
 
@@ -1440,6 +1458,10 @@ Responsibilities:
 - metadata
 - period
 - values/units
+
+The implemented PDF uses the same warm white/sage visual identity and official logo.
+Daily and individual PDFs omit trends. Weekly/monthly PDFs add one compact trend chart
+only when at least two confirmed points exist for one KPI and page space is sufficient.
 
 ---
 
@@ -1674,6 +1696,10 @@ Read generated file through storage service.
 
 Do not reconstruct report unnecessarily.
 
+For a schedule requesting Excel and PDF, load both stored files and send one multipart
+message with two attachments, a plain-text alternative, and a professional inline-CSS
+HTML body. One schedule execution must not send one e-mail per format.
+
 ---
 
 # 110. Email Failure
@@ -1686,6 +1712,9 @@ If report already generated:
 - optionally notify
 - allow retry if implemented
 
+If one requested format fails, retain every valid generated file but send no partial
+e-mail. Record failed/partial run states and create one schedule failure notification.
+
 ---
 
 # 111. Email Retry
@@ -1696,9 +1725,10 @@ Do not regenerate by default.
 
 ---
 
-# 112. Realtime Architecture
+# 112. Future Realtime Architecture
 
-Use Spring WebSocket/STOMP.
+Spring WebSocket/STOMP is not implemented. If approved later, use it only as a small
+invalidation/event channel while REST remains authoritative.
 
 Suggested responsibilities:
 
@@ -3089,6 +3119,16 @@ failures are visible
 The strongest backend implementation is not the one with the most infrastructure.
 
 It is the one where the business rules are obvious, the boundaries are clean, and the system can be confidently explained and tested.
+
+---
+
+## Review persistence guarantees
+
+Flyway migration `V11__preserve_review_classification.sql` adds non-destructive metadata for suggestion strength/method and unknown-line classification. Existing rows default to conservative `KPI_LIKE`, `UNCLASSIFIED`, and `safe_to_ignore = false` semantics.
+
+Report confirmation is observation-based. `kpi_entries.id` identifies each retained occurrence, so duplicate KPI observations remain separate and traceable. Confirmation validates that the submitted KPI definition still matches the persisted observation but does not impose uniqueness on the definition ID.
+
+Safe bulk ignore uses persisted deterministic classification rather than reclassifying display text at click time. Removing an extraction creates an ignored source trace with reason `REMOVED_EXTRACTION`.
 
 ---
 

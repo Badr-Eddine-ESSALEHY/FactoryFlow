@@ -50,7 +50,7 @@ class DashboardStatisticsPdfIntegrationTest {
         UserAccount user = users.saveAndFlush(UserAccount.create("Dashboard Engineer", "dashboard-" + suffix + "@example.com",
                 passwords.encode("dashboard-password")));
         KpiDefinition kpi = definitions.saveAndFlush(KpiDefinition.create("TEST_" + suffix.replace("-", "").substring(0, 12),
-                "Test pressure " + suffix.substring(0, 6), "Test", "bar", null, null, true, List.of()));
+                "Test pressure " + suffix.substring(0, 6), "Test", null, null, null, true, List.of()));
         save(user, kpi, today, true, new BigDecimal("15.8"));
         save(user, kpi, today, true, null);
         save(user, kpi, today, false, new BigDecimal("999"));
@@ -84,8 +84,11 @@ class DashboardStatisticsPdfIntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
         try (var document = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(document);
-            assertThat(text).contains("FactoryFlow Maintenance KPI Report", "15.8", "Missing")
-                    .doesNotContain("999");
+            assertThat(document.getPage(0).getResources().getXObjectNames()).isNotEmpty();
+            assertThat(text).contains("RAPPORT JOURNALIER DE MAINTENANCE", "15,8", "Non renseigné",
+                            "RAPPORTS SOURCES", "SOUMIS PAR", "CONFIRMÉ LE", "PÉRIODE", "GÉNÉRÉ LE", "—")
+                    .doesNotContain("15.8")
+                    .doesNotContain("999", "Missing", "PASTE", "Local Excel Verification");
         }
     }
 

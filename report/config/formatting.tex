@@ -1,0 +1,262 @@
+% ============================================================
+% ENSIASD REPORT FORMATTING
+% ============================================================
+
+
+% ------------------------------------------------------------
+% Report visual identity
+% ------------------------------------------------------------
+
+% Accent inspired by the reference report.
+\definecolor{ReportTeal}{HTML}{19A9A5}
+
+% Neutral supporting tones.
+\definecolor{ReportGray}{HTML}{505C5B}
+\definecolor{ReportLightGray}{HTML}{D9DEDE}
+
+
+% ------------------------------------------------------------
+% Body text
+% ------------------------------------------------------------
+
+\onehalfspacing
+\justifying
+
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+\widowpenalty=10000
+\clubpenalty=10000
+
+
+% ------------------------------------------------------------
+% Chapter titles
+%
+% ENSIASD:
+% - New page
+% - Times New Roman
+% - 16 pt
+% - Bold
+% - Uppercase
+% - Right aligned
+%
+% Main headings remain black.
+% Teal is reserved for visual accents.
+% ------------------------------------------------------------
+
+\titleformat{\chapter}[display]
+    {\normalfont\bfseries\color{black}\fontsize{16}{19}\selectfont\raggedleft}
+    {\MakeUppercase{\chaptername\ \thechapter}}
+    {10pt}
+    {\MakeUppercase}
+
+\titlespacing*{\chapter}
+    {0pt}
+    {0pt}
+    {54pt}
+
+
+% ------------------------------------------------------------
+% Section numbering
+% ------------------------------------------------------------
+
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
+
+
+% ------------------------------------------------------------
+% Sections
+% ------------------------------------------------------------
+
+\titleformat{\section}
+    {\normalfont\bfseries\color{black}\fontsize{14}{17}\selectfont}
+    {\thesection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\section}
+    {0pt}
+    {12pt}
+    {12pt}
+
+
+% ------------------------------------------------------------
+% Subsections
+% ------------------------------------------------------------
+
+\titleformat{\subsection}
+    {\normalfont\bfseries\color{black}\fontsize{12}{15}\selectfont}
+    {\thesubsection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\subsection}
+    {0pt}
+    {6pt}
+    {6pt}
+
+
+% ------------------------------------------------------------
+% Subsubsections
+% ------------------------------------------------------------
+
+\titleformat{\subsubsection}
+    {\normalfont\bfseries\color{black}\fontsize{12}{15}\selectfont}
+    {\thesubsubsection.}
+    {0.7em}
+    {}
+
+\titlespacing*{\subsubsection}
+    {0pt}
+    {6pt}
+    {6pt}
+
+
+% ============================================================
+% RUNNING CHAPTER HEADER
+%
+% Example:
+%
+% REQUIREMENTS ANALYSIS AND SYSTEM SPECIFICATION
+% ------------------------------------------------------------
+%
+% This matches the visual language of the reference report.
+% Chapter-opening pages keep the large chapter heading without
+% duplicating the running header.
+% ============================================================
+
+\setlength{\headheight}{16pt}
+
+% Store only the chapter title in the running header.
+\renewcommand{\chaptermark}[1]{%
+    \markboth{\MakeUppercase{#1}}{}%
+}
+
+\pagestyle{fancy}
+
+\fancyhf{}
+
+\fancyhead[L]{%
+    \small
+    \bfseries
+    \itshape
+    \nouppercase{\leftmark}
+}
+
+\fancyfoot[R]{%
+    \textcolor{ReportGray}{\thepage}
+}
+
+\renewcommand{\headrulewidth}{0.45pt}
+\renewcommand{\footrulewidth}{0pt}
+
+
+% Chapter-opening pages.
+% No duplicated running title here.
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[R]{\textcolor{ReportGray}{\thepage}}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+
+% ============================================================
+% FIGURE CAPTIONS
+%
+% FIGURE 1.2     <- teal + bold
+% Description    <- black + italic
+%
+% Position: under the image.
+% ============================================================
+
+\renewcommand{\thefigure}{\thechapter.\arabic{figure}}
+
+\DeclareCaptionLabelFormat{tealfigure}{%
+    \textcolor{ReportTeal}{\textbf{#1~#2}}%
+}
+
+\captionsetup[figure]{
+    name=FIGURE,
+    position=bottom,
+    font=small,
+    labelformat=tealfigure,
+    labelsep=space,
+    textfont=it,
+    justification=centering,
+    singlelinecheck=false,
+    skip=7pt
+}
+
+
+% ============================================================
+% TABLE CAPTIONS
+%
+% TABLE 2.1      <- teal + bold
+% Description    <- black + italic
+%
+% Position: above the table.
+% ============================================================
+
+\renewcommand{\thetable}{\thechapter.\arabic{table}}
+
+\DeclareCaptionLabelFormat{tealtable}{%
+    \textcolor{ReportTeal}{\textbf{#1~#2}}%
+}
+
+\captionsetup[table]{
+    name=TABLE,
+    position=top,
+    font=small,
+    labelformat=tealtable,
+    labelsep=space,
+    textfont=it,
+    justification=centering,
+    singlelinecheck=false,
+    skip=8pt
+}
+
+
+% ------------------------------------------------------------
+% Table defaults
+%
+% Clean white tables with thin black grid lines,
+% matching the reference report.
+% ------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.40}
+
+\setlength{\arrayrulewidth}{0.45pt}
+
+\setlength{\tabcolsep}{8pt}
+
+
+% ------------------------------------------------------------
+% List appearance
+% ------------------------------------------------------------
+
+\setlist[itemize]{
+    leftmargin=1.2cm,
+    itemsep=3pt,
+    topsep=6pt
+}
+
+\setlist[enumerate]{
+    leftmargin=1.2cm,
+    itemsep=3pt,
+    topsep=6pt
+}
+
+
+% ------------------------------------------------------------
+% Hyperlinks
+%
+% References remain visually clean but are clickable.
+% ------------------------------------------------------------
+
+\hypersetup{
+    hidelinks,
+    unicode,
+    pdfborder={0 0 0}
+}

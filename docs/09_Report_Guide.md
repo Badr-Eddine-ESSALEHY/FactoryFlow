@@ -253,7 +253,6 @@ Briefly mention:
 2. Paste WhatsApp text
 3. Import screenshot from gallery
 4. Share an image directly from WhatsApp/Android
-5. Capture an image using the camera
 
 Do not spend one paragraph on each method.
 
@@ -270,7 +269,6 @@ Manual Entry ───────────────┐
 Paste Text ────────────────┤
 Gallery Image → OCR ───────┤
 Shared Image → OCR ────────┤
-Camera Image → OCR ────────┘
              ↓
    Deterministic Parser
              ↓
@@ -327,7 +325,7 @@ Maintenance Engineer
         ↓
 Android App
   Kotlin / Compose
-  CameraX / ML Kit
+  Gallery / Share Intent
         ↓
 REST + WebSocket/STOMP
         ↓
@@ -357,7 +355,7 @@ Example logic:
 
 ```text
 The Android application handles data acquisition and user interaction.
-OCR is performed locally on the device using ML Kit.
+OCR is performed by the private FactoryFlow PaddleOCR runtime through the authenticated backend API.
 The Spring Boot backend centralizes authentication, parsing, validation, persistence, report generation and scheduling.
 PostgreSQL stores authoritative confirmed data.
 ```
@@ -377,15 +375,15 @@ Example:
 | Layer | Technology | Purpose |
 |---|---|---|
 | Mobile | Kotlin + Jetpack Compose | Native Android interface |
-| OCR | Google ML Kit | On-device text recognition |
+| OCR | PaddleOCR PP-OCRv5 | Private service-oriented text recognition |
 | Backend | Java + Spring Boot | Business logic and API |
 | Security | Spring Security + JWT | Authentication |
 | Persistence | PostgreSQL + JPA | Centralized structured data |
 | Excel | Apache POI | Excel report generation |
 | PDF | Apache PDFBox | PDF report generation |
 | Scheduling | Quartz | Daily/weekly/monthly automation |
-| Realtime | WebSocket/STOMP | Live state updates |
-| Notifications | FCM | Push notifications |
+| Realtime | Not implemented | REST refresh remains authoritative |
+| Notifications | Persisted in-app records | User-scoped notification history |
 
 Only include technologies actually implemented in the final system.
 
@@ -396,8 +394,7 @@ Only include technologies actually implemented in the final system.
 A short engineering justification is enough:
 
 - direct Android Share Intent integration
-- CameraX
-- ML Kit
+- PaddleOCR backend OCR
 - FileProvider
 - FCM
 - Android-only target
@@ -1356,7 +1353,7 @@ we made a cool dashboard
 Prefer:
 
 ```text
-The application assists KPI extraction through deterministic parsing and on-device OCR.
+The application assists KPI extraction through deterministic parsing and a private backend PaddleOCR runtime.
 ```
 
 ---
@@ -1472,7 +1469,7 @@ Define first use.
 
 Example:
 
-> Google ML Kit OCR (Optical Character Recognition) extracts text locally from screenshots or camera images.
+> PaddleOCR extracts text from gallery or shared images inside the controlled FactoryFlow environment.
 
 ---
 
@@ -1490,7 +1487,7 @@ No need to deeply explain protocol frames.
 
 If security is mentioned:
 
-> JWT-based authentication secures API access, with refresh tokens used to maintain sessions.
+> JWT access-token authentication secures API access. Refresh-token rotation is not implemented; expired sessions return the user to login.
 
 One sentence may be enough.
 
@@ -1591,7 +1588,7 @@ Core idea:
 
 Core idea:
 
-> The workflow already occurs on Android through WhatsApp. Native development provides direct integration with Share Intent, CameraX, ML Kit, FileProvider and FCM.
+> The workflow already occurs on Android through WhatsApp. Native development provides direct Share Intent and FileProvider integration while the backend owns OCR orchestration.
 
 ---
 
@@ -1758,7 +1755,7 @@ WhatsApp Share
 
 ---
 
-# 111. Camera Evidence
+# 111. Image OCR Evidence
 
 Usually lower report priority than Share Intent because Share Intent is more tightly connected to the original workflow.
 
@@ -1942,7 +1939,7 @@ Good:
 
 Bad:
 
-> ML Kit guarantees perfect extraction.
+> OCR output is probabilistic and always requires deterministic parsing plus explicit human validation.
 
 ---
 
@@ -2066,7 +2063,7 @@ Include:
 - Android
 - Spring Boot
 - PostgreSQL
-- ML Kit
+- PaddleOCR
 - report generation/scheduling
 
 Figure:
@@ -2259,7 +2256,7 @@ First occurrence:
 Jetpack Compose
 Spring Boot
 PostgreSQL
-Google ML Kit
+PaddleOCR
 Apache POI
 Apache PDFBox
 Quartz

@@ -66,7 +66,6 @@ A `MaintenanceReport` represents one business record containing KPI information 
 - pasted text
 - gallery image
 - shared image
-- camera image
 
 It is not the same as an Excel or PDF file.
 
@@ -170,7 +169,6 @@ MANUAL
 PASTE
 GALLERY_OCR
 SHARE_OCR
-CAMERA_OCR
 ```
 
 Each report must preserve its acquisition source.
@@ -209,9 +207,9 @@ For:
 
 - gallery
 - share intent
-- camera
 
-the Android application performs OCR first.
+the Android application uploads the selected image to the authenticated backend OCR
+endpoint. The backend delegates recognition to the private PaddleOCR runtime.
 
 The OCR text becomes the source text used by the backend parser.
 
@@ -670,7 +668,6 @@ This rule applies to:
 - paste
 - gallery OCR
 - shared image OCR
-- camera OCR
 
 ---
 
@@ -887,14 +884,18 @@ PDF
 
 # 55. Generated Report Type Rule
 
-Potential types:
+Implemented types:
 
 ```text
+INDIVIDUAL
 DAILY
 WEEKLY
 MONTHLY
-MANUAL
+CUSTOM
 ```
+
+`MANUAL` remains readable only as a legacy stored enum value. New manual generation
+uses one of the explicit business scopes above.
 
 ---
 
@@ -918,7 +919,9 @@ separate, so `generation = READY` with `emailDelivery = FAILED` is valid. Asynch
 
 # 57. Manual Generation Rule
 
-A maintenance engineer may generate a report manually from eligible confirmed data.
+An individual export must load exactly the selected confirmed Maintenance Report ID.
+A consolidated manual generation loads all confirmed reports inside its explicit daily,
+weekly, monthly, or custom inclusive range. Drafts never enter either path.
 
 ---
 
@@ -1036,6 +1039,12 @@ Generated documents must include enough metadata to identify:
 
 The exact layout belongs in report documentation.
 
+Excel uses one worksheet named `Rapport`. Its main detail table contains exactly
+`Date`, `Indicateur`, `Valeur`, `Valeur associée`, and `Unité`; status/source/internal
+audit fields do not appear in that main table. PDF uses the same manager-facing data
+model. Daily and individual PDFs contain no trend chart; weekly/monthly PDFs may show
+one only with sufficient confirmed points.
+
 ---
 
 # 67. User-Initiated Share Rule
@@ -1062,9 +1071,9 @@ FactoryFlow must not claim delivery success because the external email app owns 
 
 # 69. Scheduled Email Rule
 
-When a scheduled report is generated without active user involvement:
-
-The backend may send automatically via JavaMailSender.
+When a scheduled report is generated without active user involvement, the backend
+sends one JavaMailSender message containing every requested successfully generated
+format. It must not send one e-mail per attachment.
 
 ---
 
@@ -1088,6 +1097,9 @@ If email delivery fails after successful generation:
 The report remains valid and stored.
 
 The failure should be visible and retryable where implemented.
+
+If one requested format fails while another succeeds, keep the valid file, mark the
+runs accurately, send no misleading partial e-mail, and create one failure notification.
 
 ---
 
@@ -1151,9 +1163,9 @@ They are not the source of truth.
 
 ---
 
-# 79. Push Notification Rule
+# 79. Future Push Notification Rule
 
-FCM may notify users about:
+FCM is not currently implemented. If added later, it may notify users about:
 
 - report generated
 - report missing
@@ -1265,21 +1277,21 @@ Never plaintext.
 
 Access tokens must expire.
 
-Refresh tokens are opaque random values. Store only token hashes server-side with
-expiration and revocation metadata, and rotate them on refresh.
+The current contract uses an access token only. Refresh-token rotation is not
+implemented and must not be presented as current behavior.
 
 ---
 
 # 93. Logout Rule
 
-Logout ends the local authenticated session and revokes the active refresh/session
-token through `POST /api/auth/logout`.
+Logout ends the local authenticated session by clearing locally stored credentials.
+There is no current backend logout/revocation endpoint.
 
 ---
 
 # 94. Session Expiry Rule
 
-If refresh fails:
+When the backend returns a genuine authentication `401`:
 
 The user must re-authenticate.
 

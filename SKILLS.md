@@ -122,8 +122,7 @@ Room
 Coroutines
 Flow / StateFlow
 Navigation Compose
-CameraX
-ML Kit
+PaddleOCR backend integration
 Android Share Intent
 FileProvider
 Firebase Cloud Messaging (SHOULD after the trusted core)
@@ -1911,7 +1910,7 @@ Special care:
 - draft save
 - notification deep links
 - external Share Intent entry
-- Camera/OCR flow
+- gallery/share OCR flow
 
 Do not allow terminal workflows to recreate invalid screens through back stack.
 
@@ -1955,9 +1954,9 @@ to external applications.
 
 ---
 
-# 85. CameraX Skill Standard
+# 85. Image Acquisition Skill Standard
 
-CameraX is used for acquisition, not for building a complex camera product.
+Images are acquired through gallery selection or Android Share Intent. Direct camera acquisition is intentionally unsupported.
 
 Required concerns:
 
@@ -1985,9 +1984,9 @@ Handle cancellation gracefully.
 
 ---
 
-# 87. ML Kit OCR Skill Standard
+# 87. PaddleOCR Skill Standard
 
-OCR runs on-device.
+OCR runs in the private FactoryFlow PaddleOCR runtime behind the backend `OcrProvider` contract.
 
 Responsibilities:
 
@@ -2862,8 +2861,7 @@ Particularly important:
 - MVVM
 - Retrofit
 - Room
-- CameraX
-- ML Kit
+- PaddleOCR backend runtime
 - Share Intent
 - FileProvider
 - Quartz
@@ -2879,7 +2877,7 @@ AI should accelerate learning, not hide architecture.
 The following responsibilities must remain separate:
 
 ```text
-ML Kit
+PaddleOCR
 → text recognition only
 ```
 
@@ -2957,15 +2955,11 @@ PASTE TEXT                                          │
       │                                             │
 GALLERY IMAGE                                       │
       │                                             │
-      └─> ML KIT OCR ───────────────────────────────┤
+      └─> BACKEND OCR API / PADDLEOCR ──────────────┤
                                                     │
 SHARED IMAGE                                        │
       │                                             │
-      └─> ML KIT OCR ───────────────────────────────┤
-                                                    │
-CAMERA IMAGE                                        │
-      │                                             │
-      └─> ML KIT OCR ───────────────────────────────┘
+      └─> PADDLE OCR API ───────────────────────────┘
                         ↓
                 Deterministic parser
                         ↓

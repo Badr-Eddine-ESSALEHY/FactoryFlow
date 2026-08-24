@@ -7,9 +7,14 @@ public record AnalyzeReportResponse(
         AcquisitionSource source,
         String rawText,
         int recognizedCount,
+        int readyCount,
+        int attentionCount,
+        int missingCount,
+        int unresolvedCount,
         int needsReviewCount,
         int unrecognizedCount,
         List<ParsedEntry> entries,
-        List<UnrecognizedLine> unrecognizedLines
+        List<UnrecognizedLine> unrecognizedLines,
+        List<IgnoredSourceLine> ignoredLines
 ) {
 }

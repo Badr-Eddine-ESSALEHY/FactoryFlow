@@ -462,8 +462,7 @@ A mobile application therefore offers important advantages:
 - direct access from the device receiving source information
 - Android Share Intent
 - gallery import
-- CameraX
-- on-device OCR
+- backend PaddleOCR
 - notifications
 - quick review
 - report access while mobile
@@ -482,9 +481,8 @@ This decision supports deeper integration with:
 
 - Android Share Intent
 - FileProvider
-- CameraX
-- ML Kit
-- Firebase Cloud Messaging
+- PaddleOCR backend runtime
+- future Firebase Cloud Messaging support, if implemented
 - Android lifecycle
 - system permissions
 - system share sheet
@@ -564,8 +562,8 @@ FactoryFlow's core scope includes:
 - pasted WhatsApp text
 - gallery image import
 - Android Share Intent image import
-- CameraX acquisition
-- on-device OCR
+- gallery image acquisition
+- private backend OCR
 - deterministic KPI parser
 - fuzzy label recognition
 - numeric extraction
@@ -607,7 +605,9 @@ The engineer pastes the original WhatsApp message.
 
 The engineer selects an existing screenshot/photo.
 
-The Android app runs OCR.
+The Android app submits the image to the authenticated backend OCR endpoint. The
+backend delegates recognition to the private PaddleOCR runtime and returns extracted
+text for deterministic parsing and human review.
 
 ---
 
@@ -617,9 +617,9 @@ The engineer shares an image directly from WhatsApp or another Android app into 
 
 ---
 
-## 20.5 Camera
+## 20.5 Shared and Gallery Images
 
-The engineer photographs the relevant report/message using CameraX.
+The engineer selects or shares the relevant report image from Android.
 
 ---
 
@@ -634,7 +634,6 @@ Manual
 Paste
 Gallery
 Share
-Camera
    ↓
 Common reporting pipeline
    ↓
@@ -647,7 +646,7 @@ For images:
 
 ```text
 Image
-→ ML Kit OCR
+→ PaddleOCR API
 → Raw Text
 ```
 
@@ -1260,8 +1259,7 @@ Retrofit / Room
 
 Android-specific integrations include:
 
-- CameraX
-- ML Kit OCR
+- PaddleOCR backend OCR
 - Share Intent
 - FileProvider
 - FCM
@@ -1314,8 +1312,7 @@ Room
 Coroutines
 Flow / StateFlow
 Navigation Compose
-CameraX
-ML Kit OCR
+PaddleOCR backend OCR
 Android Share Intent
 FileProvider
 FCM
@@ -1665,8 +1662,7 @@ The developer should be able to explain:
 - MVVM
 - Retrofit
 - Room
-- CameraX
-- ML Kit
+- PaddleOCR backend runtime
 - Share Intent
 - FileProvider
 - Quartz

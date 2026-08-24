@@ -1128,7 +1128,6 @@ Potential:
 
 ```text
 Paste
-Camera
 Gallery
 Manual
 ```
@@ -2079,7 +2078,6 @@ Use recognizable choices:
 ```text
 Paste text
 Gallery
-Camera
 Manual
 ```
 
@@ -2301,7 +2299,7 @@ Check:
 
 - touch
 - keyboard
-- camera
+- gallery image
 - gallery
 - Share Intent
 - FileProvider

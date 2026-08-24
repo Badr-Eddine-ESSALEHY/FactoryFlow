@@ -1,0 +1,15 @@
+[
+  {"id":"clean_french","variant":"clean","text":"Vrac : 42,75 t\nCompresseur 1 : 77108 h - 77 %\nHumidité : ---"},
+  {"id":"compressed","variant":"compressed","text":"Production : 1 245,50 t\nDisponibilité : 98,2 %"},
+  {"id":"dark","variant":"dark","text":"Température : 27,4 °C\nPression : 6,2 bar"},
+  {"id":"low_resolution","variant":"low_resolution","text":"Vrac: 0 t\nArrêts: 3"},
+  {"id":"noisy","variant":"noisy","text":"Énergie : 12 450 kWh\nRendement : 88,6 %"},
+  {"id":"decimal_comma","variant":"clean","text":"Consommation : 18,75 m³"},
+  {"id":"decimal_point","variant":"clean","text":"Consommation : 18.75 m³"},
+  {"id":"composite","variant":"clean","text":"Compresseur 2 : 6240 h - 71 %"},
+  {"id":"missing","variant":"clean","text":"Humidité : ---\nPression : non renseigné"},
+  {"id":"not_applicable","variant":"clean","text":"Ligne B : N/A"},
+  {"id":"unknown_label","variant":"clean","text":"Indice ZX inconnu : 14,2"},
+  {"id":"multiple_kpis","variant":"clean","text":"Vrac : 42,75 t\nDisponibilité : 97 %\nArrêts : 0\nTempérature : 26 °C"},
+  {"id":"mixed_layout","variant":"mixed_layout","text":"13/08/2026\nVRAC 42,75 t | HUMIDITÉ ---\nC1 77108 h / 77 %"}
+]
