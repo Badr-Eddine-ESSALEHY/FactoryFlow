@@ -6,6 +6,7 @@ import com.factoryflow.analytics.application.ReportAnalyticsService;
 import com.factoryflow.analytics.application.ReportAnalyticsService.Measurement;
 import com.factoryflow.generatedreport.api.GenerateReportRequest;
 import com.factoryflow.generatedreport.api.GeneratedReportResponse;
+import com.factoryflow.generatedreport.api.IndividualReportExportRequest;
 import com.factoryflow.generatedreport.domain.GeneratedReport;
 import com.factoryflow.generatedreport.domain.GeneratedReportFormat;
 import com.factoryflow.generatedreport.domain.GeneratedReportType;
@@ -70,41 +71,59 @@ public class GeneratedReportService {
     @Transactional
     public GeneratedReportResponse generate(String email, GenerateReportRequest request) {
         UserAccount user = authentication.requireUser(email);
+        if (request.type() == GeneratedReportType.INDIVIDUAL) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR,
+                    "Individual exports require reportId and the individual export endpoint.");
+        }
+        if (request.type() == GeneratedReportType.MANUAL) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR,
+                    "MANUAL is a legacy report type. Use CUSTOM for a new custom period.");
+        }
         ReportPeriod period;
         try {
             period = ReportPeriod.validated(request.type(), request.periodStart(), request.periodEnd());
         } catch (IllegalArgumentException exception) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, exception.getMessage());
         }
-        return generateDocument(request.type(), request.format(), period, user, null, GenerationOrigin.MANUAL);
+        List<MaintenanceReport> sourceReports = confirmedReports(period);
+        return generateDocument(request.type(), request.format(), period, user, null, GenerationOrigin.MANUAL,
+                sourceReports, previousPeriodReports(period), null);
+    }
+
+    @Transactional
+    public GeneratedReportResponse generateIndividual(String email, IndividualReportExportRequest request) {
+        UserAccount user = authentication.requireUser(email);
+        MaintenanceReport source = maintenanceReports.findById(request.reportId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.REPORT_NOT_FOUND,
+                        "Maintenance report not found."));
+        if (source.getStatus() != ReportStatus.CONFIRMED) {
+            throw new ApiException(HttpStatus.CONFLICT, ApiErrorCode.REPORT_INVALID_STATE,
+                    "Only confirmed maintenance reports can be exported as final documents.");
+        }
+        ReportPeriod period = new ReportPeriod(source.getEffectiveDate(), source.getEffectiveDate());
+        return generateDocument(GeneratedReportType.INDIVIDUAL, request.format(), period, user, null,
+                GenerationOrigin.MANUAL, List.of(source), List.of(), source.getId());
     }
 
     @Transactional
     public GeneratedReportResponse generateScheduled(ReportSchedule schedule, GeneratedReportFormat format,
                                                       ReportPeriod period) {
         return generateDocument(GeneratedReportType.valueOf(schedule.getType().name()), format, period,
-                null, schedule, GenerationOrigin.SCHEDULED);
+                null, schedule, GenerationOrigin.SCHEDULED, confirmedReports(period), previousPeriodReports(period),
+                null);
     }
 
     private GeneratedReportResponse generateDocument(GeneratedReportType type, GeneratedReportFormat format,
                                                        ReportPeriod period, UserAccount user,
-                                                       ReportSchedule schedule, GenerationOrigin origin) {
-        List<MaintenanceReport> sourceReports = maintenanceReports
-                .findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
-                        ReportStatus.CONFIRMED, period.start(), period.end());
-        GeneratedReport previous = origin == GenerationOrigin.MANUAL
-                ? generatedReports.findFirstByTypeAndFormatAndPeriodStartAndPeriodEndAndOriginOrderByVersionDesc(
-                        type, format, period.start(), period.end(), GenerationOrigin.MANUAL).orElse(null)
-                : null;
+                                                       ReportSchedule schedule, GenerationOrigin origin,
+                                                       List<MaintenanceReport> sourceReports,
+                                                       List<MaintenanceReport> previousReports,
+                                                       Long individualSourceReportId) {
+        GeneratedReport previous = previousManualVersion(
+                type, format, period, origin, individualSourceReportId);
         int version = previous == null ? 1 : previous.getVersion() + 1;
         Instant generatedAt = clock.instant();
-        String fileName = fileName(type, format, period, version, schedule);
-        LocalDate previousEnd = period.start().minusDays(1);
-        long periodDays = java.time.temporal.ChronoUnit.DAYS.between(period.start(), period.end()) + 1;
-        LocalDate previousStart = previousEnd.minusDays(periodDays - 1);
-        List<MaintenanceReport> previousReports = maintenanceReports
-                .findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
-                        ReportStatus.CONFIRMED, previousStart, previousEnd);
+        String fileName = fileName(type, format, period, version, schedule, individualSourceReportId);
         ReportGenerationData data = toGenerationData(type, period, generatedAt, sourceReports, previousReports);
         byte[] document;
         try {
@@ -129,6 +148,33 @@ public class GeneratedReportService {
             storage.delete(reference);
             throw exception;
         }
+    }
+
+    private GeneratedReport previousManualVersion(GeneratedReportType type, GeneratedReportFormat format,
+                                                   ReportPeriod period, GenerationOrigin origin,
+                                                   Long individualSourceReportId) {
+        if (origin != GenerationOrigin.MANUAL) return null;
+        if (individualSourceReportId != null) {
+            return generatedReports
+                    .findFirstByTypeAndFormatAndPeriodStartAndPeriodEndAndOriginAndSourceReports_IdOrderByVersionDesc(
+                            type, format, period.start(), period.end(), origin, individualSourceReportId)
+                    .orElse(null);
+        }
+        return generatedReports.findFirstByTypeAndFormatAndPeriodStartAndPeriodEndAndOriginOrderByVersionDesc(
+                type, format, period.start(), period.end(), origin).orElse(null);
+    }
+
+    private List<MaintenanceReport> confirmedReports(ReportPeriod period) {
+        return maintenanceReports.findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
+                ReportStatus.CONFIRMED, period.start(), period.end());
+    }
+
+    private List<MaintenanceReport> previousPeriodReports(ReportPeriod period) {
+        LocalDate previousEnd = period.start().minusDays(1);
+        long periodDays = java.time.temporal.ChronoUnit.DAYS.between(period.start(), period.end()) + 1;
+        LocalDate previousStart = previousEnd.minusDays(periodDays - 1);
+        return maintenanceReports.findAllByStatusAndEffectiveDateBetweenOrderByEffectiveDateAscIdAsc(
+                ReportStatus.CONFIRMED, previousStart, previousEnd);
     }
 
     @Transactional(readOnly = true)
@@ -200,13 +246,15 @@ public class GeneratedReportService {
     }
 
     private String fileName(GeneratedReportType type, GeneratedReportFormat format, ReportPeriod period, int version,
-                            ReportSchedule schedule) {
+                            ReportSchedule schedule, Long individualSourceReportId) {
         String dates = period.start().equals(period.end())
                 ? period.start().toString()
                 : period.start() + "_to_" + period.end();
         String extension = format == GeneratedReportFormat.PDF ? ".pdf" : ".xlsx";
         String scheduleSuffix = schedule == null ? "" : "_schedule-" + schedule.getId();
-        return "FactoryFlow_" + type.name() + "_" + dates + scheduleSuffix + "_v" + version + extension;
+        String sourceSuffix = individualSourceReportId == null ? "" : "_report-" + individualSourceReportId;
+        return "FactoryFlow_" + type.name() + "_" + dates + sourceSuffix + scheduleSuffix + "_v" + version
+                + extension;
     }
 
     public record DownloadedGeneratedReport(String fileName, GeneratedReportFormat format, StoredReportFile file) { }

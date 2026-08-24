@@ -382,8 +382,8 @@ Example:
 | Excel | Apache POI | Excel report generation |
 | PDF | Apache PDFBox | PDF report generation |
 | Scheduling | Quartz | Daily/weekly/monthly automation |
-| Realtime | WebSocket/STOMP | Live state updates |
-| Notifications | FCM | Push notifications |
+| Realtime | Not implemented | REST refresh remains authoritative |
+| Notifications | Persisted in-app records | User-scoped notification history |
 
 Only include technologies actually implemented in the final system.
 
@@ -1353,7 +1353,7 @@ we made a cool dashboard
 Prefer:
 
 ```text
-The application assists KPI extraction through deterministic parsing and on-device OCR.
+The application assists KPI extraction through deterministic parsing and a private backend PaddleOCR runtime.
 ```
 
 ---
@@ -1487,7 +1487,7 @@ No need to deeply explain protocol frames.
 
 If security is mentioned:
 
-> JWT-based authentication secures API access, with refresh tokens used to maintain sessions.
+> JWT access-token authentication secures API access. Refresh-token rotation is not implemented; expired sessions return the user to login.
 
 One sentence may be enough.
 

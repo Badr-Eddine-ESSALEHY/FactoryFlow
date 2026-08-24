@@ -43,7 +43,7 @@ class PasteViewModelTest {
                         warnings = emptyList(),
                     ),
                 ),
-                ignoredLines = emptyList(),
+                ignoredLines = listOf(IgnoredSourceLineDto("i1", "15:01", "WHATSAPP_METADATA")),
                 unrecognizedLines = listOf(
                     ParsedUnknownLineDto(
                         lineId = "2",
@@ -61,7 +61,13 @@ class PasteViewModelTest {
         assertEquals("Température: 42\nNote équipe", repository.lastAnalyzedRawText)
         assertEquals("PASTE", repository.lastAnalyzedSource)
         assertEquals(1, repository.createdDraftRequests.size)
-        assertEquals("Note équipe", repository.createdDraftRequests.single().unrecognizedLines.single().sourceLine)
+        val preservedLines = repository.createdDraftRequests.single().unrecognizedLines
+        assertEquals("Note équipe", preservedLines.first().sourceLine)
+        assertEquals("15:01", preservedLines.last().sourceLine)
+        assertEquals("UNRESOLVED", preservedLines.last().resolution)
+        assertEquals("SAFE_NOISE", preservedLines.last().kind)
+        assertEquals("WHATSAPP_METADATA", preservedLines.last().classificationReason)
+        assertTrue(preservedLines.last().safeToIgnore)
     }
 
     @Test fun `analysis failure preserves input avoids navigation and can be retried`() = runTest(dispatcher.dispatcher) {

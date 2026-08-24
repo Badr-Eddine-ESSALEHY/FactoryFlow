@@ -1,25 +1,260 @@
 \chapter{Industrial Context and Problem Definition}
+\label{chap:industrial-context}
+
+
+% ============================================================
+% 1. INTRODUCTION
+% ============================================================
 
 \section{Introduction}
+\label{sec:chapter1-introduction}
 
-% To be written after the report foundation is validated.
+Digital transformation in industrial environments extends beyond the automation of production equipment. It also concerns the way operational information is collected, structured, validated, analysed, and transformed into useful knowledge. Maintenance activities generate numerous indicators required for equipment monitoring, resource-consumption follow-up, anomaly identification, and periodic reporting. The value of these indicators, however, depends directly on the reliability and traceability of the underlying data.
+
+During the internship at \textbf{Alf Mabrouk Nutrition Animale}, an important limitation was identified in the maintenance reporting process. Several \textbf{\gls{kpi}} values were communicated through heterogeneous WhatsApp messages and later transferred manually into reporting files. Although this communication channel enabled rapid information exchange, the absence of a standardized acquisition process introduced additional interpretation and transcription work. The existing workflow is presented in \textbf{Section~\ref{sec:existing-kpi-process}}.
+
+The internship project therefore focused on transforming this fragmented process into a structured and traceable digital workflow. This led to the development of \textbf{FactoryFlow}, a mobile platform dedicated to intelligent KPI acquisition, human-controlled validation, centralized storage, automated reporting, and maintenance-oriented analysis. The project objectives are detailed in \textbf{Section~\ref{sec:internship-objectives}}.
+
+A complementary web application dedicated to dosage deviation analysis was also developed to address another industrial need related to production monitoring. While \textbf{FactoryFlow} focuses on trustworthy maintenance information and decision support, the \textbf{Dosage Analysis Web Application} focuses on detecting and monitoring deviations between expected and measured production quantities. Its role within the internship is introduced in \textbf{Section~\ref{sec:complementary-dosage}}.
+
+This chapter presents the industrial context, the existing maintenance workflow, its limitations, the associated data-quality challenges, and the objectives that shaped the proposed solutions.
+
+
+% ============================================================
+% 2. HOST ORGANIZATION
+% ============================================================
 
 \section{Host Organization and Industrial Context}
+\label{sec:host-organization}
+
+\textbf{Alf Mabrouk}, also known as La Marocaine d'Aliments Composés, is a Moroccan company operating in the \textbf{animal nutrition sector}. Established in 2012 and located in the \textbf{industrial zone of Bouznika}, the company specializes in the manufacture and commercialization of compound feed intended for livestock and poultry.
+
+Alf Mabrouk belongs to the poultry-related activities of \textbf{Cap Holding}, a Moroccan industrial and investment group active in cereal-related activities, industrial milling, and agricultural raw-material trading. This affiliation places the company within a broader industrial ecosystem involving the transformation, storage, and management of agricultural raw materials.
+
+From an operational perspective, the technical organization is structured around complementary functions including maintenance, production, and raw-material reception and transfer. These activities are supported by supervisors, team leaders, operators, and shift-based teams. \textbf{Figure~\ref{fig:technical-organization}} provides a simplified representation of this organization.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]
+    {diagrams/source/Figure 1.1.png}
+    \caption{Simplified technical organizational structure of Alf Mabrouk}
+    \label{fig:technical-organization}
+\end{figure}
+
+Production depends on the controlled transformation and combination of several raw materials and premixes. Each production recipe specifies the required ingredients and their target quantities.
+
+The process begins with raw-material storage in dedicated silos. Ingredients are transferred to weighing systems according to the selected recipe before passing through milling. Smaller and more sensitive components are introduced through micro-dosing systems using precise weighing equipment. Liquid ingredients such as water and vegetable oils are also measured and injected before mixing. The resulting product may then pass through pressing lines, finished-product silos, and finally bulk handling or bagging. These principal stages are illustrated in \textbf{Figure~\ref{fig:production-process}}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]
+    {diagrams/source/Figure 1.2.png}
+    \caption{Simplified overview of the compound-feed production process at Alf Mabrouk}
+    \label{fig:production-process}
+\end{figure}
+
+This production environment combines physical equipment with industrial information systems. Programmable logic controllers participate in equipment control and measurement, while recipes and operational information are managed digitally. Reliable industrial monitoring therefore depends not only on equipment operation, but also on the quality of the data collected from these activities. This relationship provides the context for the maintenance processes discussed in \textbf{Section~\ref{sec:maintenance-context}}.
+
+
+% ============================================================
+% 3. MAINTENANCE CONTEXT
+% ============================================================
 
 \section{Maintenance Context}
+\label{sec:maintenance-context}
+
+Maintenance plays a central role in ensuring the availability and correct operation of the equipment involved throughout the production process. The stages shown in \textbf{Figure~\ref{fig:production-process}} depend on interconnected mechanical, electrical, electromechanical, and automated systems. A malfunction in one component may therefore influence one or several production stages.
+
+Beyond direct interventions, the maintenance team follows operational indicators related to equipment utilisation and industrial utilities. These include, among others, operating hours, compressor measurements, water consumption, fuel quantities, oil levels, molasses levels, and other values required for technical monitoring.
+
+As illustrated in \textbf{Figure~\ref{fig:technical-organization}}, maintenance activities involve different operational teams and shifts. Information collected in the field must consequently remain accessible and understandable regardless of its source or the employee who recorded it.
+
+This context makes \textbf{data continuity and traceability} essential. A measurement may later be required for historical comparison, reporting, anomaly investigation, trend analysis, or technical decision support. The workflow previously used to transmit and structure these indicators is presented in \textbf{Section~\ref{sec:existing-kpi-process}}.
+
+
+% ============================================================
+% 4. EXISTING KPI COLLECTION
+% ============================================================
 
 \section{Existing KPI Collection Process}
+\label{sec:existing-kpi-process}
+
+Before FactoryFlow, maintenance indicators were collected primarily through a combination of \textbf{WhatsApp communication and manual transcription}. Employees shared measurements collected during their activities or shifts through operational WhatsApp groups.
+
+This approach was convenient for rapid human communication, but the messages were not designed for direct machine processing. Equivalent indicators could therefore appear with different spellings, abbreviations, separators, units, decimal formats, or ordering. The resulting data-quality challenges are discussed in \textbf{Section~\ref{sec:data-quality-challenges}}.
+
+A message could contain several indicators, only a small subset of them, or explicitly missing values. Once received, the useful information had to be manually identified, interpreted, and transferred into the reporting environment.
+
+The original workflow is illustrated in \textbf{Figure~\ref{fig:existing-kpi-workflow}}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]
+    {diagrams/source/figure_1_3_existing_kpi_workflow.png}
+    \caption{Existing maintenance KPI collection and reporting workflow}
+    \label{fig:existing-kpi-workflow}
+\end{figure}
+
+Although functional, this workflow introduced a manual transformation step between field information and the structured data used for reporting. Its principal limitations are analysed in \textbf{Section~\ref{sec:existing-process-limitations}}.
+
+
+% ============================================================
+% 5. LIMITATIONS
+% ============================================================
 
 \section{Limitations of the Existing Process}
+\label{sec:existing-process-limitations}
+
+The existing process fulfilled the basic objective of transmitting operational information, but several limitations appeared once the messages had to be transformed into reusable data.
+
+The first limitation concerned \textbf{manual effort}. Each message had to be interpreted before its values could be transferred into the reporting system.
+
+A second limitation was the \textbf{risk of transcription and interpretation errors}. Decimal values could be misunderstood, information could be omitted, or a measurement could be associated with the wrong indicator.
+
+A third limitation concerned \textbf{heterogeneous message formats}. Equivalent KPIs could be expressed using different labels, abbreviations, separators, units, and numerical representations. These variations are examined further in \textbf{Section~\ref{sec:data-quality-challenges}}.
+
+The process also had to preserve the distinction between \textbf{zero and missing information}. An unavailable measurement cannot safely be converted into zero because both states have different analytical meanings.
+
+Finally, the workflow offered limited \textbf{source traceability}. Once a value had been manually copied into a reporting file, verifying its origin required returning to the original conversation.
+
+The problem was therefore not WhatsApp itself, which remained a rapid operational communication tool. The need was to introduce a reliable processing layer between informal communication and structured industrial data. These limitations lead directly to the problem formulated in \textbf{Section~\ref{sec:problem-statement}}.
+
+
+% ============================================================
+% 6. DATA QUALITY
+% ============================================================
 
 \section{Data Quality Challenges}
+\label{sec:data-quality-challenges}
+
+The difficulty was not limited to transferring values from one interface to another. Before a measurement could be stored reliably, the system first had to determine \textbf{what the received information represented}.
+
+The same KPI could appear with different capitalization, accents, abbreviations, punctuation, or spacing. Numerical values could use a comma or a period as a decimal separator, while certain formats could remain ambiguous without human confirmation. Units could be attached directly to values or written separately.
+
+Another critical situation concerned \textbf{missing measurements}. Expressions such as dashes or explicit missing-value markers had to remain distinguishable from numerical zero. FactoryFlow therefore adopts a strict rule:
+
+\begin{center}
+    \textbf{Missing information is not equivalent to zero.}
+\end{center}
+
+Messages extracted from screenshots may also contain elements unrelated to maintenance KPIs, including names, timestamps, date separators, conversation headers, and interface metadata. These elements must be separated from business information while the original source remains preserved for traceability.
+
+Some indicators may additionally contain \textbf{multiple related measurements}. A compressor entry, for example, may contain both a principal value and an associated percentage. Such information must remain semantically linked.
+
+Reliable acquisition therefore requires normalization, classification, numerical interpretation, KPI matching, uncertainty management, and human validation. These constraints, combined with the limitations presented in \textbf{Section~\ref{sec:existing-process-limitations}}, motivate the project problem statement.
+
+
+% ============================================================
+% 7. PROBLEM STATEMENT
+% ============================================================
 
 \section{Problem Statement}
+\label{sec:problem-statement}
+
+As illustrated in \textbf{Figure~\ref{fig:existing-kpi-workflow}}, the maintenance reporting process relied on manual interpretation and transcription of heterogeneous operational information. The limitations identified in \textbf{Section~\ref{sec:existing-process-limitations}} and the data-quality constraints discussed in \textbf{Section~\ref{sec:data-quality-challenges}} reduced standardization, traceability, and analytical exploitation.
+
+The central problem can therefore be formulated as follows:
+
+\begin{quote}
+\textbf{How can heterogeneous maintenance KPI information be transformed into reliable, structured, traceable, and analytically valuable industrial data while preserving human control over uncertain information?}
+\end{quote}
+
+The solution must reduce repetitive manual work while preserving the maintenance engineer's judgement. It should also move beyond data storage by transforming validated historical information into meaningful indicators, alerts, trends, and decision-support insights.
+
+
+% ============================================================
+% 8. OBJECTIVES
+% ============================================================
 
 \section{Internship Objectives}
+\label{sec:internship-objectives}
+
+The main objective of the internship was to design and implement a mobile platform capable of transforming fragmented maintenance information into a structured, trustworthy, and exploitable industrial information flow.
+
+More specifically, the project pursued the following objectives:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Centralize maintenance KPI information} within a single mobile platform.
+
+    \item Support both \textbf{manual acquisition and image-based acquisition}, particularly from WhatsApp screenshots.
+
+    \item Use \textbf{\gls{ocr}} to extract textual information from imported images.
+
+    \item Process heterogeneous KPI messages through \textbf{deterministic parsing and normalization rules}.
+
+    \item Distinguish between \textbf{confirmed measurements, missing information, ambiguous values, noise, and unrecognized indicators}.
+
+    \item Preserve the original acquired content to ensure \textbf{end-to-end traceability}.
+
+    \item Maintain \textbf{human validation} before uncertain information enters the confirmed dataset.
+
+    \item Persist validated information within a \textbf{centralized database}.
+
+    \item Provide \textbf{historical consultation and interactive statistical analysis} based exclusively on validated data.
+
+    \item Introduce a \textbf{Maintenance Intelligence layer} capable of analysing historical KPI behaviour and identifying unusual patterns.
+
+    \item Apply \textbf{anomaly detection} to highlight measurements that deviate significantly from expected historical behaviour.
+
+    \item Provide \textbf{trend analysis and consumption forecasting} to support anticipation and technical decision-making.
+
+    \item Generate \textbf{contextual alerts and notifications} for abnormal measurements, relevant thresholds, missing information, and automated reporting events.
+
+    \item Generate structured \textbf{PDF and Excel reports} directly from validated maintenance information.
+
+    \item Support \textbf{scheduled report generation, email distribution, and document sharing}.
+\end{enumerate}
+
+These objectives address the weaknesses identified in \textbf{Section~\ref{sec:existing-process-limitations}} while respecting the data-integrity constraints presented in \textbf{Section~\ref{sec:data-quality-challenges}}.
+
+
+% ============================================================
+% 9. FACTORYFLOW POSITIONING
+% ============================================================
 
 \section{FactoryFlow Positioning}
+\label{sec:factoryflow-positioning}
+
+\textbf{FactoryFlow} is positioned between raw operational communication and reliable industrial decision support. It does not replace the communication habits of the maintenance team; instead, it provides a controlled environment in which information can be acquired, interpreted, validated, stored, analysed, and reported.
+
+The platform combines \textbf{OCR-assisted acquisition, deterministic parsing, source-line classification, KPI matching, human validation, centralized persistence, historical analysis, automated reporting, and maintenance intelligence}. This architecture transforms informal operational information into a structured information asset.
+
+A fundamental principle of the platform is:
+
+\begin{center}
+    \textbf{Automation + Human Validation + Traceability = Trustworthy Industrial Reporting}
+\end{center}
+
+Automation is therefore used where the evidence is sufficient, while ambiguous information remains under human control. Once validated, historical data becomes the foundation for statistics, anomaly detection, forecasting, and contextual alerts.
+
+FactoryFlow consequently evolves beyond a conventional data-entry application. It acts as a \textbf{traceable industrial information pipeline} connecting field observations with reporting and maintenance-oriented decision support.
+
+
+% ============================================================
+% 10. COMPLEMENTARY DOSAGE ANALYSIS PROJECT
+% ============================================================
 
 \section{Complementary Dosage Analysis Project}
+\label{sec:complementary-dosage}
+
+In parallel with FactoryFlow, the \textbf{Dosage Analysis Web Application} was developed to address a production-related need concerning dosage deviations.
+
+Production recipes define target quantities for the ingredients required by each batch. During execution, measured quantities can be compared with these targets and with the tolerance associated with each ingredient. The application centralizes these measurements and supports the detection, consultation, and follow-up of dosage anomalies.
+
+The two projects therefore address complementary industrial problems. \textbf{FactoryFlow} focuses on transforming heterogeneous maintenance information into reliable and analytically exploitable data, whereas \textbf{Dosage Analysis} focuses on analysing deviations within the production process.
+
+Their technical implementation and the relationship between both solutions are developed later in the dedicated Dosage Analysis chapter.
+
+
+% ============================================================
+% 11. CONCLUSION
+% ============================================================
 
 \section{Conclusion}
+\label{sec:chapter1-conclusion}
+
+This chapter established the industrial context and identified the weaknesses of the previous maintenance reporting workflow. Manual interpretation, heterogeneous formats, ambiguity, missing information, and limited traceability created the need for a more reliable information process.
+
+These findings led to the development of \textbf{FactoryFlow}, combining assisted acquisition, deterministic interpretation, human validation, centralized persistence, automated reporting, and maintenance intelligence. The complementary Dosage Analysis project addresses a second industrial challenge related to production dosage deviations.
+
+The next chapter translates these industrial needs into the \textbf{functional requirements, non-functional requirements, business rules, and system specifications} that guided the design of the proposed solutions.

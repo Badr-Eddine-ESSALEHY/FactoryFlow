@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class LineSegmenter {
 
     private static final Pattern EXPLICIT_SEPARATOR =
-            Pattern.compile("\\s*(?:->|→|:|=)\\s*");
+            Pattern.compile("\\s*(?:->|→|=>|:|=)\\s*");
 
     /*
      * Greedy label part is intentional.

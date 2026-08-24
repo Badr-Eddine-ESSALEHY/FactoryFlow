@@ -88,7 +88,7 @@ public class MeasurementValueParser {
                     ValueState.AMBIGUOUS,
                     structural,
                     numericToken,
-                    null,
+                    numeric.value(),
                     unit,
                     numeric.alternatives(),
                     numeric.warnings()

@@ -17,7 +17,8 @@ class KpiMatcherTest {
                 new ParserProperties(
                         0.82,
                         0.04,
-                        0.45
+                        0.45,
+                        0.70
                 )
         );
     }
@@ -344,6 +345,41 @@ class KpiMatcherTest {
 
         assertThat(suggestions.getFirst().kpiCode())
                 .isEqualTo("EUROTECH");
+    }
+
+    @Test
+    void methionineToCholineIsExposedOnlyAsAWeakSuggestion() {
+        KpiDefinition choline = definition("CHOLINE", "Choline", List.of());
+
+        KpiMatcher.MatchResult result = matcher.match("Methionine", catalog(choline));
+
+        assertThat(result.status()).isEqualTo(KpiMatcher.MatchStatus.UNKNOWN);
+        assertThat(result.suggestions()).singleElement().satisfies(suggestion -> {
+            assertThat(suggestion.kpiCode()).isEqualTo("CHOLINE");
+            assertThat(suggestion.score()).isEqualByComparingTo("0.5000");
+            assertThat(suggestion.strength()).isEqualTo("WEAK");
+        });
+    }
+
+    @Test
+    void semanticallyUnrelatedTermineLabelDoesNotSuggestWaterMeter() {
+        KpiDefinition waterMeter = definition("COMPTEUR_EAU", "Compteur eau", List.of());
+
+        KpiMatcher.MatchResult result = matcher.match("Terminé 8", catalog(waterMeter));
+
+        assertThat(result.status()).isEqualTo(KpiMatcher.MatchStatus.UNKNOWN);
+        assertThat(result.suggestions()).isEmpty();
+    }
+
+    @Test
+    void highSimilaritySuggestionIsMarkedStrongWithoutBecomingAutomaticAuthority() {
+        KpiDefinition eurotech = definition("EUROTECH", "Compteur Eurotech", List.of());
+
+        KpiMatcher.MatchResult result = matcher.match("Compteur Erotech", catalog(eurotech));
+
+        assertThat(result.requiresReview()).isTrue();
+        assertThat(result.suggestions()).first().extracting(com.factoryflow.parser.api.KpiSuggestion::strength)
+                .isEqualTo("STRONG");
     }
 
     private KpiCatalogIndex catalog(

@@ -12,9 +12,12 @@ import com.factoryflow.generatedreport.domain.ReportPeriod;
 import com.factoryflow.report.domain.AcquisitionSource;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.ss.usermodel.Cell;
@@ -27,7 +30,48 @@ import org.junit.jupiter.api.Test;
 class ReportDocumentGeneratorTest {
 
     @Test
-    void weeklyDocumentsReopenWithOneChartFreeSheetNarrowLayoutAndBlankMissingCells() throws Exception {
+    void createsAcceptanceArtifactsForEveryRequiredScope() throws Exception {
+        LocalDate date = LocalDate.of(2026, 8, 13);
+        List<ReportGenerationData.Row> allRows = List.of(
+                row(date.minusDays(1), 1L, 1L, "VRAC", "Vrac", "t", new BigDecimal("40"), null, null),
+                row(date, 2L, 1L, "VRAC", "Vrac", "t", new BigDecimal("42.75"), null, null),
+                row(date, 2L, 2L, "HUM", "Humidité", "%", null, null, null),
+                row(date, 2L, 3L, "COMP", "Compresseur 1", "h", new BigDecimal("77108"),
+                        new BigDecimal("77"), "%")
+        );
+        Path output = Path.of("target", "verification-artifacts");
+        Files.createDirectories(output);
+
+        List<ReportGenerationData> samples = List.of(
+                sample(GeneratedReportType.INDIVIDUAL, date, date, allRows.subList(1, 4)),
+                sample(GeneratedReportType.DAILY, date, date, allRows.subList(1, 4)),
+                sample(GeneratedReportType.WEEKLY, date.minusDays(6), date, allRows),
+                sample(GeneratedReportType.MONTHLY, date.withDayOfMonth(1), date.withDayOfMonth(31), allRows)
+        );
+
+        for (ReportGenerationData sample : samples) {
+            String name = sample.type().name().toLowerCase(Locale.ROOT);
+            byte[] excel = new ExcelReportGenerator().generate(sample);
+            byte[] pdf = new PdfReportGenerator().generate(sample);
+            Files.write(output.resolve("FactoryFlow_sample_" + name + ".xlsx"), excel);
+            Files.write(output.resolve("FactoryFlow_sample_" + name + ".pdf"), pdf);
+            try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(excel));
+                 var document = Loader.loadPDF(pdf)) {
+                assertThat(workbook.getNumberOfSheets()).isEqualTo(1);
+                assertThat(document.getNumberOfPages()).isGreaterThanOrEqualTo(1);
+                String text = new PDFTextStripper().getText(document);
+                if (sample.type() == GeneratedReportType.WEEKLY
+                        || sample.type() == GeneratedReportType.MONTHLY) {
+                    assertThat(text).contains("ÉVOLUTION — VRAC");
+                } else {
+                    assertThat(text).doesNotContain("ÉVOLUTION —");
+                }
+            }
+        }
+    }
+
+    @Test
+    void weeklyDocumentsUseOfficialBrandingAndManagerFocusedTables() throws Exception {
         LocalDate date = LocalDate.of(2026, 8, 13);
 
         var analytics = new ReportAnalyticsService().analyze(
@@ -164,11 +208,25 @@ class ReportDocumentGeneratorTest {
                     findRow(
                             sheet,
                             0,
-                            "Date effective"
+                            "Date"
                     );
 
             assertThat(detailHeaderRow)
                     .isGreaterThan(analysisHeaderRow);
+
+            assertThat(List.of(
+                    sheet.getRow(detailHeaderRow).getCell(0).getStringCellValue(),
+                    sheet.getRow(detailHeaderRow).getCell(1).getStringCellValue(),
+                    sheet.getRow(detailHeaderRow).getCell(2).getStringCellValue(),
+                    sheet.getRow(detailHeaderRow).getCell(3).getStringCellValue(),
+                    sheet.getRow(detailHeaderRow).getCell(4).getStringCellValue()
+            )).containsExactly(
+                    "Date",
+                    "Indicateur",
+                    "Valeur",
+                    "Valeur associée",
+                    "Unité"
+            );
 
             /*
              * Detail order:
@@ -233,6 +291,14 @@ class ReportDocumentGeneratorTest {
                             .getCharts()
             ).isEmpty();
 
+            assertThat(workbook.getAllPictures()).hasSize(1);
+            try (var officialLogo = getClass().getResourceAsStream(
+                    "/reporting/alf-mabrouk-logo.png")) {
+                assertThat(officialLogo).isNotNull();
+                assertThat(workbook.getAllPictures().getFirst().getData())
+                        .isEqualTo(officialLogo.readAllBytes());
+            }
+
             /*
              * Per-KPI "QUALITÉ DES DONNÉES" table, distinct from the top
              * summary cards.
@@ -275,9 +341,6 @@ class ReportDocumentGeneratorTest {
                             .getCellType()
             ).isEqualTo(CellType.NUMERIC);
 
-            /*
-             * Audit line: a real Excel formula, not a fabricated value.
-             */
             int auditRow =
                     findRow(
                             sheet,
@@ -286,15 +349,7 @@ class ReportDocumentGeneratorTest {
                     );
 
             assertThat(auditRow)
-                    .isGreaterThanOrEqualTo(0);
-
-            assertThat(
-                    sheet.getRow(auditRow)
-                            .getCell(4)
-                            .getCellType()
-            ).isEqualTo(
-                    CellType.FORMULA
-            );
+                    .isEqualTo(-1);
 
             assertThat(
                     sheet.getRow(
@@ -323,9 +378,17 @@ class ReportDocumentGeneratorTest {
                     "SYNTHÈSE EXÉCUTIVE",
                     "Complétude des données",
                     "77 108",
-                    "77%",
-                    "Non renseigné"
+                    "77 h / %",
+                    "Non renseigné",
+                    "DATE",
+                    "INDICATEUR",
+                    "VALEUR ASSOCIÉE",
+                    "UNITÉ"
             );
+            assertThat(text).doesNotContain("CONFIRMED", "MANUAL", "Statut");
+
+            assertThat(document.getPage(0).getResources().getXObjectNames())
+                    .isNotEmpty();
 
             assertThat(
                     document
@@ -412,6 +475,30 @@ class ReportDocumentGeneratorTest {
                 Instant.parse(
                         "2026-08-13T16:00:00Z"
                 )
+        );
+    }
+
+    private ReportGenerationData sample(
+            GeneratedReportType type,
+            LocalDate start,
+            LocalDate end,
+            List<ReportGenerationData.Row> rows
+    ) {
+        var measurements = rows.stream().map(value -> new Measurement(
+                value.kpiDefinitionId(),
+                value.kpiCode(),
+                value.kpiName(),
+                value.unit(),
+                value.effectiveDate(),
+                value.sourceReportId(),
+                value.confirmedValue()
+        )).toList();
+        return new ReportGenerationData(
+                type,
+                new ReportPeriod(start, end),
+                Instant.parse("2026-08-14T10:00:00Z"),
+                rows,
+                new ReportAnalyticsService().analyze(measurements, List.of())
         );
     }
 }

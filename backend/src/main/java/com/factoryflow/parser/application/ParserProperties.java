@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 public record ParserProperties(
         @DecimalMin("0.0") @DecimalMax("1.0") double fuzzyThreshold,
         @DecimalMin("0.0") @DecimalMax("1.0") double fuzzyAmbiguityMargin,
-        @DecimalMin("0.0") @DecimalMax("1.0") double suggestionThreshold
+        @DecimalMin("0.0") @DecimalMax("1.0") double suggestionThreshold,
+        @DecimalMin("0.0") @DecimalMax("1.0") double strongSuggestionThreshold
 ) {
 }

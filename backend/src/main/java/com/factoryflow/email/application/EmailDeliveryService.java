@@ -2,6 +2,7 @@ package com.factoryflow.email.application;
 
 import com.factoryflow.generatedreport.domain.EmailDeliveryStatus;
 import com.factoryflow.generatedreport.domain.GeneratedReport;
+import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,16 +15,20 @@ public class EmailDeliveryService {
     public EmailDeliveryService(GeneratedReportEmailStateService state, ScheduledReportEmailSender sender) {
         this.state = state; this.sender = sender;
     }
-    public EmailDeliveryStatus deliver(Long generatedReportId, Set<String> recipients) {
-        GeneratedReport report = state.get(generatedReportId);
+    public EmailDeliveryStatus deliver(List<Long> generatedReportIds, Set<String> recipients) {
+        List<GeneratedReport> reports = state.getAll(generatedReportIds);
         try {
-            sender.send(report, recipients);
-            state.delivered(generatedReportId);
+            sender.send(reports, recipients);
+            state.delivered(generatedReportIds);
             return EmailDeliveryStatus.DELIVERED;
         } catch (RuntimeException exception) {
-            state.failed(generatedReportId);
-            log.warn("Scheduled email failed for generatedReportId={}: {}", generatedReportId, exception.getMessage());
+            state.failed(generatedReportIds);
+            log.warn("Scheduled email failed for generatedReportIds={}: {}", generatedReportIds, exception.getMessage());
             return EmailDeliveryStatus.FAILED;
         }
+    }
+
+    public void markFailedWithoutDelivery(List<Long> generatedReportIds) {
+        state.failed(generatedReportIds);
     }
 }

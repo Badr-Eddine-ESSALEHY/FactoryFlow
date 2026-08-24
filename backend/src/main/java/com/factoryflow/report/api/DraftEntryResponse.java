@@ -22,6 +22,8 @@ public record DraftEntryResponse(
         String suggestedKpiDisplayName,
         String suggestedKpiUnit,
         BigDecimal suggestionScore,
+        String suggestionStrength,
+        String suggestionMatchMethod,
         BigDecimal secondaryExtractedValue,
         BigDecimal secondaryCurrentValue,
         BigDecimal secondaryFinalValue,
@@ -39,7 +41,8 @@ public record DraftEntryResponse(
                 entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getId(),
                 entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getDisplayName(),
                 entry.getSuggestedDefinition() == null ? null : entry.getSuggestedDefinition().getUnit(),
-                entry.getSuggestionScore(), entry.getSecondaryExtractedValue(), entry.getSecondaryCurrentValue(),
+                entry.getSuggestionScore(), entry.getSuggestionStrength(), entry.getSuggestionMatchMethod(),
+                entry.getSecondaryExtractedValue(), entry.getSecondaryCurrentValue(),
                 entry.getSecondaryFinalValue(), entry.getSecondaryUnit()
         );
     }

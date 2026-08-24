@@ -18,6 +18,10 @@ public interface GeneratedReportRepository extends JpaRepository<GeneratedReport
             GeneratedReportType type, GeneratedReportFormat format, LocalDate periodStart, LocalDate periodEnd,
             GenerationOrigin origin);
 
+    Optional<GeneratedReport> findFirstByTypeAndFormatAndPeriodStartAndPeriodEndAndOriginAndSourceReports_IdOrderByVersionDesc(
+            GeneratedReportType type, GeneratedReportFormat format, LocalDate periodStart, LocalDate periodEnd,
+            GenerationOrigin origin, Long sourceReportId);
+
     long countByGeneratedAtGreaterThanEqualAndGeneratedAtLessThan(Instant from, Instant to);
     List<GeneratedReport> findAllByOrderByGeneratedAtDesc(Pageable pageable);
     List<GeneratedReport> findAllByScheduleId(Long scheduleId);

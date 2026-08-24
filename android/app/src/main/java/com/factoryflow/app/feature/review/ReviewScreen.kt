@@ -4,10 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -34,19 +36,41 @@ fun ReviewScreen(onBack: () -> Unit, onConfirmed: (Long) -> Unit, viewModel: Rev
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showConfirm by remember { mutableStateOf(false) }
     var showLeave by remember { mutableStateOf(false) }
-    BackHandler(state.dirty) { showLeave = true }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val draftSavedMessage = stringResource(R.string.draft_saved)
+    BackHandler { if (state.dirty) showLeave = true else onBack() }
+
+    val actions = remember(viewModel) {
+        ReviewContentActions(
+            onAdd = viewModel::add,
+            onEdit = viewModel::edit,
+            onEditSecondary = viewModel::editSecondary,
+            onAssignEntry = viewModel::assignEntry,
+            onAddDetectedKpi = viewModel::addDetectedKpi,
+            onValidate = viewModel::validate,
+            onCancelMissingCorrection = viewModel::cancelMissingCorrection,
+            onSelectTab = viewModel::selectTab,
+            onRememberAlias = viewModel::rememberEntryAlias,
+            onRemove = viewModel::remove,
+            onResolveUnknown = viewModel::resolve,
+            onIgnoreSafeUnknownLines = viewModel::ignoreSafeUnrecognizedLines,
+        )
+    }
 
     FactoryFlowScaffold(
+        modifier = Modifier.imePadding(),
         topBar = {
             FocusedTopBar(stringResource(R.string.review_title), { if (state.dirty) showLeave = true else onBack() }) {
-                IconButton(onClick = { viewModel.save() }, enabled = !state.loading) {
-                    Icon(Icons.Outlined.Save, stringResource(R.string.save_draft))
+                IconButton(onClick = { viewModel.save() }, enabled = !state.loading && !state.saving && !state.confirming) {
+                    if (state.saving) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.Save, stringResource(R.string.save_draft))
                 }
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            if (!state.loading && state.report != null) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = FlowElevation.navigation) {
-                Column(Modifier.navigationBarsPadding().padding(FlowSpacing.lg)) {
+            if (!state.loading && state.report != null) {
+                FlowBottomActionBar {
                     if (!state.canConfirm) Text(
                         stringResource(R.string.review_blocking_count, state.blockingCount),
                         color = MaterialTheme.colorScheme.error,
@@ -66,15 +90,7 @@ fun ReviewScreen(onBack: () -> Unit, onConfirmed: (Long) -> Unit, viewModel: Rev
             )
             else -> ReviewContent(
                 state = state,
-                actions = ReviewContentActions(
-                    onAdd = viewModel::add,
-                    onEdit = viewModel::edit,
-                    onEditSecondary = viewModel::editSecondary,
-                    onAssignEntry = viewModel::assignEntry,
-                    onRememberAlias = viewModel::rememberEntryAlias,
-                    onRemove = viewModel::remove,
-                    onResolveUnknown = viewModel::resolve,
-                ),
+                actions = actions,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -89,9 +105,19 @@ fun ReviewScreen(onBack: () -> Unit, onConfirmed: (Long) -> Unit, viewModel: Rev
         onDismissRequest = { showLeave = false }, title = { Text(stringResource(R.string.unsaved_title)) },
         text = { Text(stringResource(R.string.unsaved_message)) },
         confirmButton = { Button({ showLeave = false; viewModel.save(onBack) }) { Text(stringResource(R.string.save_draft)) } },
-        dismissButton = { TextButton({ showLeave = false; onBack() }) { Text(stringResource(R.string.leave_without_saving)) } },
+        dismissButton = {
+            Row {
+                TextButton({ showLeave = false; onBack() }) { Text(stringResource(R.string.leave_without_saving)) }
+                TextButton({ showLeave = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        },
     )
-    if (state.savedNotice) LaunchedEffect(Unit) { kotlinx.coroutines.delay(1600); viewModel.clearNotice() }
+    LaunchedEffect(state.savedNotice) {
+        if (state.savedNotice) {
+            snackbarHostState.showSnackbar(draftSavedMessage)
+            viewModel.clearNotice()
+        }
+    }
 }
 
 data class ReviewContentActions(
@@ -99,35 +125,68 @@ data class ReviewContentActions(
     val onEdit: (Long, String) -> Unit = { _, _ -> },
     val onEditSecondary: (Long, String) -> Unit = { _, _ -> },
     val onAssignEntry: (Long, KpiDefinitionDto) -> Unit = { _, _ -> },
+    val onAddDetectedKpi: (Long) -> Unit = {},
+    val onValidate: (Long) -> Unit = {},
+    val onCancelMissingCorrection: (Long) -> Unit = {},
+    val onSelectTab: (ReviewState) -> Unit = {},
     val onRememberAlias: (Long, Boolean) -> Unit = { _, _ -> },
     val onRemove: (Long) -> Unit = {},
     val onResolveUnknown: (Long, String, Long?) -> Unit = { _, _, _ -> },
+    val onIgnoreSafeUnknownLines: () -> Unit = {},
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReviewContent(
     state: ReviewUiState,
     actions: ReviewContentActions,
     modifier: Modifier = Modifier,
 ) {
-    var section by remember(state.blockingCount) { mutableIntStateOf(if (state.blockingCount > 0) 1 else 0) }
     var showAdd by remember { mutableStateOf(false) }
     var showSource by remember { mutableStateOf(false) }
-    val compositeGroups = state.entries
-        .groupBy { it.sourceLine }
-        .filter { (source, entries) ->
-            !source.isNullOrBlank() && entries.size > 1 &&
-                entries.any { "ADDITIONAL_VALUE_REQUIRES_ASSIGNMENT" in it.warnings }
+    val listState = rememberLazyListState()
+    val compositeGroups = remember(state.entries) {
+        state.entries
+            .groupBy { it.sourceLine }
+            .filter { (source, entries) ->
+                !source.isNullOrBlank() && entries.size > 1 &&
+                    entries.any { "ADDITIONAL_VALUE_REQUIRES_ASSIGNMENT" in it.warnings }
+            }
+    }
+    val compositeIds = remember(compositeGroups) {
+        compositeGroups.values.flatten().mapTo(mutableSetOf()) { it.id }
+    }
+    val visibleEntries = remember(state.entries, state.selectedTab, compositeIds) {
+        state.entries.filter { entry ->
+            entry.id !in compositeIds && entry.reviewState == state.selectedTab
         }
-    val compositeIds = compositeGroups.values.flatten().mapTo(mutableSetOf()) { it.id }
+    }
+    val unresolvedUnknownLines = remember(state.unknownLines) {
+        state.unknownLines.filter { it.resolution == "UNRESOLVED" }
+    }
+    val unresolvedKpiLines = remember(unresolvedUnknownLines) {
+        unresolvedUnknownLines.filterNot { it.presentationType == ReviewPresentationType.SAFE_NOISE_PENDING }
+    }
+    val safeNoiseLines = remember(unresolvedUnknownLines) {
+        unresolvedUnknownLines.filter { it.presentationType == ReviewPresentationType.SAFE_NOISE_PENDING }
+    }
 
     FlowContentSurface(modifier) {
         LazyColumn(
-            Modifier.fillMaxSize().imePadding(),
+            Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(horizontal = FlowSpacing.xl, vertical = FlowSpacing.md),
             verticalArrangement = Arrangement.spacedBy(FlowSpacing.md),
         ) {
             item { ReviewStatusOverview(state) }
+            state.error?.let { error ->
+                item(key = "review-error") {
+                    FlowCard(Modifier.fillMaxWidth()) {
+                        Text(stringResource(error.title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(error.detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             if (compositeGroups.isNotEmpty()) {
                 item { Text(stringResource(R.string.composite_values), style = MaterialTheme.typography.titleLarge) }
                 items(compositeGroups.entries.toList(), key = { "composite-" + it.key }) { group ->
@@ -142,23 +201,62 @@ fun ReviewContent(
                         stringResource(R.string.review_missing),
                         stringResource(R.string.review_unresolved),
                     ),
-                    section,
-                    { section = it },
+                    state.selectedTab.ordinal,
+                    { actions.onSelectTab(ReviewState.entries[it]) },
                 )
             }
 
-            val visible = state.entries.filter { entry ->
-                entry.id !in compositeIds && entry.reviewState == ReviewState.entries[section]
+            if (state.selectedTab == ReviewState.UNRESOLVED && state.bulkIgnorableUnknownCount > 0) {
+                stickyHeader(key = "ignore-safe-lines") {
+                    IgnoreSafeUnknownLinesAction(
+                        count = state.bulkIgnorableUnknownCount,
+                        loading = state.ignoringSafeLines,
+                        onClick = actions.onIgnoreSafeUnknownLines,
+                    )
+                }
             }
-            if (visible.isEmpty() && !(section == 3 && state.unknownLines.any { it.resolution == "UNRESOLVED" })) {
+            if (visibleEntries.isEmpty() && !(state.selectedTab == ReviewState.UNRESOLVED && unresolvedUnknownLines.isNotEmpty())) {
                 item { EmptyPane(stringResource(R.string.review_all_clear), "", icon = Icons.Outlined.CheckCircle) }
             }
-            items(visible, key = { "entry-" + it.id }) { entry ->
-                ReviewEntryRow(entry, state.definitions, actions)
+            items(
+                visibleEntries,
+                key = { "entry-" + it.id },
+                contentType = { "entry-" + it.presentationType.name },
+            ) { entry ->
+                ReviewEntryRow(
+                    entry = entry,
+                    definitions = state.definitions,
+                    creatingDefinition = entry.id in state.creatingDefinitionIds,
+                    processing = entry.id in state.processingEntryIds,
+                    actions = actions,
+                )
             }
-            if (section == 3) {
-                items(state.unknownLines.filter { it.resolution == "UNRESOLVED" }, key = { "unknown-" + it.id }) { line ->
-                    UnknownRow(line, state.definitions, actions)
+            if (state.selectedTab == ReviewState.UNRESOLVED) {
+                if (unresolvedKpiLines.isNotEmpty()) {
+                    item(key = "unresolved-kpi-heading") {
+                        ReviewGroupHeading(
+                            stringResource(R.string.unresolved_kpi_group),
+                            stringResource(R.string.unresolved_kpi_group_detail),
+                        )
+                    }
+                    items(unresolvedKpiLines, key = { "unknown-kpi-" + it.id }, contentType = { "unknown-kpi" }) { line ->
+                        UnknownRow(
+                            line, state.definitions, line.id in state.processingUnknownIds, actions,
+                        )
+                    }
+                }
+                if (safeNoiseLines.isNotEmpty()) {
+                    item(key = "safe-noise-heading") {
+                        ReviewGroupHeading(
+                            stringResource(R.string.safe_noise_group),
+                            stringResource(R.string.safe_noise_group_detail),
+                        )
+                    }
+                    items(safeNoiseLines, key = { "safe-noise-" + it.id }, contentType = { "safe-noise" }) { line ->
+                        UnknownRow(
+                            line, state.definitions, line.id in state.processingUnknownIds, actions,
+                        )
+                    }
                 }
             }
             item {
@@ -193,6 +291,32 @@ fun ReviewContent(
     if (showAdd) {
         KpiPicker(state.definitions, "", {}, { actions.onAdd(it); showAdd = false }, { showAdd = false })
     }
+}
+
+@Composable
+private fun IgnoreSafeUnknownLinesAction(count: Int, loading: Boolean, onClick: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = FlowSpacing.xs)
+                .heightIn(min = FlowSize.touchTarget),
+            enabled = !loading,
+        ) {
+            if (loading) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(FlowSpacing.sm))
+            }
+            Text(stringResource(R.string.ignore_all_safe_noise_count, count))
+        }
+    }
+}
+
+@Composable
+private fun ReviewGroupHeading(title: String, detail: String) = Column {
+    Text(title, style = MaterialTheme.typography.titleMedium)
+    Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
@@ -285,93 +409,347 @@ private fun CompositeReviewRow(
 }
 
 @Composable
-private fun ReviewEntryRow(entry: ReviewEntry, definitions: List<KpiDefinitionDto>, actions: ReviewContentActions) {
-    var expanded by remember(entry.id) { mutableStateOf(entry.reviewState != ReviewState.READY) }
-    var mapping by remember { mutableStateOf(false) }
-    FactoryCard(
-        Modifier.fillMaxWidth().animateContentSize(spring()),
-        contentPadding = PaddingValues(if (entry.reviewState == ReviewState.READY) FlowSpacing.md else FlowSpacing.lg),
-    ) {
-        Column {
-            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
-                val icon = when (entry.reviewState) {
-                    ReviewState.READY -> Icons.Outlined.CheckCircle
-                    ReviewState.ATTENTION -> Icons.Outlined.WarningAmber
-                    ReviewState.MISSING -> Icons.Outlined.RemoveCircleOutline
-                    ReviewState.UNRESOLVED -> Icons.AutoMirrored.Outlined.HelpOutline
-                }
-                val color = reviewStateColor(entry.reviewState)
-                FactoryIconChip(icon, null, tint = color); Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(entry.displayName.ifBlank { entry.sourceLabel ?: entry.sourceLine.orEmpty() }, style = MaterialTheme.typography.titleSmall)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text((entry.value.ifBlank { stringResource(R.string.not_provided) }) + (entry.unit?.let { " " + it } ?: ""), style = MaterialTheme.typography.titleMedium)
-                        entry.secondaryValue?.let { secondary ->
-                            Spacer(Modifier.width(8.dp))
-                            StatusPill(secondary + (entry.secondaryUnit ?: ""), MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-                FlowStatusPill(when (entry.reviewState) {
-                    ReviewState.READY -> stringResource(R.string.ready)
-                    ReviewState.ATTENTION -> stringResource(R.string.review_attention)
-                    ReviewState.MISSING -> stringResource(R.string.missing)
-                    ReviewState.UNRESOLVED -> stringResource(R.string.review_unresolved)
-                }, color, compact = true)
-            }
-            AnimatedVisibility(expanded) { Column(Modifier.padding(top = 12.dp)) {
-                entry.suggestedKpiDisplayName?.let { suggestion ->
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(stringResource(R.string.suggested_kpi, suggestion), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
-                            TextButton({ definitions.firstOrNull { it.id == entry.suggestedKpiDefinitionId }?.let { actions.onAssignEntry(entry.id, it) } }) { Text(stringResource(R.string.assign)) }
-                        }
-                    }
-                }
-                OutlinedTextField(entry.value, { actions.onEdit(entry.id, it) }, Modifier.fillMaxWidth().padding(top = 8.dp),
-                    label = { Text(stringResource(R.string.value)) }, suffix = { entry.unit?.let { Text(it) } },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                entry.secondaryValue?.let { secondary ->
-                    OutlinedTextField(
-                        secondary,
-                        { actions.onEditSecondary(entry.id, it) },
-                        Modifier.fillMaxWidth().padding(top = 8.dp),
-                        label = { Text(stringResource(R.string.secondary_value)) },
-                        suffix = { entry.secondaryUnit?.let { Text(it) } },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                    )
-                }
-                entry.sourceLine?.let { Text(it, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-                entry.warnings.filterNot { it == "MISSING_VALUE" }.forEach { Text("• " + warningText(it), color = FactoryFlowWarning, style = MaterialTheme.typography.bodySmall) }
-                if (entry.kpiDefinitionId == null) TextButton({ mapping = true }) { Text(stringResource(R.string.assign_kpi)) }
-                if (entry.edited && entry.kpiDefinitionId != null && !entry.sourceLabel.isNullOrBlank()) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(entry.rememberAlias, { actions.onRememberAlias(entry.id, it) })
-                    Text(stringResource(R.string.remember_alias), style = MaterialTheme.typography.bodySmall)
-                }
-                TextButton({ actions.onRemove(entry.id) }) { Text(stringResource(R.string.remove_entry), color = MaterialTheme.colorScheme.error) }
-            } }
-        }
+private fun ReviewEntryRow(
+    entry: ReviewEntry,
+    definitions: List<KpiDefinitionDto>,
+    creatingDefinition: Boolean,
+    processing: Boolean,
+    actions: ReviewContentActions,
+) {
+    when (entry.presentationType) {
+        ReviewPresentationType.READY -> ReadyReviewCard(entry, processing, actions)
+        ReviewPresentationType.ATTENTION_ACKNOWLEDGE,
+        ReviewPresentationType.ATTENTION_DUPLICATE -> AttentionReviewCard(entry, processing, actions)
+        ReviewPresentationType.MISSING,
+        ReviewPresentationType.MISSING_CORRECTED -> MissingReviewCard(entry, processing, actions)
+        ReviewPresentationType.UNRESOLVED_STRONG_SUGGESTION,
+        ReviewPresentationType.UNRESOLVED_WEAK_SUGGESTION,
+        ReviewPresentationType.UNRESOLVED_NEW -> UnresolvedReviewCard(
+            entry, definitions, creatingDefinition, processing, actions,
+        )
+        ReviewPresentationType.SAFE_NOISE_PENDING,
+        ReviewPresentationType.SAFE_NOISE_IGNORED -> Unit
     }
-    if (mapping) KpiPicker(definitions, "", {}, { actions.onAssignEntry(entry.id, it); mapping = false }, { mapping = false })
 }
 
 @Composable
-private fun UnknownRow(line: ReviewUnknown, definitions: List<KpiDefinitionDto>, actions: ReviewContentActions) {
-    var mapping by remember { mutableStateOf(false) }
-    FactoryCard(Modifier.fillMaxWidth()) {
+private fun ReadyReviewCard(entry: ReviewEntry, processing: Boolean, actions: ReviewContentActions) {
+    var expanded by remember(entry.id) { mutableStateOf(false) }
+    FactoryCard(Modifier.fillMaxWidth().animateContentSize(spring()), PaddingValues(FlowSpacing.md)) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                FactoryIconChip(Icons.AutoMirrored.Outlined.HelpOutline, null, tint = FlowPink, container = FlowPink.copy(alpha = FlowOpacity.tint))
-                Spacer(Modifier.width(12.dp)); Text(line.sourceLine, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton({ actions.onResolveUnknown(line.id, "IGNORED", null) }) { Text(stringResource(R.string.ignore_line)) }
-                Button({ mapping = true }) { Text(stringResource(R.string.assign)) }
+            ReviewEntryHeader(entry, Modifier.clickable { expanded = !expanded })
+            AnimatedVisibility(expanded) {
+                Column(Modifier.padding(top = FlowSpacing.sm)) {
+                    ReviewSourceAndWarnings(entry)
+                    ReviewRemoveAction(entry, processing, actions)
+                }
             }
         }
     }
-    if (mapping) KpiPicker(definitions, "", {}, { actions.onResolveUnknown(line.id, "ASSIGNED", it.id); mapping = false }, { mapping = false })
+}
+
+@Composable
+private fun AttentionReviewCard(entry: ReviewEntry, processing: Boolean, actions: ReviewContentActions) {
+    FactoryCard(Modifier.fillMaxWidth()) {
+        Column {
+            ReviewEntryHeader(entry)
+            ReviewValueEditor(entry, actions)
+            ReviewSourceAndWarnings(entry)
+            RememberAliasOption(entry, actions)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FlowSpacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ReviewRemoveAction(entry, processing, actions, Modifier.weight(1f), outlined = true)
+                Button(
+                    onClick = { actions.onValidate(entry.id) },
+                    enabled = entry.canValidate && !processing,
+                    modifier = Modifier.weight(1f).heightIn(min = FlowSize.touchTarget),
+                    contentPadding = PaddingValues(horizontal = FlowSpacing.sm),
+                ) {
+                    Icon(Icons.Outlined.Check, null)
+                    Spacer(Modifier.width(FlowSpacing.xs))
+                    Text(stringResource(
+                        if (entry.presentationType == ReviewPresentationType.ATTENTION_DUPLICATE)
+                            R.string.validate_observation else R.string.validate_value,
+                    ), maxLines = 2)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissingReviewCard(entry: ReviewEntry, processing: Boolean, actions: ReviewContentActions) {
+    FactoryCard(Modifier.fillMaxWidth()) {
+        Column {
+            ReviewEntryHeader(entry)
+            ReviewValueEditor(entry, actions)
+            ReviewSourceAndWarnings(entry)
+            if (entry.presentationType == ReviewPresentationType.MISSING) {
+                Text(
+                    stringResource(R.string.missing_is_valid),
+                    Modifier.padding(top = FlowSpacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ReviewRemoveAction(entry, processing, actions)
+            } else {
+                RememberAliasOption(entry, actions)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = { actions.onCancelMissingCorrection(entry.id) },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.cancel_missing_correction)) }
+                    Button(onClick = { actions.onValidate(entry.id) }, enabled = entry.canValidate) {
+                        Icon(Icons.Outlined.Check, null)
+                        Spacer(Modifier.width(FlowSpacing.xs))
+                        Text(stringResource(R.string.validate_value))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnresolvedReviewCard(
+    entry: ReviewEntry,
+    definitions: List<KpiDefinitionDto>,
+    creatingDefinition: Boolean,
+    processing: Boolean,
+    actions: ReviewContentActions,
+) {
+    var mapping by remember { mutableStateOf(false) }
+    FactoryCard(Modifier.fillMaxWidth()) {
+        Column {
+            ReviewEntryHeader(entry)
+            ReviewValueEditor(entry, actions)
+            ReviewSourceAndWarnings(entry)
+            val suggestion = entry.suggestedKpiDisplayName
+            if (entry.presentationType == ReviewPresentationType.UNRESOLVED_STRONG_SUGGESTION && suggestion != null) {
+                SuggestionCard(entry, strong = true) {
+                    definitions.firstOrNull { it.id == entry.suggestedKpiDefinitionId }
+                        ?.let { actions.onAssignEntry(entry.id, it) }
+                }
+            } else {
+                Button(
+                    onClick = { actions.onAddDetectedKpi(entry.id) },
+                    enabled = !creatingDefinition && !processing,
+                    modifier = Modifier.fillMaxWidth().padding(top = FlowSpacing.sm),
+                ) {
+                    if (creatingDefinition) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.Add, null)
+                    Spacer(Modifier.width(FlowSpacing.sm))
+                    Text(stringResource(R.string.add_new_detected_kpi))
+                }
+                if (suggestion != null) SuggestionCard(entry, strong = false) {
+                    definitions.firstOrNull { it.id == entry.suggestedKpiDefinitionId }
+                        ?.let { actions.onAssignEntry(entry.id, it) }
+                }
+            }
+            TextButton(onClick = { mapping = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(if (suggestion == null) R.string.assign_kpi else R.string.choose_another_kpi))
+            }
+            if (entry.presentationType == ReviewPresentationType.UNRESOLVED_STRONG_SUGGESTION) {
+                TextButton(
+                    onClick = { actions.onAddDetectedKpi(entry.id) },
+                    enabled = !creatingDefinition,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.add_new_detected_kpi)) }
+            }
+            ReviewRemoveAction(entry, processing, actions)
+        }
+    }
+    if (mapping) KpiPicker(
+        definitions, "", {},
+        { actions.onAssignEntry(entry.id, it); mapping = false },
+        { mapping = false },
+    )
+}
+
+@Composable
+private fun SuggestionCard(entry: ReviewEntry, strong: Boolean, onAssign: () -> Unit) {
+    Surface(
+        color = if (strong) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().padding(top = FlowSpacing.sm),
+    ) {
+        Column(Modifier.padding(FlowSpacing.md)) {
+            Text(
+                if (strong) stringResource(R.string.reliable_suggestion) else stringResource(R.string.possible_suggestion),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(
+                    R.string.suggestion_with_score,
+                    entry.suggestedKpiDisplayName.orEmpty(),
+                    entry.suggestionScore ?: "—",
+                ),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            TextButton(onClick = onAssign, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.assign_suggestion))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewEntryHeader(entry: ReviewEntry, modifier: Modifier = Modifier) {
+    val state = entry.reviewState
+    val icon = when (state) {
+        ReviewState.READY -> Icons.Outlined.CheckCircle
+        ReviewState.ATTENTION -> Icons.Outlined.WarningAmber
+        ReviewState.MISSING -> Icons.Outlined.RemoveCircleOutline
+        ReviewState.UNRESOLVED -> Icons.AutoMirrored.Outlined.HelpOutline
+    }
+    val color = reviewStateColor(state)
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        FactoryIconChip(icon, null, tint = color)
+        Spacer(Modifier.width(FlowSpacing.md))
+        Column(Modifier.weight(1f)) {
+            Text(entry.displayName.ifBlank { entry.sourceLabel ?: entry.sourceLine.orEmpty() }, style = MaterialTheme.typography.titleSmall)
+            Text(
+                entry.value.ifBlank { stringResource(R.string.not_provided) } + (entry.unit?.let { " $it" } ?: ""),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        FlowStatusPill(
+            when (state) {
+                ReviewState.READY -> stringResource(R.string.ready)
+                ReviewState.ATTENTION -> stringResource(R.string.review_attention)
+                ReviewState.MISSING -> stringResource(R.string.missing)
+                ReviewState.UNRESOLVED -> stringResource(R.string.review_unresolved)
+            },
+            color,
+            compact = true,
+        )
+    }
+}
+
+@Composable
+private fun ReviewValueEditor(entry: ReviewEntry, actions: ReviewContentActions) {
+    OutlinedTextField(
+        value = entry.value,
+        onValueChange = { actions.onEdit(entry.id, it) },
+        modifier = Modifier.fillMaxWidth().padding(top = FlowSpacing.md),
+        label = { Text(stringResource(R.string.value)) },
+        suffix = { entry.unit?.let { Text(it) } },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+    )
+    entry.secondaryValue?.let { secondary ->
+        OutlinedTextField(
+            value = secondary,
+            onValueChange = { actions.onEditSecondary(entry.id, it) },
+            modifier = Modifier.fillMaxWidth().padding(top = FlowSpacing.sm),
+            label = { Text(stringResource(R.string.secondary_value)) },
+            suffix = { entry.secondaryUnit?.let { Text(it) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+        )
+    }
+}
+
+@Composable
+private fun ReviewSourceAndWarnings(entry: ReviewEntry) {
+    entry.sourceLine?.takeIf { it.isNotBlank() }?.let {
+        Text(it, Modifier.padding(top = FlowSpacing.sm), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+    }
+    entry.warnings.filterNot { it == "MISSING_VALUE" }.forEach {
+        Text("• " + warningText(it), color = FactoryFlowWarning, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun RememberAliasOption(entry: ReviewEntry, actions: ReviewContentActions) {
+    if (entry.edited && entry.kpiDefinitionId != null && !entry.sourceLabel.isNullOrBlank()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(entry.rememberAlias, { actions.onRememberAlias(entry.id, it) })
+            Text(stringResource(R.string.remember_alias), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun ReviewRemoveAction(
+    entry: ReviewEntry,
+    processing: Boolean,
+    actions: ReviewContentActions,
+    modifier: Modifier = Modifier,
+    outlined: Boolean = false,
+) {
+    val content: @Composable RowScope.() -> Unit = {
+        if (processing) {
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(FlowSpacing.xs))
+        }
+        Text(
+            stringResource(if (entry.kpiDefinitionId == null) R.string.ignore_line else R.string.remove_entry),
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 2,
+        )
+    }
+    if (outlined) {
+        OutlinedButton(
+            onClick = { actions.onRemove(entry.id) },
+            enabled = !processing,
+            modifier = modifier.heightIn(min = FlowSize.touchTarget),
+            contentPadding = PaddingValues(horizontal = FlowSpacing.sm),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            content = content,
+        )
+    } else {
+        TextButton(onClick = { actions.onRemove(entry.id) }, enabled = !processing, modifier = modifier, content = content)
+    }
+}
+
+@Composable
+private fun UnknownRow(
+    line: ReviewUnknown,
+    definitions: List<KpiDefinitionDto>,
+    processing: Boolean,
+    actions: ReviewContentActions,
+) {
+    var mapping by remember { mutableStateOf(false) }
+    val safeNoise = line.presentationType == ReviewPresentationType.SAFE_NOISE_PENDING
+    FactoryCard(Modifier.fillMaxWidth(), PaddingValues(FlowSpacing.md)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FactoryIconChip(
+                    if (safeNoise) Icons.Outlined.FilterAltOff else Icons.AutoMirrored.Outlined.HelpOutline,
+                    null,
+                    tint = if (safeNoise) MaterialTheme.colorScheme.onSurfaceVariant else FlowPink,
+                    container = if (safeNoise) MaterialTheme.colorScheme.surfaceVariant else FlowPink.copy(alpha = FlowOpacity.tint),
+                )
+                Spacer(Modifier.width(FlowSpacing.md))
+                Column(Modifier.weight(1f)) {
+                    Text(line.sourceLine, style = MaterialTheme.typography.bodyMedium)
+                    Text(line.classificationReason, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(
+                    onClick = { actions.onResolveUnknown(line.id, "IGNORED", null) },
+                    enabled = !processing,
+                ) {
+                    if (processing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    else Text(stringResource(R.string.ignore_line))
+                }
+                if (!safeNoise) Button(onClick = { mapping = true }, enabled = !processing) {
+                    Text(stringResource(R.string.assign))
+                }
+            }
+        }
+    }
+    if (mapping) KpiPicker(
+        definitions, "", {},
+        { actions.onResolveUnknown(line.id, "ASSIGNED", it.id); mapping = false },
+        { mapping = false },
+    )
 }
 
 @Composable

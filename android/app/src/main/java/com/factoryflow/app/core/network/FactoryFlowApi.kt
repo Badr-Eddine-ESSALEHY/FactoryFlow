@@ -25,6 +25,22 @@ interface FactoryFlowApi {
     @POST("api/kpi-definitions/{id}/aliases") suspend fun approveAlias(@Path("id") id: Long, @Body request: ApproveAliasRequest): KpiDefinitionDto
     @PUT("api/reports/{id}/draft") suspend fun updateDraft(@Path("id") id: Long, @Body request: DraftReportRequest): ReportDto
     @GET("api/reports/{id}/draft") suspend fun draft(@Path("id") id: Long): ReportDto
+    @POST("api/reports/{id}/draft/entries/{entryId}/add-kpi") suspend fun addDetectedKpi(
+        @Path("id") id: Long,
+        @Path("entryId") entryId: Long,
+    ): ReportDto
+    @POST("api/reports/{id}/draft/unrecognized-lines/ignore-safe") suspend fun ignoreSafeUnrecognizedLines(
+        @Path("id") id: Long,
+    ): ReportDto
+    @PUT("api/reports/{id}/draft/unrecognized-lines/{lineId}") suspend fun resolveUnrecognizedLine(
+        @Path("id") id: Long,
+        @Path("lineId") lineId: Long,
+        @Body request: UnknownLineResolutionRequest,
+    ): ReportDto
+    @DELETE("api/reports/{id}/draft/entries/{entryId}") suspend fun removeDraftEntry(
+        @Path("id") id: Long,
+        @Path("entryId") entryId: Long,
+    ): ReportDto
     @DELETE("api/reports/{id}/draft") suspend fun deleteDraft(@Path("id") id: Long)
     @POST("api/reports/{id}/confirm") suspend fun confirm(@Path("id") id: Long, @Body request: ConfirmReportRequest): ReportDto
     @GET("api/reports") suspend fun reports(
@@ -37,7 +53,8 @@ interface FactoryFlowApi {
         @Query("format") format: String? = null, @Query("page") page: Int = 0, @Query("size") size: Int = 30,
         @Query("sort") sort: String = "generatedAt,desc",
     ): PageDto<GeneratedReportDto>
-    @POST("api/generated-reports") suspend fun generateReport(@Body request: GenerateReportRequest): GeneratedReportDto
+    @POST("api/generated-reports") suspend fun generateConsolidatedReport(@Body request: GenerateReportRequest): GeneratedReportDto
+    @POST("api/generated-reports/individual") suspend fun generateIndividualReport(@Body request: IndividualReportExportRequest): GeneratedReportDto
     @GET("api/generated-reports/{id}") suspend fun generatedReport(@Path("id") id: Long): GeneratedReportDto
     @Streaming @GET("api/generated-reports/{id}/file") suspend fun generatedFile(@Path("id") id: Long): ResponseBody
     @GET("api/statistics") suspend fun statistics(

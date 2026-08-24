@@ -1,6 +1,7 @@
 package com.factoryflow.generatedreport.application;
 
 import com.factoryflow.generatedreport.domain.GeneratedReportType;
+import com.factoryflow.report.domain.AcquisitionSource;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -24,10 +25,11 @@ final class ReportDocumentText {
 
     static String title(GeneratedReportType type) {
         return switch (type) {
+            case INDIVIDUAL -> "Rapport individuel de maintenance";
             case DAILY -> "Rapport journalier de maintenance";
             case WEEKLY -> "Rapport hebdomadaire de maintenance";
             case MONTHLY -> "Rapport mensuel de maintenance";
-            case MANUAL -> "Rapport de maintenance";
+            case CUSTOM, MANUAL -> "Rapport personnalisé de maintenance";
         };
     }
 
@@ -59,5 +61,15 @@ final class ReportDocumentText {
 
     static String unit(String value) {
         return value == null || value.isBlank() ? "—" : value;
+    }
+
+    static String acquisitionSource(AcquisitionSource source) {
+        if (source == null) return "—";
+        return switch (source) {
+            case PASTE -> "Texte collé";
+            case MANUAL -> "Saisie manuelle";
+            case GALLERY_OCR -> "Image importée";
+            case SHARE_OCR -> "Partage Android";
+        };
     }
 }

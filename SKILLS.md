@@ -2955,11 +2955,7 @@ PASTE TEXT                                          │
       │                                             │
 GALLERY IMAGE                                       │
       │                                             │
-      └─> ML KIT OCR ───────────────────────────────┤
-                                                    │
-SHARED IMAGE                                        │
-      │                                             │
-      └─> ML KIT OCR ───────────────────────────────┤
+      └─> BACKEND OCR API / PADDLEOCR ──────────────┤
                                                     │
 SHARED IMAGE                                        │
       │                                             │

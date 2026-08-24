@@ -69,7 +69,16 @@ private fun ScheduleCard(schedule: ReportScheduleDto, toggling: Boolean, onToggl
 @Composable
 fun ScheduleFormScreen(onBack: () -> Unit, viewModel: ScheduleFormViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(if (state.id == null) R.string.new_schedule else R.string.edit_schedule), onBack) }) { padding ->
+    FactoryFlowScaffold(
+        topBar = { FocusedTopBar(stringResource(if (state.id == null) R.string.new_schedule else R.string.edit_schedule), onBack) },
+        bottomBar = {
+            if (!state.loading) {
+                FlowBottomActionBar {
+                    PrimaryAction(stringResource(R.string.save_schedule), state.saving, onClick = { viewModel.save(onBack) })
+                }
+            }
+        },
+    ) { padding ->
         if (state.loading) LoadingPane(stringResource(R.string.loading), Modifier.padding(padding)) else ScheduleFormContent(
             state,
             ScheduleFormActions(
@@ -81,7 +90,6 @@ fun ScheduleFormScreen(onBack: () -> Unit, viewModel: ScheduleFormViewModel = hi
                 onEmailEnabled = viewModel::email,
                 onRecipients = viewModel::recipients,
                 onEnabled = viewModel::enabled,
-                onSave = { viewModel.save(onBack) },
             ),
             Modifier.padding(padding),
         )
@@ -97,7 +105,6 @@ data class ScheduleFormActions(
     val onEmailEnabled: (Boolean) -> Unit,
     val onRecipients: (String) -> Unit,
     val onEnabled: (Boolean) -> Unit,
-    val onSave: () -> Unit,
 )
 
 @Composable
@@ -131,7 +138,6 @@ fun ScheduleFormContent(state: ScheduleFormUiState, actions: ScheduleFormActions
             }
             item { FlowCard(Modifier.fillMaxWidth(), PaddingValues(FlowSpacing.md)) { Row(verticalAlignment = Alignment.CenterVertically) { FlowIconTile(Icons.Outlined.PowerSettingsNew, null, FlowTeal, size = FlowSize.listIconTile); Spacer(Modifier.width(FlowSpacing.md)); Column(Modifier.weight(1f)) { Text(stringResource(R.string.enabled), style = MaterialTheme.typography.titleMedium); Text(stringResource(if (state.enabled) R.string.enabled else R.string.disabled), color = MaterialTheme.colorScheme.onSurfaceVariant) }; Switch(state.enabled, actions.onEnabled, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = FlowTeal)) } } }
             state.error?.let { error -> item { Text(stringResource(error.detail), color = MaterialTheme.colorScheme.error) } }
-            item { PrimaryAction(stringResource(R.string.save_schedule), state.saving, onClick = actions.onSave) }
             if (state.runs.isNotEmpty()) {
                 item { Spacer(Modifier.height(8.dp)); SectionHeader(stringResource(R.string.schedule_runs)) }
                 items(state.runs, key = { it.id }) { run -> RunRow(run) }

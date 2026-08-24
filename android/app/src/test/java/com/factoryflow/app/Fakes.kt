@@ -7,13 +7,18 @@ import kotlinx.coroutines.flow.StateFlow
 
 class FakeAuthRepository : AuthRepository {
     private val session = MutableStateFlow(false)
+    private val expired = MutableStateFlow(false)
     override val authenticated: StateFlow<Boolean> = session
+    override val sessionExpired: StateFlow<Boolean> = expired
     var loginResult: Result<UserDto> = Result.success(UserDto(1, "Nadia Amrani", "nadia@factoryflow.local", true))
+    var currentUserResult: Result<UserDto>? = null
+    var hasStoredSession = false
     var loginCalls = 0
+    var logoutCalls = 0
     override suspend fun login(email: String, password: String): UserDto { loginCalls++; return loginResult.getOrThrow().also { session.value = true } }
-    override suspend fun currentUser() = loginResult.getOrThrow()
-    override suspend fun hasSession() = false
-    override fun logout() { session.value = false }
+    override suspend fun currentUser() = (currentUserResult ?: loginResult).getOrThrow()
+    override suspend fun hasSession() = hasStoredSession
+    override fun logout() { logoutCalls++; session.value = false }
 }
 
 open class FakeReportsRepository : ReportsRepository {
@@ -34,6 +39,14 @@ open class FakeReportsRepository : ReportsRepository {
     val deletedDraftIds = mutableListOf<Long>()
     var lastConfirmRequest: ConfirmReportRequest? = null
     var confirmCalls = 0
+    var addDetectedKpiCalls = mutableListOf<Pair<Long, Long>>()
+    var addDetectedKpiResult: ReportDto? = null
+    var ignoreSafeCalls = 0
+    var ignoreSafeResult: ReportDto? = null
+    val resolvedUnknownCalls = mutableListOf<Pair<Long, UnknownLineResolutionRequest>>()
+    var resolvedUnknownResult: ReportDto? = null
+    val removedEntryCalls = mutableListOf<Pair<Long, Long>>()
+    var removedEntryResult: ReportDto? = null
     override suspend fun definitions() = definitionsValue
     override suspend fun analyze(rawText: String, source: String): AnalyzeReportResponse {
         lastAnalyzedRawText = rawText
@@ -47,6 +60,22 @@ open class FakeReportsRepository : ReportsRepository {
     }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = checkNotNull(updated ?: draftValue)
     override suspend fun draft(id: Long) = checkNotNull(draftValue)
+    override suspend fun addDetectedKpi(id: Long, entryId: Long): ReportDto {
+        addDetectedKpiCalls += id to entryId
+        return checkNotNull(addDetectedKpiResult)
+    }
+    override suspend fun ignoreSafeUnrecognizedLines(id: Long): ReportDto {
+        ignoreSafeCalls++
+        return checkNotNull(ignoreSafeResult)
+    }
+    override suspend fun resolveUnrecognizedLine(id: Long, request: UnknownLineResolutionRequest): ReportDto {
+        resolvedUnknownCalls += id to request
+        return checkNotNull(resolvedUnknownResult ?: draftValue)
+    }
+    override suspend fun removeDraftEntry(id: Long, entryId: Long): ReportDto {
+        removedEntryCalls += id to entryId
+        return checkNotNull(removedEntryResult ?: draftValue)
+    }
     override suspend fun deleteDraft(id: Long) { deletedDraftIds += id }
     override suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto {
         approvedAliasCalls += kpiDefinitionId to alias
@@ -69,12 +98,17 @@ class FakeGeneratedReportsRepository : GeneratedReportsRepository {
     var generatedValue: GeneratedReportDto? = null
     var downloadedFile: java.io.File? = null
     val generationRequests = mutableListOf<GenerateReportRequest>()
+    val individualGenerationRequests = mutableListOf<IndividualReportExportRequest>()
     val downloadedReports = mutableListOf<GeneratedReportDto>()
 
     override suspend fun list() = listValue
     override suspend fun detail(id: Long) = checkNotNull(detailValue)
-    override suspend fun generate(request: GenerateReportRequest): GeneratedReportDto {
+    override suspend fun generateConsolidated(request: GenerateReportRequest): GeneratedReportDto {
         generationRequests += request
+        return checkNotNull(generatedValue)
+    }
+    override suspend fun generateIndividual(request: IndividualReportExportRequest): GeneratedReportDto {
+        individualGenerationRequests += request
         return checkNotNull(generatedValue)
     }
     override suspend fun download(report: GeneratedReportDto): java.io.File {

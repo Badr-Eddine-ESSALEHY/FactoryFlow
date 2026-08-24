@@ -732,12 +732,14 @@ period_start
 period_end
 generated_at
 file_path
+file_name
 generated_by
 origin
 generation_status
 email_delivery_status
 version
 regenerated_from_id
+schedule_id
 created_at
 ```
 
@@ -756,12 +758,14 @@ CREATE TABLE generated_reports (
     period_end DATE NOT NULL,
     generated_at TIMESTAMPTZ,
     file_path TEXT,
+    file_name VARCHAR(255) NOT NULL,
     generated_by BIGINT,
     origin VARCHAR(30) NOT NULL,
     generation_status VARCHAR(40) NOT NULL,
     email_delivery_status VARCHAR(40),
     version INTEGER NOT NULL DEFAULT 1,
     regenerated_from_id BIGINT,
+    schedule_id BIGINT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_generated_report_user
         FOREIGN KEY (generated_by)
@@ -778,14 +782,18 @@ CREATE TABLE generated_reports (
 
 # 35. Generated Report Type
 
-Conceptual:
+Implemented:
 
 ```text
+INDIVIDUAL
 DAILY
 WEEKLY
 MONTHLY
-MANUAL
+CUSTOM
 ```
+
+`MANUAL` remains accepted only for legacy generated rows. Migration V12 expands the
+database check constraint for the explicit individual and custom scopes.
 
 ---
 
@@ -851,7 +859,8 @@ Do not construct absolute paths throughout the codebase.
 
 # 41. Generated Report to Source Data Relationship
 
-A generated periodic document may aggregate many maintenance reports.
+A generated consolidated document may aggregate many maintenance reports. An
+`INDIVIDUAL` document still uses the same join table but contains exactly one source ID.
 
 Do not assume:
 
@@ -1124,7 +1133,8 @@ because timestamp provides more traceability.
 
 # 54. Device Token Table
 
-For FCM:
+Future design only: FCM and device-token persistence are not implemented. If they are
+approved later, the conceptual table is:
 
 ```text
 device_tokens
@@ -1152,7 +1162,8 @@ Inactive/stale tokens should be deactivated or removed after FCM indicates inval
 
 # 56. Refresh Token Table
 
-Opaque random refresh tokens use server-side hash persistence:
+Future design only: refresh tokens are not implemented. If an approved future contract
+adds them, opaque random refresh tokens should use server-side hash persistence:
 
 ```text
 refresh_tokens
@@ -1166,8 +1177,8 @@ created_at
 replaced_by_token_id
 ```
 
-Never store raw refresh tokens. Rotation sets `revoked_at` and links the replacement;
-`POST /api/auth/logout` revokes the active refresh/session token.
+If this future design is implemented, never store raw refresh tokens. Rotation should
+set `revoked_at`, link the replacement, and expose an explicit revocation contract.
 
 ---
 

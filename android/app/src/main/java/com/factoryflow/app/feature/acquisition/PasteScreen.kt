@@ -1,8 +1,7 @@
 package com.factoryflow.app.feature.acquisition
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentPaste
@@ -27,7 +26,23 @@ fun PasteScreen(onBack: () -> Unit, onReview: (Long) -> Unit, initialText: Strin
     LaunchedEffect(initialText) { if (state.text.isBlank() && !initialText.isNullOrBlank()) viewModel.text(initialText) }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.paste_title), onBack) }) { padding ->
+    FactoryFlowScaffold(
+        modifier = Modifier.imePadding(),
+        topBar = { FocusedTopBar(stringResource(R.string.paste_title), onBack) },
+        bottomBar = {
+            FlowBottomActionBar {
+                PrimaryAction(
+                    stringResource(
+                        if (state.analyzing) R.string.analyzing
+                        else if (state.analysisFailed) R.string.retry
+                        else R.string.analyze,
+                    ),
+                    state.analyzing,
+                    onClick = { viewModel.analyze(onReview) },
+                )
+            }
+        },
+    ) { padding ->
         PasteContent(
             state = state,
             onTextChanged = viewModel::text,
@@ -53,42 +68,57 @@ fun PasteContent(
     modifier: Modifier = Modifier,
 ) {
     FlowContentSurface(modifier) {
-        Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(FlowSpacing.xl)) {
-            Text(stringResource(R.string.paste_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(FlowSpacing.lg))
-            FlowCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(FlowSpacing.sm)) {
-                TextField(
-                    value = state.text, onValueChange = onTextChanged, modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp),
-                    label = { Text(stringResource(R.string.raw_text_label)) }, isError = state.emptyError,
-                    supportingText = { if (state.emptyError) Text(stringResource(R.string.raw_text_required)) }, shape = RoundedCornerShape(FlowRadius.control),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        disabledContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        errorIndicatorColor = Color.Transparent,
-                    ),
-                )
-            }
-            TextButton(onClick = onPasteClipboard) { Icon(Icons.Outlined.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.paste_clipboard)) }
-            if (state.analysisFailed) {
-                Surface(Modifier.fillMaxWidth().padding(vertical = 8.dp), color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(12.dp)) {
-                    Row(Modifier.padding(14.dp), verticalAlignment = androidx.compose.ui.Alignment.Top) {
-                        Icon(Icons.Outlined.ErrorOutline, null)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.paste_analysis_failed), style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = onAnalyze, enabled = !state.analyzing) {
-                                Text(stringResource(R.string.retry))
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(FlowSpacing.xl),
+        ) {
+            item(key = "paste-editor") {
+                Text(stringResource(R.string.paste_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(FlowSpacing.lg))
+                FlowCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(FlowSpacing.sm)) {
+                    TextField(
+                        value = state.text,
+                        onValueChange = onTextChanged,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                        label = { Text(stringResource(R.string.raw_text_label)) },
+                        isError = state.emptyError,
+                        supportingText = { if (state.emptyError) Text(stringResource(R.string.raw_text_required)) },
+                        shape = RoundedCornerShape(FlowRadius.control),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            disabledContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            errorIndicatorColor = Color.Transparent,
+                        ),
+                    )
+                }
+                TextButton(onClick = onPasteClipboard) {
+                    Icon(Icons.Outlined.ContentPaste, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.paste_clipboard))
+                }
+                if (state.analysisFailed) {
+                    Surface(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Outlined.ErrorOutline, null)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.paste_analysis_failed), style = MaterialTheme.typography.bodyMedium)
+                                TextButton(onClick = onAnalyze, enabled = !state.analyzing) {
+                                    Text(stringResource(R.string.retry))
+                                }
                             }
                         }
                     }
                 }
+                Spacer(Modifier.height(FlowSpacing.md))
             }
-            Spacer(Modifier.height(20.dp))
-            PrimaryAction(stringResource(if (state.analyzing) R.string.analyzing else if (state.analysisFailed) R.string.retry else R.string.analyze), state.analyzing, onClick = onAnalyze)
-            Spacer(Modifier.height(24.dp))
         }
     }
 }

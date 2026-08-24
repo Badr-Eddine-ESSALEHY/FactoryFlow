@@ -482,7 +482,7 @@ This decision supports deeper integration with:
 - Android Share Intent
 - FileProvider
 - PaddleOCR backend runtime
-- Firebase Cloud Messaging
+- future Firebase Cloud Messaging support, if implemented
 - Android lifecycle
 - system permissions
 - system share sheet
@@ -605,7 +605,9 @@ The engineer pastes the original WhatsApp message.
 
 The engineer selects an existing screenshot/photo.
 
-The Android app runs OCR.
+The Android app submits the image to the authenticated backend OCR endpoint. The
+backend delegates recognition to the private PaddleOCR runtime and returns extracted
+text for deterministic parsing and human review.
 
 ---
 

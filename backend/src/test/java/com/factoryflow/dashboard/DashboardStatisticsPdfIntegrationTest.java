@@ -86,7 +86,7 @@ class DashboardStatisticsPdfIntegrationTest {
             String text = new PDFTextStripper().getText(document);
             assertThat(document.getPage(0).getResources().getXObjectNames()).isNotEmpty();
             assertThat(text).contains("RAPPORT JOURNALIER DE MAINTENANCE", "15,8", "Non renseigné",
-                            "RAPPORT SOURCE", "SOUMIS PAR", "CONFIRMÉ LE", "PÉRIODE", "GÉNÉRÉ LE", "—")
+                            "RAPPORTS SOURCES", "SOUMIS PAR", "CONFIRMÉ LE", "PÉRIODE", "GÉNÉRÉ LE", "—")
                     .doesNotContain("15.8")
                     .doesNotContain("999", "Missing", "PASTE", "Local Excel Verification");
         }

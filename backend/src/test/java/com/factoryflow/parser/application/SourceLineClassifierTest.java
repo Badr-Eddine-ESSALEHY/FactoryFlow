@@ -63,6 +63,22 @@ class SourceLineClassifierTest {
 
         assertThat(classifier.classify("13/08/2026 Maintenance").type())
                 .isEqualTo(SourceLineClassifier.LineType.WHATSAPP_METADATA);
+
+        assertThat(classifier.classify("De 23/07/26").type())
+                .isEqualTo(SourceLineClassifier.LineType.WHATSAPP_METADATA);
+    }
+
+    @Test
+    void recognizesSafeWhatsappAndOcrNoiseFromRealScreenshots() {
+        for (String line : new String[]{
+                "15:01", "23:01", "00:40", "Aujourd'hui", "Hier", "Message",
+                ":", "M", "C", "S", "KPI PRODUCTION", "Ayman Charge Alf",
+                "Suivi des consommations liquides.", "PF", "Aymane", "Lokbiche"
+        }) {
+            assertThat(classifier.classify(line).ignored())
+                    .as(line)
+                    .isTrue();
+        }
     }
 
     @Test
@@ -72,6 +88,15 @@ class SourceLineClassifierTest {
 
         assertThat(classifier.classify("Pression hydraulique : 12 bar").type())
                 .isEqualTo(SourceLineClassifier.LineType.CONTENT);
+
+        assertThat(classifier.classify("Recyclage 20y").type())
+                .isEqualTo(SourceLineClassifier.LineType.CONTENT);
+
+        for (String plausibleBusinessLine : new String[]{"Methionine", "Terminé 8", "Eau"}) {
+            assertThat(classifier.classify(plausibleBusinessLine).ignored())
+                    .as(plausibleBusinessLine)
+                    .isFalse();
+        }
     }
 
     @Test

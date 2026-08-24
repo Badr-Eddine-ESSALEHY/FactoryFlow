@@ -178,7 +178,7 @@ class MeasurementValueParserTest {
                         MeasurementValueParser.ValueState.AMBIGUOUS
                 );
 
-        assertThat(result.value()).isNull();
+        assertThat(result.value()).isEqualByComparingTo("30.197");
 
         assertThat(result.alternatives())
                 .hasSize(2);

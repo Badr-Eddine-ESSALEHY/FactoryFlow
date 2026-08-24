@@ -74,6 +74,16 @@ The accepted Flow foundation is now applied across the Android presentation laye
 
 No corporate logo is rendered inside the normal Android interface.
 
+## Launcher identity
+
+The production launcher mark combines a simplified white factory silhouette with a cyan three-node process path on a restrained deep-navy gradient. The central geometry stays within the adaptive-icon safe zone and contains no text. Android resources include adaptive foreground/background layers, a monochrome themed-icon layer, and vector standard/round fallbacks. The editable master is `assets/branding/factoryflow_app_icon.svg`.
+
+The Alf Mabrouk corporate logo remains reserved for generated PDF and Excel documents and is not part of the FactoryFlow launcher identity.
+
+## Focused workflow insets
+
+Persistent focused-workflow actions use `FlowBottomActionBar`. It owns navigation-bar clearance and consistent compact padding; screens with editable content resize the scaffold for the IME so list content is not covered and the CTA does not create a second inset gap.
+
 ## Preview contract
 
 Preview files may supply debug-only fixtures, but must call production composables. The current authoritative set is:

@@ -47,6 +47,33 @@ public class ReportDraftController {
         return service.get(principal.getName(), id);
     }
 
+    @PostMapping("/{id}/draft/entries/{entryId}/add-kpi")
+    @Operation(summary = "Create or reuse a detected KPI definition and assign the draft entry")
+    public ReportResponse addDetectedKpi(Principal principal, @PathVariable Long id, @PathVariable Long entryId) {
+        return service.addDetectedKpi(principal.getName(), id, entryId);
+    }
+
+    @PostMapping("/{id}/draft/unrecognized-lines/ignore-safe")
+    @Operation(summary = "Ignore only deterministic safe-noise lines in a report draft")
+    public ReportResponse ignoreSafeUnrecognizedLines(Principal principal, @PathVariable Long id) {
+        return service.ignoreSafeUnrecognizedLines(principal.getName(), id);
+    }
+
+    @PutMapping("/{id}/draft/unrecognized-lines/{lineId}")
+    @Operation(summary = "Persist one unknown-line resolution immediately")
+    public ReportResponse resolveUnrecognizedLine(
+            Principal principal, @PathVariable Long id, @PathVariable Long lineId,
+            @Valid @RequestBody UnknownLineResolutionRequest request) {
+        return service.resolveUnrecognizedLine(principal.getName(), id, lineId, request);
+    }
+
+    @DeleteMapping("/{id}/draft/entries/{entryId}")
+    @Operation(summary = "Remove one extracted observation while retaining its source trace")
+    public ReportResponse removeEntry(
+            Principal principal, @PathVariable Long id, @PathVariable Long entryId) {
+        return service.removeEntry(principal.getName(), id, entryId);
+    }
+
     @PostMapping("/{id}/confirm")
     @Operation(summary = "Confirm reviewed KPI values transactionally")
     public ReportResponse confirm(Principal principal, @PathVariable Long id,

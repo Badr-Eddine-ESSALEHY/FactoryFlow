@@ -6,7 +6,7 @@
 >
 > Status: Active
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-22
 >
 > This document defines **how FactoryFlow behaves on screen**.
 >
@@ -427,14 +427,10 @@ Read local session state
   ↓
 Access token valid?
   ├── Yes → Dashboard
-  └── No
-       ↓
-Refresh token available?
-       ├── Yes → Refresh
-       │          ├── Success → Dashboard
-       │          └── Failure → Login
-       └── No → Login
+  └── No → Clear session → Login
 ```
+
+Refresh tokens are not implemented in the current client/backend contract.
 
 ---
 
@@ -1529,6 +1525,27 @@ Associer à un KPI
 Ignorer
 ```
 
+For a KPI-like unresolved entry, FactoryFlow chooses the primary action from the
+deterministic match result:
+
+- when an existing KPI suggestion exists, show `Associer à <KPI>` and keep the
+  manual `Associer à un indicateur` alternative;
+- when no equivalent/suggested KPI exists, show `Ajouter un nouvel indicateur`;
+- creation happens only after the engineer taps the action, creates or reuses the
+  normalized definition, associates the current extraction, and stays in Review.
+
+The beginning of `Non reconnus` exposes `Ignorer tout`. This action delegates to
+the backend source-line classifier and ignores only safe metadata/noise; it never
+blindly resolves uncertain KPI-like content.
+
+Resolving, assigning, creating, or ignoring an item keeps the current Review tab
+and approximately the same lazy-list position while actionable items remain.
+
+Entries in `À vérifier` expose `Valider`; accepting the editable value moves that
+entry to `Prêtes` without leaving the screen. Attention and unresolved entries block
+final confirmation until explicitly processed. Duplicate KPI conflicts still require
+the user to remove the unwanted observation rather than acknowledging both.
+
 If `Ignore` is allowed, make it explicit rather than silently dropping the line.
 
 Persisted resolution is one of `UNRESOLVED`, `ASSIGNED`, or `IGNORED`; these are API
@@ -1877,8 +1894,9 @@ for pasted/OCR reports.
 Possible:
 
 ```text
-Générer le fichier Excel
-Générer le PDF
+Exporter ce rapport uniquement
+  ├── Excel
+  └── PDF
 Voir les fichiers générés
 Partager
 ```
@@ -1903,6 +1921,16 @@ Detailed audit history may be future/secondary.
 ---
 
 # 55. Generated Documents Screen
+
+The screen begins with a distinct action:
+
+```text
+Générer un rapport consolidé
+```
+
+Its bottom sheet offers `Jour`, `Semaine`, `Mois`, or `Période personnalisée`,
+an appropriate Material date/range picker, and independent Excel/PDF selection.
+This action is never presented as exporting one report.
 
 Each item:
 
@@ -2305,7 +2333,10 @@ Couldn’t refresh notifications.
 
 ---
 
-# 79. FCM Foreground Behavior
+# 79. Future FCM Foreground Behavior
+
+FCM is not implemented. Current notification UX uses persisted in-app notifications.
+If FCM is added later:
 
 When app is active:
 
@@ -2320,7 +2351,7 @@ Daily report generated
 
 ---
 
-# 80. FCM Background Behavior
+# 80. Future FCM Background Behavior
 
 Use system notification.
 
@@ -5465,6 +5496,18 @@ That feeling is more important than any individual animation or component.
 - Create Report keeps its title at the top and vertically balances acquisition actions inside the remaining responsive viewport; compact screens and larger fonts remain scrollable.
 - Statistics renders a trend only when at least two valid confirmed observations exist. Otherwise it explicitly displays “Données insuffisantes”.
 - Notification rows open their related confirmed report or generated document when the backend supplies that relationship.
+
+### Review completion hierarchy
+
+- `ATTENTION_ACKNOWLEDGE` and `ATTENTION_DUPLICATE` always expose an explicit validation action.
+- Duplicate validation acknowledges one observation; it never merges or overwrites another occurrence.
+- Untouched missing values remain legitimate. Entering a replacement creates `MISSING_CORRECTED`, with “Annuler la saisie” and “Valider”.
+- Weak suggestions keep “Ajouter un nouvel indicateur” as the primary action and display their numeric confidence only as optional help.
+- Strong suggestions prioritize association while retaining manual selection and new-KPI creation.
+- The Non tab separates KPI-like unresolved content from safe noise. “Ignorer tout” stays pinned near the top of the Non content and acts on every unresolved line carrying the backend `safeToIgnore` flag, regardless of its visual subsection. Unflagged KPI-like content is never included.
+- Save uses visible progress and Snackbar feedback. Dirty Back navigation offers Save Draft, leave without saving, and cancel.
+- Persistent workflow actions use one navigation-bar-safe bottom container. Input and Review scaffolds resize for the IME so the active field, scrolling content, and bottom action remain usable without stacked inset gaps.
+- Duplicate-observation cards reserve equal horizontal space for the secondary removal action and the primary validation action; labels may wrap only at word boundaries and never collapse letter-by-letter.
 
 ---
 

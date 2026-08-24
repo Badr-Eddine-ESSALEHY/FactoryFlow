@@ -11,9 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -29,7 +32,25 @@ fun ManualEntryScreen(onBack: () -> Unit, onReview: (Long) -> Unit, viewModel: M
     var confirmExit by remember { mutableStateOf(false) }
     val requestBack = { if (state.entries.isEmpty()) onBack() else confirmExit = true }
     BackHandler(onBack = requestBack)
-    FactoryFlowScaffold(topBar = { FocusedTopBar(stringResource(R.string.manual_title), requestBack) }) { padding ->
+    FactoryFlowScaffold(
+        modifier = Modifier.imePadding(),
+        topBar = { FocusedTopBar(stringResource(R.string.manual_title), requestBack) },
+        bottomBar = {
+            if (!state.loading && (state.error == null || state.definitions.isNotEmpty())) {
+                FlowBottomActionBar {
+                    state.error?.let {
+                        Text(
+                            stringResource(it.detail),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = FlowSpacing.sm),
+                        )
+                    }
+                    PrimaryAction(stringResource(R.string.continue_review), state.submitting, onClick = { viewModel.submit(onReview) })
+                }
+            }
+        },
+    ) { padding ->
         when {
             state.loading -> LoadingPane(stringResource(R.string.loading), Modifier.padding(padding))
             state.error != null && state.definitions.isEmpty() -> ErrorPane(stringResource(state.error!!.title), stringResource(state.error!!.detail), stringResource(R.string.retry), viewModel::load, Modifier.padding(padding))
@@ -69,8 +90,11 @@ fun ManualEntryContent(
 ) {
     var selecting by remember { mutableStateOf(false) }
     FlowContentSurface(modifier) {
-    Column(Modifier.fillMaxSize().imePadding()) {
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(FlowSpacing.xl), verticalArrangement = Arrangement.spacedBy(FlowSpacing.md)) {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(FlowSpacing.xl),
+            verticalArrangement = Arrangement.spacedBy(FlowSpacing.md),
+        ) {
                     item {
                         Text(stringResource(R.string.manual_description), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (state.entries.isNotEmpty()) Text(
@@ -102,12 +126,7 @@ fun ManualEntryContent(
                         OutlinedButton(onClick = { selecting = true }, Modifier.fillMaxWidth().height(FlowSize.touchTarget), shape = RoundedCornerShape(FlowRadius.control)) { Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(FlowSpacing.sm)); Text(stringResource(R.string.add_kpi)) }
                         if (state.selectionError) Text(stringResource(R.string.no_kpi_selected), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
                     }
-                }
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = FlowElevation.navigation) { Column(Modifier.navigationBarsPadding().padding(FlowSpacing.lg)) {
-                    state.error?.let { Text(stringResource(it.detail), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp)) }
-                    PrimaryAction(stringResource(R.string.continue_review), state.submitting, onClick = onSubmit)
-                } }
-    }
+        }
     }
     if (selecting) KpiPicker(state.definitions, state.query, onQueryChanged, { onAdd(it); selecting = false }, { selecting = false })
 }
@@ -149,12 +168,39 @@ private fun ManualRow(row: ManualEntryRow, invalid: Boolean, onValue: (String) -
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KpiPicker(definitions: List<KpiDefinitionDto>, query: String, onQuery: (String) -> Unit, onSelect: (KpiDefinitionDto) -> Unit, onDismiss: () -> Unit) {
-    val filtered = definitions.filter { it.displayName.contains(query, true) || it.code.contains(query, true) }
+    var localQuery by rememberSaveable { mutableStateOf(query) }
+    val focusRequester = remember { FocusRequester() }
+    val filtered = remember(definitions, localQuery) { filterKpiDefinitions(definitions, localQuery) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp)) {
             Text(stringResource(R.string.add_kpi), style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(FlowSpacing.md)); TextField(query, onQuery, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.search_kpi)) }, leadingIcon = { Icon(Icons.Outlined.Search, null, tint = FlowBlue) }, singleLine = true, shape = RoundedCornerShape(FlowRadius.control), colors = flowInputColors())
+            Spacer(Modifier.height(FlowSpacing.md))
+            TextField(
+                value = localQuery,
+                onValueChange = { value -> localQuery = value; onQuery(value) },
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                label = { Text(stringResource(R.string.search_kpi)) },
+                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = FlowBlue) },
+                trailingIcon = if (localQuery.isBlank()) null else {{
+                    IconButton(onClick = { localQuery = ""; onQuery("") }) {
+                        Icon(Icons.Outlined.Clear, stringResource(R.string.clear_search))
+                    }
+                }},
+                singleLine = true,
+                shape = RoundedCornerShape(FlowRadius.control),
+                colors = flowInputColors(),
+            )
             Spacer(Modifier.height(12.dp)); LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
+                if (filtered.isEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.no_kpi_search_result),
+                            Modifier.fillMaxWidth().padding(vertical = FlowSpacing.xl),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
                 items(filtered, key = { it.id }) { definition ->
                     Row(Modifier.fillMaxWidth().clickable { onSelect(definition) }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(definition.displayName, style = MaterialTheme.typography.titleMedium); Text(listOfNotNull(definition.category, definition.unit).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -165,7 +211,27 @@ fun KpiPicker(definitions: List<KpiDefinitionDto>, query: String, onQuery: (Stri
             }
         }
     }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }
+
+internal fun filterKpiDefinitions(
+    definitions: List<KpiDefinitionDto>,
+    query: String,
+): List<KpiDefinitionDto> {
+    val normalizedQuery = query.normalizedForSearch()
+    if (normalizedQuery.isBlank()) return definitions
+    return definitions.filter { definition ->
+        definition.displayName.normalizedForSearch().contains(normalizedQuery) ||
+            definition.code.normalizedForSearch().contains(normalizedQuery) ||
+            definition.aliases.any { it.normalizedForSearch().contains(normalizedQuery) }
+    }
+}
+
+private fun String.normalizedForSearch(): String = java.text.Normalizer
+    .normalize(this, java.text.Normalizer.Form.NFD)
+    .replace(Regex("\\p{M}+"), "")
+    .lowercase(java.util.Locale.ROOT)
+    .trim()
 
 @Composable
 private fun flowInputColors() = TextFieldDefaults.colors(

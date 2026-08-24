@@ -21,11 +21,11 @@ class ConfirmedReportViewModelTest {
     @get:Rule val dispatcher = MainDispatcherRule()
 
     @Test
-    fun `export uses confirmed effective date then downloads generated document`() = runTest(dispatcher.dispatcher) {
+    fun `export sends exact confirmed report identity then downloads generated document`() = runTest(dispatcher.dispatcher) {
         val reports = FakeReportsRepository().apply { reportValue = reportDto(status = "CONFIRMED", id = 23) }
         val document = GeneratedReportDto(
             id = 91,
-            type = "DAILY",
+            type = "INDIVIDUAL",
             format = "PDF",
             periodStart = "2026-08-12",
             periodEnd = "2026-08-12",
@@ -54,12 +54,10 @@ class ConfirmedReportViewModelTest {
         viewModel.export("PDF")
         advanceUntilIdle()
 
-        assertEquals(1, generated.generationRequests.size)
-        with(generated.generationRequests.single()) {
-            assertEquals("DAILY", type)
+        assertEquals(1, generated.individualGenerationRequests.size)
+        with(generated.individualGenerationRequests.single()) {
+            assertEquals(23L, reportId)
             assertEquals("PDF", format)
-            assertEquals("2026-08-12", periodStart)
-            assertEquals("2026-08-12", periodEnd)
         }
         assertEquals(listOf(document), generated.downloadedReports)
         assertSame(file, viewModel.state.value.sharedFile)
@@ -80,7 +78,7 @@ class ConfirmedReportViewModelTest {
         viewModel.export("EXCEL")
         advanceUntilIdle()
 
-        assertFalse(generated.generationRequests.isNotEmpty())
+        assertFalse(generated.individualGenerationRequests.isNotEmpty())
         assertNull(viewModel.state.value.generatedDocument)
     }
 
@@ -89,7 +87,7 @@ class ConfirmedReportViewModelTest {
         val reports = FakeReportsRepository().apply { reportValue = reportDto(status = "CONFIRMED", id = 23) }
         val document = GeneratedReportDto(
             id = 92,
-            type = "DAILY",
+            type = "INDIVIDUAL",
             format = "EXCEL",
             periodStart = "2026-08-12",
             periodEnd = "2026-08-12",
@@ -118,7 +116,7 @@ class ConfirmedReportViewModelTest {
         viewModel.export("EXCEL")
         advanceUntilIdle()
 
-        assertEquals(1, generated.generationRequests.size)
+        assertEquals(1, generated.individualGenerationRequests.size)
         assertEquals(1, generated.downloadedReports.size)
     }
 }

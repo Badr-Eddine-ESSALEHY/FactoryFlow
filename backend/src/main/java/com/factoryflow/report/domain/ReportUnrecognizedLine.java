@@ -27,15 +27,27 @@ public class ReportUnrecognizedLine {
     private UnknownLineResolution resolution;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "resolved_kpi_definition_id")
     private KpiDefinition resolvedDefinition;
+    @Enumerated(EnumType.STRING) @Column(name = "unknown_kind", nullable = false, length = 30)
+    private UnknownLineKind kind;
+    @Column(name = "classification_reason", nullable = false, length = 80)
+    private String classificationReason;
+    @Column(name = "safe_to_ignore", nullable = false)
+    private boolean safeToIgnore;
     @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
 
     protected ReportUnrecognizedLine() { }
 
     static ReportUnrecognizedLine draft(MaintenanceReport report, String sourceLine,
-                                        UnknownLineResolution resolution, KpiDefinition resolvedDefinition) {
+                                        UnknownLineResolution resolution, KpiDefinition resolvedDefinition,
+                                        UnknownLineKind kind, String classificationReason, boolean safeToIgnore) {
         ReportUnrecognizedLine line = new ReportUnrecognizedLine();
         line.report = report;
         line.sourceLine = sourceLine.strip();
+        line.kind = kind == null ? UnknownLineKind.KPI_LIKE : kind;
+        line.classificationReason = classificationReason == null || classificationReason.isBlank()
+                ? "UNCLASSIFIED"
+                : classificationReason.strip();
+        line.safeToIgnore = safeToIgnore && line.kind == UnknownLineKind.SAFE_NOISE;
         line.resolve(resolution, resolvedDefinition);
         line.createdAt = Instant.now();
         return line;
@@ -53,4 +65,7 @@ public class ReportUnrecognizedLine {
     public String getSourceLine() { return sourceLine; }
     public UnknownLineResolution getResolution() { return resolution; }
     public KpiDefinition getResolvedDefinition() { return resolvedDefinition; }
+    public UnknownLineKind getKind() { return kind; }
+    public String getClassificationReason() { return classificationReason; }
+    public boolean isSafeToIgnore() { return safeToIgnore; }
 }

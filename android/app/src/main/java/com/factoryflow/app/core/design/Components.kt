@@ -765,6 +765,7 @@ fun FactoryFlowScaffold(
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
@@ -774,8 +775,30 @@ fun FactoryFlowScaffold(
         topBar = topBar,
         bottomBar = bottomBar,
         floatingActionButton = floatingActionButton,
+        snackbarHost = snackbarHost,
         content = content,
     )
+}
+
+@Composable
+@Suppress("ModifierParameter")
+fun FlowBottomActionBar(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = FlowElevation.navigation,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = FlowSpacing.lg, vertical = FlowSpacing.md),
+            content = content,
+        )
+    }
 }
 
 @Composable

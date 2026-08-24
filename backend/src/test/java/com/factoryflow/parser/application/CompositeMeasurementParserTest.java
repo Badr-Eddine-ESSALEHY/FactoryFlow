@@ -220,7 +220,7 @@ class CompositeMeasurementParserTest {
                 ).orElseThrow();
 
         assertThat(result.primaryValue())
-                .isNull();
+                .isEqualByComparingTo("30.197");
 
         assertThat(result.warnings())
                 .extracting("code")

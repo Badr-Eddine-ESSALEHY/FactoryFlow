@@ -3,6 +3,8 @@ package com.factoryflow.schedule;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.factoryflow.auth.domain.UserAccount;
 import com.factoryflow.auth.persistence.UserAccountRepository;
@@ -12,6 +14,8 @@ import com.factoryflow.generatedreport.domain.GenerationStatus;
 import com.factoryflow.generatedreport.persistence.GeneratedReportRepository;
 import com.factoryflow.kpi.domain.KpiDefinition;
 import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
+import com.factoryflow.notification.domain.NotificationType;
+import com.factoryflow.notification.persistence.UserNotificationRepository;
 import com.factoryflow.report.domain.AcquisitionSource;
 import com.factoryflow.report.domain.MaintenanceReport;
 import com.factoryflow.report.persistence.MaintenanceReportRepository;
@@ -33,6 +37,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,6 +51,7 @@ class ScheduleExecutionIntegrationTest {
     @Autowired ScheduleRunRepository runs; @Autowired GeneratedReportRepository generated;
     @Autowired UserAccountRepository users; @Autowired PasswordEncoder passwords;
     @Autowired KpiDefinitionRepository definitions; @Autowired MaintenanceReportRepository reports;
+    @Autowired UserNotificationRepository notifications;
     @Autowired EntityManager entityManager;
     @MockitoBean ScheduledReportEmailSender emailSender;
     private final List<Long> scheduleIds = new ArrayList<>();
@@ -56,7 +62,7 @@ class ScheduleExecutionIntegrationTest {
         LocalDate executionDate = LocalDate.of(2026, 8, 12);
         setupSource(executionDate.minusDays(1));
 
-        ReportSchedule delivered = saveSchedule(true, true);
+        ReportSchedule delivered = saveSchedule(true, true, true, true);
         entityManager.clear();
         assertThat(schedules.findById(delivered.getId())).isPresent().get()
                 .extracting(ReportSchedule::getTimezone).isEqualTo("Africa/Casablanca");
@@ -64,34 +70,54 @@ class ScheduleExecutionIntegrationTest {
         execution.execute(delivered.getId(), fire);
         execution.execute(delivered.getId(), fire);
         var deliveredRuns = runs.findAllByScheduleId(delivered.getId());
-        assertThat(deliveredRuns).hasSize(1);
-        assertThat(deliveredRuns.getFirst().getStatus()).isEqualTo(ScheduleRunStatus.SUCCEEDED);
-        assertThat(deliveredRuns.getFirst().getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.DELIVERED);
+        assertThat(deliveredRuns).hasSize(2);
+        assertThat(deliveredRuns).allSatisfy(run -> {
+            assertThat(run.getStatus()).isEqualTo(ScheduleRunStatus.SUCCEEDED);
+            assertThat(run.getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.DELIVERED);
+        });
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<com.factoryflow.generatedreport.domain.GeneratedReport>> deliveredAttachments =
+                ArgumentCaptor.forClass(List.class);
+        verify(emailSender).send(deliveredAttachments.capture(), any());
+        assertThat(deliveredAttachments.getValue()).hasSize(2)
+                .extracting(com.factoryflow.generatedreport.domain.GeneratedReport::getFormat)
+                .containsExactlyInAnyOrder(
+                        com.factoryflow.generatedreport.domain.GeneratedReportFormat.EXCEL,
+                        com.factoryflow.generatedreport.domain.GeneratedReportFormat.PDF);
 
         doThrow(new IllegalStateException("simulated SMTP failure")).when(emailSender).send(any(), any());
-        ReportSchedule failedEmail = saveSchedule(true, true);
+        ReportSchedule failedEmail = saveSchedule(true, true, true, true);
         execution.execute(failedEmail.getId(), fire);
-        var failedRun = runs.findAllByScheduleId(failedEmail.getId()).getFirst();
-        assertThat(failedRun.getStatus()).isEqualTo(ScheduleRunStatus.PARTIAL_SUCCESS);
-        assertThat(failedRun.getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.FAILED);
-        assertThat(generated.findById(failedRun.getGeneratedReport().getId())).isPresent().get().satisfies(report -> {
-            assertThat(report.getGenerationStatus()).isEqualTo(GenerationStatus.READY);
-            assertThat(report.getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.FAILED);
-            assertThat(report.getFileName()).contains("schedule-" + failedEmail.getId());
+        var failedRuns = runs.findAllByScheduleId(failedEmail.getId());
+        assertThat(failedRuns).hasSize(2).allSatisfy(failedRun -> {
+            assertThat(failedRun.getStatus()).isEqualTo(ScheduleRunStatus.PARTIAL_SUCCESS);
+            assertThat(failedRun.getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.FAILED);
+            assertThat(generated.findById(failedRun.getGeneratedReport().getId())).isPresent().get()
+                    .satisfies(report -> {
+                        assertThat(report.getGenerationStatus()).isEqualTo(GenerationStatus.READY);
+                        assertThat(report.getEmailDeliveryStatus()).isEqualTo(EmailDeliveryStatus.FAILED);
+                        assertThat(report.getFileName()).contains("schedule-" + failedEmail.getId());
+                    });
         });
+        verify(emailSender, times(2)).send(any(), any());
+        assertThat(notifications.findByUserIdOrderByCreatedAtDesc(
+                user.getId(), org.springframework.data.domain.Pageable.unpaged()))
+                .filteredOn(notification -> notification.getType() == NotificationType.EMAIL_FAILED)
+                .hasSize(1);
         String deliveredFile = generated.findById(deliveredRuns.getFirst().getGeneratedReport().getId())
                 .orElseThrow().getFileName();
-        String failedFile = generated.findById(failedRun.getGeneratedReport().getId()).orElseThrow().getFileName();
+        String failedFile = generated.findById(failedRuns.getFirst().getGeneratedReport().getId())
+                .orElseThrow().getFileName();
         assertThat(deliveredFile).isNotEqualTo(failedFile);
 
-        ReportSchedule disabled = saveSchedule(false, false);
+        ReportSchedule disabled = saveSchedule(false, false, true, false);
         execution.execute(disabled.getId(), fire);
         assertThat(runs.findAllByScheduleId(disabled.getId())).isEmpty();
     }
 
-    private ReportSchedule saveSchedule(boolean enabled, boolean email) {
+    private ReportSchedule saveSchedule(boolean enabled, boolean email, boolean excel, boolean pdf) {
         ReportSchedule schedule = schedules.saveAndFlush(ReportSchedule.create(user, ReportScheduleType.DAILY,
-                LocalTime.of(18, 0), null, false, true, email,
+                LocalTime.of(18, 0), null, excel, pdf, email,
                 email ? Set.of("reports@example.com") : Set.of(), enabled));
         scheduleIds.add(schedule.getId()); return schedule;
     }
@@ -117,6 +143,8 @@ class ScheduleExecutionIntegrationTest {
         }
         if (source != null) reports.deleteById(source.getId());
         if (kpi != null) definitions.deleteById(kpi.getId());
+        if (user != null) notifications.deleteAll(notifications.findByUserIdOrderByCreatedAtDesc(
+                user.getId(), org.springframework.data.domain.Pageable.unpaged()));
         if (user != null) users.deleteById(user.getId());
     }
 }

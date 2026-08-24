@@ -18,6 +18,7 @@ interface AuthRepository {
     suspend fun currentUser(): UserDto
     suspend fun hasSession(): Boolean
     val authenticated: StateFlow<Boolean>
+    val sessionExpired: StateFlow<Boolean>
     fun logout()
 }
 
@@ -28,6 +29,7 @@ class DefaultAuthRepository @Inject constructor(
     private val tokens: SecureTokenStore,
 ) : AuthRepository {
     override val authenticated: StateFlow<Boolean> = tokens.authenticated
+    override val sessionExpired: StateFlow<Boolean> = tokens.sessionExpired
     override suspend fun login(email: String, password: String): UserDto = executor.execute {
         api.login(LoginRequest(email.trim(), password)).also {
             withContext(Dispatchers.IO) { tokens.save(it.accessToken) }
@@ -49,6 +51,10 @@ interface ReportsRepository {
     suspend fun createDraft(request: DraftReportRequest): ReportDto
     suspend fun updateDraft(id: Long, request: DraftReportRequest): ReportDto
     suspend fun draft(id: Long): ReportDto
+    suspend fun addDetectedKpi(id: Long, entryId: Long): ReportDto
+    suspend fun ignoreSafeUnrecognizedLines(id: Long): ReportDto
+    suspend fun resolveUnrecognizedLine(id: Long, request: UnknownLineResolutionRequest): ReportDto
+    suspend fun removeDraftEntry(id: Long, entryId: Long): ReportDto
     suspend fun deleteDraft(id: Long)
     suspend fun approveAlias(kpiDefinitionId: Long, alias: String): KpiDefinitionDto
     suspend fun confirm(id: Long, request: ConfirmReportRequest): ReportDto
@@ -62,6 +68,11 @@ class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowA
     override suspend fun createDraft(request: DraftReportRequest) = executor.execute { api.createDraft(request) }
     override suspend fun updateDraft(id: Long, request: DraftReportRequest) = executor.execute { api.updateDraft(id, request) }
     override suspend fun draft(id: Long) = executor.execute { api.draft(id) }
+    override suspend fun addDetectedKpi(id: Long, entryId: Long) = executor.execute { api.addDetectedKpi(id, entryId) }
+    override suspend fun ignoreSafeUnrecognizedLines(id: Long) = executor.execute { api.ignoreSafeUnrecognizedLines(id) }
+    override suspend fun resolveUnrecognizedLine(id: Long, request: UnknownLineResolutionRequest) =
+        executor.execute { api.resolveUnrecognizedLine(id, request.lineId, request) }
+    override suspend fun removeDraftEntry(id: Long, entryId: Long) = executor.execute { api.removeDraftEntry(id, entryId) }
     override suspend fun deleteDraft(id: Long) = executor.execute { api.deleteDraft(id) }
     override suspend fun approveAlias(kpiDefinitionId: Long, alias: String) = executor.execute { api.approveAlias(kpiDefinitionId, ApproveAliasRequest(alias)) }
     override suspend fun confirm(id: Long, request: ConfirmReportRequest) = executor.execute { api.confirm(id, request) }
@@ -72,7 +83,8 @@ class DefaultReportsRepository @Inject constructor(private val api: FactoryFlowA
 interface GeneratedReportsRepository {
     suspend fun list(): PageDto<GeneratedReportDto>
     suspend fun detail(id: Long): GeneratedReportDto
-    suspend fun generate(request: GenerateReportRequest): GeneratedReportDto
+    suspend fun generateConsolidated(request: GenerateReportRequest): GeneratedReportDto
+    suspend fun generateIndividual(request: IndividualReportExportRequest): GeneratedReportDto
     suspend fun download(report: GeneratedReportDto): File
 }
 
@@ -83,7 +95,10 @@ class DefaultGeneratedReportsRepository @Inject constructor(
 ) : GeneratedReportsRepository {
     override suspend fun list() = executor.execute { api.generatedReports() }
     override suspend fun detail(id: Long) = executor.execute { api.generatedReport(id) }
-    override suspend fun generate(request: GenerateReportRequest) = executor.execute { api.generateReport(request) }
+    override suspend fun generateConsolidated(request: GenerateReportRequest) =
+        executor.execute { api.generateConsolidatedReport(request) }
+    override suspend fun generateIndividual(request: IndividualReportExportRequest) =
+        executor.execute { api.generateIndividualReport(request) }
     override suspend fun download(report: GeneratedReportDto): File = executor.execute {
         withContext(Dispatchers.IO) {
             val directory = File(context.cacheDir, "generated-reports").apply { mkdirs() }

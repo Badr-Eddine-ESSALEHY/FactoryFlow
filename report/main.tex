@@ -38,10 +38,15 @@
 % ============================================================
 
 \clearpage
-\pagenumbering{arabic}
-\setcounter{page}{1}
+
+% The front matter is physically counted but its page numbers are hidden.
+% Reveal Arabic numbering here without resetting the page counter.
+\renewcommand{\thepage}{\arabic{page}}
+\pagestyle{fancy}
 
 \chapter*{GENERAL INTRODUCTION}
+\markboth{GENERAL INTRODUCTION}{}
+
 \addcontentsline{toc}{chapter}{GENERAL INTRODUCTION}
 
 % Content will be written later.
@@ -65,6 +70,8 @@
 
 \clearpage
 \chapter*{REFERENCES}
+\markboth{REFERENCES}{}
+
 \addcontentsline{toc}{chapter}{REFERENCES}
 
 \printbibliography[heading=none]

@@ -20,7 +20,8 @@ class LineSegmenterTest {
                 new ParserProperties(
                         0.82,
                         0.04,
-                        0.45
+                        0.45,
+                        0.70
                 )
         );
     }
@@ -59,6 +60,12 @@ class LineSegmenterTest {
         assertThat(
                 segmenter.segmentSingleLine(
                         "Choline → 295456"
+                ).orElseThrow().valueText()
+        ).isEqualTo("295456");
+
+        assertThat(
+                segmenter.segmentSingleLine(
+                        "Choline => 295456"
                 ).orElseThrow().valueText()
         ).isEqualTo("295456");
     }

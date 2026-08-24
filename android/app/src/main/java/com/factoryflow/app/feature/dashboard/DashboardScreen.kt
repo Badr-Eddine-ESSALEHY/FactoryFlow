@@ -180,9 +180,7 @@ fun DashboardContent(
             if (data.recentGeneratedReports.isNotEmpty()) {
                 item { EnteringSection { RecentDocumentsSection(data.recentGeneratedReports, onGenerated) } }
             }
-            data.upcomingSchedule?.let { schedule ->
-                item { EnteringSection { UpcomingScheduleSection(schedule, onSchedules) } }
-            }
+            item { EnteringSection { UpcomingScheduleSection(data.upcomingSchedule, onSchedules) } }
             if (data.latestKpis.isEmpty() && data.recentReports.isEmpty() && data.recentGeneratedReports.isEmpty()) {
                 item {
                     FlowEmptyState(
@@ -457,14 +455,25 @@ private fun RecentDocumentsSection(documents: List<RecentGeneratedReportDto>, on
 }
 
 @Composable
-private fun UpcomingScheduleSection(schedule: UpcomingScheduleDto, onSchedules: () -> Unit) {
+private fun UpcomingScheduleSection(schedule: UpcomingScheduleDto?, onSchedules: () -> Unit) {
     Column {
         FlowSectionHeader(
-            title = stringResource(R.string.upcoming_schedule),
-            action = stringResource(R.string.manage_schedules),
+            title = stringResource(if (schedule == null) R.string.schedules_title else R.string.upcoming_schedule),
+            action = stringResource(if (schedule == null) R.string.new_schedule else R.string.manage_schedules),
             onAction = onSchedules,
         )
         Spacer(Modifier.height(FlowSpacing.sm))
+        if (schedule == null) {
+            FlowListRow(
+                icon = Icons.Outlined.EventRepeat,
+                title = stringResource(R.string.new_schedule),
+                meta = stringResource(R.string.no_schedules),
+                accent = FlowTealDark,
+                gradientEnd = FlowTeal,
+                onClick = onSchedules,
+            )
+            return@Column
+        }
         FlowListRow(
             icon = Icons.Outlined.EventRepeat,
             title = scheduleType(schedule.type),
@@ -537,6 +546,8 @@ private fun documentType(type: String): String = stringResource(
         "DAILY" -> R.string.daily
         "WEEKLY" -> R.string.weekly
         "MONTHLY" -> R.string.monthly
+        "INDIVIDUAL" -> R.string.individual_report
+        "CUSTOM" -> R.string.custom_period
         else -> R.string.manual
     },
 )

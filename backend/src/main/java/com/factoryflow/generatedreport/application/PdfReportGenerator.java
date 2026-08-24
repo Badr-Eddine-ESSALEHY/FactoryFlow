@@ -3,12 +3,6 @@ package com.factoryflow.generatedreport.application;
 import com.factoryflow.analytics.domain.AnalyticsSnapshot;
 import com.factoryflow.generatedreport.domain.GeneratedReportType;
 import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.font.TextLayout;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -26,30 +20,24 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PdfReportGenerator {
 
-    /*
-     * Corporate wordmark colors are intentionally used only inside the
-     * Alf Mabrouk wordmark. The report itself has an independent, restrained
-     * industrial palette.
-     */
-    private static final Color LOGO_MAGENTA = new Color(194, 47, 138);
-    private static final Color LOGO_GREEN = new Color(91, 154, 47);
-
-    private static final Color NAVY = new Color(23, 34, 51);
-    private static final Color NAVY_SOFT = new Color(46, 59, 76);
-    private static final Color TEAL = new Color(63, 119, 118);
-    private static final Color TEAL_DARK = new Color(46, 91, 91);
-    private static final Color INK = new Color(35, 43, 54);
-    private static final Color MUTED = new Color(103, 112, 124);
-    private static final Color BORDER = new Color(219, 224, 230);
-    private static final Color SOFT = new Color(247, 248, 250);
-    private static final Color SOFT_ALT = new Color(242, 245, 247);
+    private static final Color NAVY = new Color(64, 72, 77);
+    private static final Color NAVY_SOFT = new Color(212, 229, 220);
+    private static final Color TEAL = new Color(99, 139, 117);
+    private static final Color TEAL_DARK = new Color(55, 101, 75);
+    private static final Color INK = new Color(48, 56, 60);
+    private static final Color MUTED = new Color(108, 118, 114);
+    private static final Color BORDER = new Color(217, 222, 220);
+    private static final Color SOFT = new Color(247, 248, 247);
+    private static final Color SOFT_ALT = new Color(231, 240, 235);
+    private static final Color WARM_WHITE = new Color(252, 251, 248);
+    private static final Color TABLE_HEADER = new Color(212, 229, 220);
     private static final Color WHITE = Color.WHITE;
 
     private static final PDType1Font REGULAR =
@@ -75,7 +63,7 @@ public class PdfReportGenerator {
 
             applyMetadata(document, data);
 
-            PDImageXObject wordmark = createCorporateWordmark(document);
+            PDImageXObject wordmark = loadCorporateWordmark(document);
 
             PageWriter summary = createPage(document, data, wordmark);
             summary.renderSummaryPage();
@@ -98,6 +86,7 @@ public class PdfReportGenerator {
                     detail.renderRow(row, index++ % 2 == 1, rowHeight);
                 }
 
+                detail.renderEligibleTrendChart();
                 detail.close();
             }
 
@@ -143,145 +132,9 @@ public class PdfReportGenerator {
         );
     }
 
-    /**
-     * Builds the Alf Mabrouk wordmark at runtime on a transparent canvas.
-     * The PDF therefore does not depend on a baked logo background.
-     */
-    private PDImageXObject createCorporateWordmark(
-            PDDocument document
-    ) throws IOException {
-        int width = 650;
-        int height = 260;
-
-        BufferedImage image =
-                new BufferedImage(
-                        width,
-                        height,
-                        BufferedImage.TYPE_INT_ARGB
-                );
-
-        Graphics2D graphics = image.createGraphics();
-
-        try {
-            graphics.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-            );
-            graphics.setRenderingHint(
-                    RenderingHints.KEY_TEXT_ANTIALIASING,
-                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON
-            );
-            graphics.setRenderingHint(
-                    RenderingHints.KEY_RENDERING,
-                    RenderingHints.VALUE_RENDER_QUALITY
-            );
-
-            Font arabic =
-                    new Font("Arial", Font.BOLD, 72);
-
-            TextLayout arabicLayout =
-                    new TextLayout(
-                            "علف مبروك",
-                            arabic,
-                            graphics.getFontRenderContext()
-                    );
-
-            float arabicX =
-                    (width - arabicLayout.getAdvance()) / 2f;
-
-            graphics.setColor(LOGO_MAGENTA);
-            arabicLayout.draw(
-                    graphics,
-                    arabicX,
-                    78f
-            );
-
-            Font latin =
-                    new Font(
-                            "Arial",
-                            Font.BOLD,
-                            38
-                    );
-
-            graphics.setFont(latin);
-            graphics.setColor(WHITE);
-
-            drawCenteredLetterSpaced(
-                    graphics,
-                    "ALF MABROUK",
-                    width / 2f,
-                    146f,
-                    3.7f
-            );
-
-            Font subtitle =
-                    new Font(
-                            "Arial",
-                            Font.PLAIN,
-                            21
-                    );
-
-            graphics.setFont(subtitle);
-            graphics.setColor(LOGO_GREEN);
-
-            drawCenteredLetterSpaced(
-                    graphics,
-                    "NUTRITION ANIMALE",
-                    width / 2f,
-                    202f,
-                    5.8f
-            );
-
-            graphics.setColor(LOGO_MAGENTA);
-            graphics.fillRect(
-                    width / 2 - 48,
-                    232,
-                    86,
-                    4
-            );
-
-        } finally {
-            graphics.dispose();
-        }
-
-        return LosslessFactory.createFromImage(
-                document,
-                image
-        );
-    }
-
-    private static void drawCenteredLetterSpaced(
-            Graphics2D graphics,
-            String text,
-            float centerX,
-            float baselineY,
-            float spacing
-    ) {
-        FontMetrics metrics = graphics.getFontMetrics();
-
-        float width = 0;
-
-        for (int index = 0; index < text.length(); index++) {
-            width += metrics.charWidth(text.charAt(index));
-
-            if (index < text.length() - 1) {
-                width += spacing;
-            }
-        }
-
-        float x = centerX - width / 2f;
-
-        for (int index = 0; index < text.length(); index++) {
-            char character = text.charAt(index);
-            String value = String.valueOf(character);
-
-            graphics.drawString(
-                    value,
-                    x,
-                    baselineY
-            );
-
-            x += metrics.charWidth(character) + spacing;
+    private PDImageXObject loadCorporateWordmark(PDDocument document) throws IOException {
+        try (var input = new ClassPathResource("reporting/alf-mabrouk-logo.png").getInputStream()) {
+            return PDImageXObject.createFromByteArray(document, input.readAllBytes(), "alf-mabrouk-logo");
         }
     }
 
@@ -375,8 +228,9 @@ public class PdfReportGenerator {
                     INK,
                     LEFT,
                     y,
-                    "Vue consolidée des indicateurs de maintenance confirmés "
-                            + "pour la période sélectionnée."
+                    data.type() == GeneratedReportType.INDIVIDUAL
+                            ? "Export du seul rapport de maintenance confirmé sélectionné."
+                            : "Vue consolidée des indicateurs de maintenance confirmés pour la période sélectionnée."
             );
 
             y -= 28;
@@ -394,15 +248,6 @@ public class PdfReportGenerator {
             y -= 18;
             renderTraceability();
 
-            AnalyticsSnapshot.KpiAnalytics chartKpi =
-                    bestChartCandidate();
-
-            if (chartKpi != null
-                    && data.type() != GeneratedReportType.DAILY) {
-
-                y -= 13;
-                renderTrendChart(chartKpi);
-            }
         }
 
         private void renderDetailHeader()
@@ -437,7 +282,7 @@ public class PdfReportGenerator {
             float bottom =
                     PAGE_HEIGHT - headerHeight;
 
-            stream.setNonStrokingColor(NAVY);
+            stream.setNonStrokingColor(WARM_WHITE);
             stream.addRect(
                     0,
                     bottom,
@@ -446,11 +291,10 @@ public class PdfReportGenerator {
             );
             stream.fill();
 
-            float logoWidth = 184f;
-            float logoHeight =
-                    logoWidth
-                            * wordmark.getHeight()
-                            / wordmark.getWidth();
+            float logoHeight = 112f;
+            float logoWidth = logoHeight
+                    * wordmark.getWidth()
+                    / wordmark.getHeight();
 
             float logoY =
                     PAGE_HEIGHT
@@ -476,7 +320,7 @@ public class PdfReportGenerator {
             drawRight(
                     BOLD,
                     15.5f,
-                    WHITE,
+                    INK,
                     title,
                     PAGE_HEIGHT - 46
             );
@@ -484,7 +328,7 @@ public class PdfReportGenerator {
             drawRight(
                     REGULAR,
                     9.3f,
-                    new Color(209, 218, 230),
+                    MUTED,
                     ReportDocumentText.period(data),
                     PAGE_HEIGHT - 66
             );
@@ -516,7 +360,7 @@ public class PdfReportGenerator {
             float bottom =
                     PAGE_HEIGHT - headerHeight;
 
-            stream.setNonStrokingColor(NAVY);
+            stream.setNonStrokingColor(WARM_WHITE);
             stream.addRect(
                     0,
                     bottom,
@@ -525,11 +369,10 @@ public class PdfReportGenerator {
             );
             stream.fill();
 
-            float logoWidth = 132f;
-            float logoHeight =
-                    logoWidth
-                            * wordmark.getHeight()
-                            / wordmark.getWidth();
+            float logoHeight = 62f;
+            float logoWidth = logoHeight
+                    * wordmark.getWidth()
+                    / wordmark.getHeight();
 
             stream.drawImage(
                     wordmark,
@@ -542,7 +385,7 @@ public class PdfReportGenerator {
             drawRight(
                     BOLD,
                     11.5f,
-                    WHITE,
+                    INK,
                     ReportDocumentText.title(
                                     data.type()
                             )
@@ -555,7 +398,7 @@ public class PdfReportGenerator {
             drawRight(
                     REGULAR,
                     8f,
-                    new Color(209, 218, 230),
+                    MUTED,
                     ReportDocumentText.period(data),
                     PAGE_HEIGHT - 49
             );
@@ -598,7 +441,7 @@ public class PdfReportGenerator {
                     stream,
                     BOLD,
                     size,
-                    WHITE,
+                    TEAL_DARK,
                     x
                             + (width
                             - textWidth(
@@ -983,7 +826,7 @@ public class PdfReportGenerator {
             float height = 22f;
             float x = LEFT;
 
-            stream.setNonStrokingColor(NAVY_SOFT);
+            stream.setNonStrokingColor(TABLE_HEADER);
             stream.addRect(
                     LEFT,
                     y - height,
@@ -1000,7 +843,7 @@ public class PdfReportGenerator {
                         stream,
                         BOLD,
                         6.6f,
-                        WHITE,
+                        INK,
                         x + 6,
                         y - 14,
                         headers[index]
@@ -1175,6 +1018,18 @@ public class PdfReportGenerator {
                             )
                     )
                     .orElse(null);
+        }
+
+        private void renderEligibleTrendChart() throws IOException {
+            AnalyticsSnapshot.KpiAnalytics chartKpi = bestChartCandidate();
+            if (chartKpi == null
+                    || (data.type() != GeneratedReportType.WEEKLY
+                    && data.type() != GeneratedReportType.MONTHLY)
+                    || !canFit(150f)) {
+                return;
+            }
+            y -= 18f;
+            renderTrendChart(chartKpi);
         }
 
         private void renderTrendChart(
@@ -1485,7 +1340,24 @@ public class PdfReportGenerator {
                             submitters
                     );
 
-            float panelHeight = 78f;
+            List<Long> sourceReportIds = data.rows().stream()
+                    .map(ReportGenerationData.Row::sourceReportId)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            String sourceReportText = sourceReportIds.isEmpty()
+                    ? "—"
+                    : sourceReportIds.stream().limit(6).map(id -> "N°" + id)
+                    .collect(java.util.stream.Collectors.joining(", "))
+                    + (sourceReportIds.size() > 6 ? "… (" + sourceReportIds.size() + " au total)" : "");
+            String acquisitionText = data.rows().stream()
+                    .map(ReportGenerationData.Row::source)
+                    .distinct()
+                    .map(ReportDocumentText::acquisitionSource)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            if (acquisitionText.isBlank()) acquisitionText = "—";
+
+            float panelHeight = 108f;
             float bottom =
                     y - panelHeight;
 
@@ -1522,18 +1394,32 @@ public class PdfReportGenerator {
                     LEFT + 12,
                     y - 49,
                     columnWidth,
-                    "PÉRIODE",
-                    ReportDocumentText.period(data)
+                    "RAPPORTS SOURCES",
+                    sourceReportText
             );
 
             metadataPair(
                     LEFT + 16 + columnWidth,
                     y - 49,
                     columnWidth,
+                    "ACQUISITION",
+                    acquisitionText
+            );
+
+            metadataPair(
+                    LEFT + 12,
+                    y - 81,
+                    columnWidth,
+                    "PÉRIODE",
+                    ReportDocumentText.period(data)
+            );
+
+            metadataPair(
+                    LEFT + 16 + columnWidth,
+                    y - 81,
+                    columnWidth,
                     "GÉNÉRÉ LE",
-                    ReportDocumentText.instant(
-                            data.generatedAt()
-                    )
+                    ReportDocumentText.instant(data.generatedAt())
             );
 
             y = bottom;
@@ -1622,20 +1508,18 @@ public class PdfReportGenerator {
             float[] widths =
                     detailWidths();
 
-            String[] headers =
-                    {
-                            "DATE",
-                            "INDICATEUR",
-                            "VALEUR",
-                            "UNITÉ",
-                            "STATUT",
-                            "RAPPORT SOURCE"
-                    };
+            String[] headers = {
+                    "DATE",
+                    "INDICATEUR",
+                    "VALEUR",
+                    "VALEUR ASSOCIÉE",
+                    "UNITÉ"
+            };
 
             float height = 25f;
             float x = LEFT;
 
-            stream.setNonStrokingColor(NAVY);
+            stream.setNonStrokingColor(TABLE_HEADER);
             stream.addRect(
                     LEFT,
                     y - height,
@@ -1652,7 +1536,7 @@ public class PdfReportGenerator {
                         stream,
                         BOLD,
                         6.9f,
-                        WHITE,
+                        INK,
                         x + 5,
                         y - 16,
                         headers[index]
@@ -1685,16 +1569,24 @@ public class PdfReportGenerator {
                     wrap(
                             BOLD,
                             8.5f,
-                            displayValue(row),
+                            ReportDocumentText.value(row.confirmedValue()),
                             widths[2] - 10,
                             2
                     )
                             .size();
 
+            int associatedValueLines = wrap(
+                    REGULAR,
+                    7.8f,
+                    associatedValue(row),
+                    widths[3] - 10,
+                    2
+            ).size();
+
             int lines =
                     Math.max(
                             nameLines,
-                            valueLines
+                            Math.max(valueLines, associatedValueLines)
                     );
 
             return Math.max(
@@ -1803,7 +1695,7 @@ public class PdfReportGenerator {
             x += widths[1];
 
             drawCell(
-                    displayValue(row),
+                    ReportDocumentText.value(row.confirmedValue()),
                     missing
                             ? ITALIC
                             : BOLD,
@@ -1822,41 +1714,25 @@ public class PdfReportGenerator {
             x += widths[2];
 
             drawCell(
-                    ReportDocumentText.unit(
-                            row.unit()
-                    ),
+                    associatedValue(row),
                     REGULAR,
                     7.3f,
                     MUTED,
                     x,
                     widths[3],
                     y,
-                    1
+                    2
             );
 
             x += widths[3];
 
             drawCell(
-                    ReportDocumentText.CONFIRMED,
-                    BOLD,
-                    6.9f,
-                    TEAL_DARK,
-                    x,
-                    widths[4],
-                    y,
-                    1
-            );
-
-            x += widths[4];
-
-            drawCell(
-                    "N°"
-                            + row.sourceReportId(),
+                    combinedUnit(row),
                     REGULAR,
-                    7.2f,
+                    7.3f,
                     MUTED,
                     x,
-                    widths[5],
+                    widths[4],
                     y,
                     1
             );
@@ -1864,43 +1740,27 @@ public class PdfReportGenerator {
             y -= height;
         }
 
-        private String displayValue(
-                ReportGenerationData.Row row
-        ) {
-            String primary =
-                    ReportDocumentText.value(
-                            row.confirmedValue()
-                    );
+        private String associatedValue(ReportGenerationData.Row row) {
+            if (row.secondaryConfirmedValue() == null) return "—";
+            return ReportDocumentText.value(row.secondaryConfirmedValue());
+        }
 
-            if (row.secondaryConfirmedValue()
-                    == null) {
-                return primary;
+        private String combinedUnit(ReportGenerationData.Row row) {
+            String unit = ReportDocumentText.unit(row.unit());
+            if (row.secondaryConfirmedValue() == null || row.secondaryUnit() == null
+                    || row.secondaryUnit().isBlank() || row.secondaryUnit().equals(row.unit())) {
+                return unit;
             }
-
-            return primary
-                    + " · "
-                    + ReportDocumentText.value(
-                    row.secondaryConfirmedValue()
-            )
-                    + (row.secondaryUnit()
-                    == null
-                    ? ""
-                    : row.secondaryUnit());
+            return unit + " / " + row.secondaryUnit();
         }
 
         private float[] detailWidths() {
             return new float[]{
                     58f,
-                    167f,
-                    101f,
-                    49f,
-                    68f,
-                    WIDTH
-                            - 58f
-                            - 167f
-                            - 101f
-                            - 49f
-                            - 68f
+                    172f,
+                    82f,
+                    106f,
+                    WIDTH - 58f - 172f - 82f - 106f
             };
         }
 

@@ -41,10 +41,15 @@ object NetworkModule {
         .build()
 
     @Provides @Singleton
-    fun api(client: OkHttpClient, moshi: Moshi): FactoryFlowApi = Retrofit.Builder()
-        .baseUrl(BuildConfig.API_BASE_URL)
-        .client(client)
-        .addConverterFactory(MoshiConverterFactory.create(moshi))
-        .build()
-        .create(FactoryFlowApi::class.java)
+    fun api(client: OkHttpClient, moshi: Moshi): FactoryFlowApi {
+        check(BuildConfig.API_CONFIGURED) {
+            "FACTORYFLOW_RELEASE_API_BASE_URL must be configured with the HTTPS production API URL."
+        }
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.API_BASE_URL)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(FactoryFlowApi::class.java)
+    }
 }

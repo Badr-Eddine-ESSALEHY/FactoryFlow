@@ -334,7 +334,7 @@ fun FactoryFlowScheduleFormLightPreview() = FactoryFlowTheme(mode = ThemeMode.LI
     FocusedPreviewFrame(stringResource(R.string.edit_schedule)) { modifier ->
         ScheduleFormContent(
             PreviewFixtures.scheduleForm,
-            ScheduleFormActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            ScheduleFormActions({}, {}, {}, {}, {}, {}, {}, {}),
             modifier,
         )
     }
@@ -346,7 +346,7 @@ fun FactoryFlowScheduleFormDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DAR
     FocusedPreviewFrame(stringResource(R.string.edit_schedule)) { modifier ->
         ScheduleFormContent(
             PreviewFixtures.scheduleForm,
-            ScheduleFormActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            ScheduleFormActions({}, {}, {}, {}, {}, {}, {}, {}),
             modifier,
         )
     }

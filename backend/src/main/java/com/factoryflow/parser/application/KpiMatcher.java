@@ -207,7 +207,8 @@ public class KpiMatcher {
                             definition.getDisplayName(),
                             definition.getUnit(),
                             OCR_NORMALIZED_SCORE,
-                            MatchMethod.OCR_NORMALIZED.name()
+                            MatchMethod.OCR_NORMALIZED.name(),
+                            suggestionStrength(OCR_NORMALIZED_SCORE.doubleValue())
                     );
 
             return MatchResult.matched(
@@ -540,7 +541,8 @@ public class KpiMatcher {
                                 definition.getDisplayName(),
                                 definition.getUnit(),
                                 score,
-                                method
+                                method,
+                                suggestionStrength(score.doubleValue())
                         )
                 )
                 .toList();
@@ -556,8 +558,13 @@ public class KpiMatcher {
                 candidate.definition().getUnit(),
                 BigDecimal.valueOf(candidate.score())
                         .setScale(4, RoundingMode.HALF_UP),
-                MatchMethod.FUZZY_SUGGESTION.name()
+                MatchMethod.FUZZY_SUGGESTION.name(),
+                suggestionStrength(candidate.score())
         );
+    }
+
+    private String suggestionStrength(double score) {
+        return score >= properties.strongSuggestionThreshold() ? "STRONG" : "WEAK";
     }
 
     private String definitionKey(

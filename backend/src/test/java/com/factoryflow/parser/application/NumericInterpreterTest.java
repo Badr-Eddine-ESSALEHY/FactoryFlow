@@ -54,7 +54,7 @@ class NumericInterpreterTest {
         NumericInterpreter.NumericInterpretation result =
                 interpreter.interpret("30.197", null);
 
-        assertThat(result.value()).isNull();
+        assertThat(result.value()).isEqualByComparingTo("30.197");
         assertThat(result.ambiguous()).isTrue();
 
         assertThat(result.alternatives())
@@ -109,7 +109,7 @@ class NumericInterpreterTest {
         NumericInterpreter.NumericInterpretation result =
                 interpreter.interpret("30.197", definition);
 
-        assertThat(result.value()).isNull();
+        assertThat(result.value()).isEqualByComparingTo("30.197");
         assertThat(result.ambiguous()).isTrue();
         assertThat(result.alternatives()).hasSize(2);
     }

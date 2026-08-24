@@ -114,7 +114,10 @@ data class ParserWarningDto(val code: String, val message: String, val severity:
 data class ParsedUnknownLineDto(val lineId: String, val sourceLine: String, val reason: String, val sourceLabel: String? = null, val suggestions: List<KpiSuggestionDto> = emptyList())
 
 @JsonClass(generateAdapter = false)
-data class KpiSuggestionDto(val kpiDefinitionId: Long, val kpiCode: String, val displayName: String, val unit: String?, val score: BigDecimal, val matchMethod: String)
+data class KpiSuggestionDto(
+    val kpiDefinitionId: Long, val kpiCode: String, val displayName: String, val unit: String?,
+    val score: BigDecimal, val matchMethod: String, val strength: String = "WEAK",
+)
 
 @JsonClass(generateAdapter = false)
 data class IgnoredSourceLineDto(val lineId: String, val sourceLine: String, val classification: String)
@@ -131,12 +134,20 @@ data class DraftEntryRequest(
     val extractedValue: BigDecimal?, val currentValue: BigDecimal?, val confidenceScore: BigDecimal?,
     val editedByUser: Boolean, val capturedUnit: String?, val warnings: Set<String> = emptySet(),
     val suggestedKpiDefinitionId: Long? = null, val suggestionScore: BigDecimal? = null,
+    val suggestionStrength: String? = null, val suggestionMatchMethod: String? = null,
     val secondaryExtractedValue: BigDecimal? = null, val secondaryCurrentValue: BigDecimal? = null,
     val secondaryUnit: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
-data class DraftUnknownLineRequest(val sourceLine: String, val resolution: String = "UNRESOLVED", val resolvedKpiDefinitionId: Long? = null)
+data class DraftUnknownLineRequest(
+    val sourceLine: String,
+    val resolution: String = "UNRESOLVED",
+    val resolvedKpiDefinitionId: Long? = null,
+    val kind: String = "KPI_LIKE",
+    val classificationReason: String = "UNCLASSIFIED",
+    val safeToIgnore: Boolean = false,
+)
 
 @JsonClass(generateAdapter = false)
 data class ConfirmReportRequest(
@@ -149,6 +160,7 @@ data class ConfirmationEntryRequest(
     val kpiDefinitionId: Long,
     val finalValue: BigDecimal?,
     val secondaryFinalValue: BigDecimal? = null,
+    val entryId: Long = -1,
 )
 
 @JsonClass(generateAdapter = false)
@@ -173,12 +185,21 @@ data class ReportEntryDto(
     val capturedUnit: String?, val warnings: Set<String> = emptySet(),
     val suggestedKpiDefinitionId: Long? = null, val suggestedKpiDisplayName: String? = null,
     val suggestedKpiUnit: String? = null, val suggestionScore: BigDecimal? = null,
+    val suggestionStrength: String? = null, val suggestionMatchMethod: String? = null,
     val secondaryExtractedValue: BigDecimal? = null, val secondaryCurrentValue: BigDecimal? = null,
     val secondaryFinalValue: BigDecimal? = null, val secondaryUnit: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
-data class UnknownLineDto(val id: Long, val sourceLine: String, val resolution: String, val resolvedKpiDefinitionId: Long?)
+data class UnknownLineDto(
+    val id: Long,
+    val sourceLine: String,
+    val resolution: String,
+    val resolvedKpiDefinitionId: Long?,
+    val kind: String = "KPI_LIKE",
+    val classificationReason: String = "UNCLASSIFIED",
+    val safeToIgnore: Boolean = false,
+)
 
 @JsonClass(generateAdapter = false)
 data class ReportSummaryDto(
@@ -200,6 +221,12 @@ data class GenerateReportRequest(
     val format: String,
     val periodStart: String,
     val periodEnd: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class IndividualReportExportRequest(
+    val reportId: Long,
+    val format: String,
 )
 
 @JsonClass(generateAdapter = false)

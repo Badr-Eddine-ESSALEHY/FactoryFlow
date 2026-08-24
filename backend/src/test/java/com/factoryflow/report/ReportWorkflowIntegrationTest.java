@@ -88,13 +88,17 @@ class ReportWorkflowIntegrationTest {
                 Integer.class, reportId, "Unknown Label 123"
         )).isEqualTo(1);
 
-        mockMvc.perform(put("/api/reports/{id}/draft", reportId)
+        String updatedBody = mockMvc.perform(put("/api/reports/{id}/draft", reportId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftRequest(vracId, totalId, true)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.entries[1].kpiDefinitionId").value(totalId))
-                .andExpect(jsonPath("$.entries[1].sourceLine").value("Unknown Label 123"));
+                .andExpect(jsonPath("$.entries[1].sourceLine").value("Unknown Label 123"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode updatedDraft = objectMapper.readTree(updatedBody);
+        long vracEntryId = updatedDraft.get("entries").get(0).get("id").asLong();
+        long totalEntryId = updatedDraft.get("entries").get(1).get("id").asLong();
 
         mockMvc.perform(post("/api/reports/{id}/confirm", reportId)
                         .header("Authorization", "Bearer " + token)
@@ -102,12 +106,12 @@ class ReportWorkflowIntegrationTest {
                         .content("""
                                 {
                                   "entries":[
-                                    {"kpiDefinitionId":%d,"finalValue":16.1},
-                                    {"kpiDefinitionId":%d,"finalValue":123}
+                                    {"entryId":%d,"kpiDefinitionId":%d,"finalValue":16.1},
+                                    {"entryId":%d,"kpiDefinitionId":%d,"finalValue":123}
                                   ],
                                   "unrecognizedLineResolutions":[]
                                 }
-                                """.formatted(vracId, totalId)))
+                                """.formatted(vracEntryId, vracId, totalEntryId, totalId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.entries[0].extractedValue").value(15.8))
@@ -178,15 +182,17 @@ class ReportWorkflowIntegrationTest {
                 .andExpect(jsonPath("$.entries[0].secondaryExtractedValue").value(77))
                 .andExpect(jsonPath("$.entries[0].secondaryCurrentValue").value(77))
                 .andReturn().getResponse().getContentAsString();
-        long reportId = objectMapper.readTree(draftBody).get("id").asLong();
+        JsonNode compositeDraft = objectMapper.readTree(draftBody);
+        long reportId = compositeDraft.get("id").asLong();
+        long entryId = compositeDraft.get("entries").get(0).get("id").asLong();
 
         mockMvc.perform(post("/api/reports/{id}/confirm", reportId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"entries":[{"kpiDefinitionId":%d,"finalValue":77108,"secondaryFinalValue":77}],
+                                {"entries":[{"entryId":%d,"kpiDefinitionId":%d,"finalValue":77108,"secondaryFinalValue":77}],
                                  "unrecognizedLineResolutions":[]}
-                                """.formatted(compressorId)))
+                                """.formatted(entryId, compressorId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.entries.length()").value(1))
                 .andExpect(jsonPath("$.entries[0].finalValue").value(77108))
@@ -200,6 +206,97 @@ class ReportWorkflowIntegrationTest {
                 "SELECT secondary_final_value FROM kpi_entries WHERE report_id = ?",
                 BigDecimal.class, reportId
         )).isEqualByComparingTo("77");
+    }
+
+    @Test
+    void inlineKpiCreationReusesEquivalentAndBulkIgnoreOnlyResolvesSafeNoise() throws Exception {
+        String email = "inline-" + UUID.randomUUID() + "@example.com";
+        users.saveAndFlush(UserAccount.create("Inline Engineer", email, passwordEncoder.encode("flow-password")));
+        String token = login(email);
+
+        JsonNode firstDraft = objectMapper.readTree(mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(inlineDraftRequest("Enzyme 3", "Enzyme 3: 92417313")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+        long firstReportId = firstDraft.get("id").asLong();
+        long firstEntryId = firstDraft.get("entries").get(0).get("id").asLong();
+
+        mockMvc.perform(post("/api/reports/{id}/draft/unrecognized-lines/ignore-safe", firstReportId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unrecognizedLines[0].sourceLine").value("Message"))
+                .andExpect(jsonPath("$.unrecognizedLines[0].resolution").value("IGNORED"))
+                .andExpect(jsonPath("$.unrecognizedLines[1].sourceLine").value("Recyclage"))
+                .andExpect(jsonPath("$.unrecognizedLines[1].resolution").value("UNRESOLVED"));
+
+        long definitionId = objectMapper.readTree(mockMvc.perform(
+                        post("/api/reports/{id}/draft/entries/{entryId}/add-kpi", firstReportId, firstEntryId)
+                                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].kpiDisplayName").value("Enzyme 3"))
+                .andExpect(jsonPath("$.entries[0].warnings").isEmpty())
+                .andReturn().getResponse().getContentAsString()).get("entries").get(0).get("kpiDefinitionId").asLong();
+
+        JsonNode secondDraft = objectMapper.readTree(mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(inlineDraftRequest("énzyme   3", "énzyme   3: 1")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+
+        mockMvc.perform(post("/api/reports/{id}/draft/entries/{entryId}/add-kpi",
+                        secondDraft.get("id").asLong(), secondDraft.get("entries").get(0).get("id").asLong())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].kpiDefinitionId").value(definitionId));
+    }
+
+    @Test
+    void duplicateKpiObservationsRemainSeparateAndCanBeConfirmedIndividually() throws Exception {
+        String email = "duplicate-" + UUID.randomUUID() + "@example.com";
+        users.saveAndFlush(UserAccount.create("Duplicate Engineer", email, passwordEncoder.encode("flow-password")));
+        String token = login(email);
+        Long vracId = definitionId("VRAC");
+
+        JsonNode draft = objectMapper.readTree(mockMvc.perform(post("/api/reports/drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                 "effectiveDate":"2026-08-19","source":"GALLERY_OCR","rawText":"Vrac 118.2 t\\nVrac 45 t",
+                                  "entries":[
+                                    {"kpiDefinitionId":%d,"sourceLabel":"Vrac","sourceLine":"Vrac 118.2 t","extractedValue":118.2,"currentValue":118.2,"confidenceScore":0.8,"editedByUser":false,"capturedUnit":"t","warnings":[]},
+                                    {"kpiDefinitionId":%d,"sourceLabel":"Vrac","sourceLine":"Vrac 45 t","extractedValue":45,"currentValue":45,"confidenceScore":0.8,"editedByUser":false,"capturedUnit":"t","warnings":[]}
+                                  ],"unrecognizedLines":[]
+                                }
+                                """.formatted(vracId, vracId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+
+        long reportId = draft.get("id").asLong();
+        long firstEntryId = draft.get("entries").get(0).get("id").asLong();
+        long secondEntryId = draft.get("entries").get(1).get("id").asLong();
+
+        mockMvc.perform(post("/api/reports/{id}/confirm", reportId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries":[
+                                  {"entryId":%d,"kpiDefinitionId":%d,"finalValue":118.2},
+                                  {"entryId":%d,"kpiDefinitionId":%d,"finalValue":45}
+                                ],"unrecognizedLineResolutions":[]}
+                                """.formatted(firstEntryId, vracId, secondEntryId, vracId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.entries[0].finalValue").value(118.2))
+                .andExpect(jsonPath("$.entries[1].finalValue").value(45));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM kpi_entries WHERE report_id = ? AND kpi_definition_id = ?",
+                Integer.class, reportId, vracId
+        )).isEqualTo(2);
     }
 
     @Test
@@ -256,6 +353,7 @@ class ReportWorkflowIntegrationTest {
 
     private String draftRequest(Long vracId, Long unknownAssignmentId, boolean assignedByUser) {
         String unknownDefinition = unknownAssignmentId == null ? "null" : unknownAssignmentId.toString();
+        String unknownWarnings = assignedByUser ? "[]" : "[\"UNKNOWN_KPI\"]";
         return """
                 {
                   "effectiveDate":"2026-08-11",
@@ -280,11 +378,38 @@ class ReportWorkflowIntegrationTest {
                     "confidenceScore":0.0,
                     "editedByUser":%s,
                     "capturedUnit":null,
-                    "warnings":["UNKNOWN_KPI"]
+                    "warnings":%s
                   }],
                   "unrecognizedLines":[]
                 }
-                """.formatted(vracId, unknownDefinition, assignedByUser);
+                """.formatted(vracId, unknownDefinition, assignedByUser, unknownWarnings);
+    }
+
+    private String inlineDraftRequest(String sourceLabel, String sourceLine) throws Exception {
+        var root = objectMapper.createObjectNode();
+        root.put("effectiveDate", "2026-08-19");
+        root.put("source", "GALLERY_OCR");
+        root.put("rawText", sourceLine + "\nMessage\nRecyclage");
+        var entry = objectMapper.createObjectNode();
+        entry.putNull("kpiDefinitionId");
+        entry.put("sourceLabel", sourceLabel);
+        entry.put("sourceLine", sourceLine);
+        entry.put("extractedValue", 92417313);
+        entry.put("currentValue", 92417313);
+        entry.put("confidenceScore", 0.4);
+        entry.put("editedByUser", false);
+        entry.putNull("capturedUnit");
+        entry.set("warnings", objectMapper.createArrayNode().add("UNKNOWN_KPI"));
+        root.set("entries", objectMapper.createArrayNode().add(entry));
+        root.set("unrecognizedLines", objectMapper.createArrayNode()
+                .add(objectMapper.createObjectNode()
+                        .put("sourceLine", "Message")
+                        .put("resolution", "UNRESOLVED")
+                        .put("kind", "SAFE_NOISE")
+                        .put("classificationReason", "WHATSAPP_METADATA")
+                        .put("safeToIgnore", true))
+                .add(objectMapper.createObjectNode().put("sourceLine", "Recyclage").put("resolution", "UNRESOLVED")));
+        return objectMapper.writeValueAsString(root);
     }
 
     private Long definitionId(String code) {

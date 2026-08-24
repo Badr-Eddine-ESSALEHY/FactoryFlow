@@ -109,11 +109,17 @@ fun AuthenticatedApp(
         when (acquisition) {
             is SharedAcquisition.Text -> navController.navigate(Routes.PASTE) { launchSingleTop = true }
             is SharedAcquisition.Image -> navController.navigate(Routes.SHARED_IMAGE) { launchSingleTop = true }
-            is SharedAcquisition.Invalid -> navigateTopLevel(navController, Routes.CREATE)
+            is SharedAcquisition.Invalid -> {
+                pendingShared = null
+                navigateTopLevel(navController, Routes.CREATE)
+            }
         }
     }
 
-    BackHandler(enabled = currentRoute != null && currentRoute != Routes.DASHBOARD) {
+    BackHandler(
+        enabled = currentRoute != null && currentRoute != Routes.DASHBOARD &&
+            currentRoute != Routes.REVIEW && currentRoute != Routes.MANUAL,
+    ) {
         if (currentRoute == Routes.CONFIRMED) {
             navigateTopLevel(navController, Routes.REPORTS)
         } else {
@@ -169,7 +175,7 @@ fun AuthenticatedApp(
                 }
                 composable(Routes.PASTE) {
                     PasteScreen(
-                        onBack = { navigateBack(navController) },
+                        onBack = { pendingShared = null; navigateBack(navController) },
                         initialText = (pendingShared as? SharedAcquisition.Text)?.value,
                         onReview = { reportId ->
                             pendingShared = null

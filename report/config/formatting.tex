@@ -2,6 +2,19 @@
 % ENSIASD REPORT FORMATTING
 % ============================================================
 
+
+% ------------------------------------------------------------
+% Report visual identity
+% ------------------------------------------------------------
+
+% Accent inspired by the reference report.
+\definecolor{ReportTeal}{HTML}{19A9A5}
+
+% Neutral supporting tones.
+\definecolor{ReportGray}{HTML}{505C5B}
+\definecolor{ReportLightGray}{HTML}{D9DEDE}
+
+
 % ------------------------------------------------------------
 % Body text
 % ------------------------------------------------------------
@@ -12,9 +25,9 @@
 \setlength{\parindent}{1.25cm}
 \setlength{\parskip}{0pt}
 
-% Prevent isolated lines where possible.
 \widowpenalty=10000
 \clubpenalty=10000
+
 
 % ------------------------------------------------------------
 % Chapter titles
@@ -26,10 +39,13 @@
 % - Bold
 % - Uppercase
 % - Right aligned
+%
+% Main headings remain black.
+% Teal is reserved for visual accents.
 % ------------------------------------------------------------
 
 \titleformat{\chapter}[display]
-    {\normalfont\bfseries\fontsize{16}{19}\selectfont\raggedleft}
+    {\normalfont\bfseries\color{black}\fontsize{16}{19}\selectfont\raggedleft}
     {\MakeUppercase{\chaptername\ \thechapter}}
     {10pt}
     {\MakeUppercase}
@@ -39,31 +55,22 @@
     {0pt}
     {54pt}
 
+
 % ------------------------------------------------------------
 % Section numbering
-%
-% ENSIASD convention:
-% I.
-% II.
-% III.
-%
-% I.1.
-% I.2.
-%
-% I.1.1.
 % ------------------------------------------------------------
 
 \renewcommand{\thesection}{\Roman{section}}
 \renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
 \renewcommand{\thesubsubsection}{\thesubsection.\arabic{subsubsection}}
 
+
 % ------------------------------------------------------------
 % Sections
-% 14 pt bold
 % ------------------------------------------------------------
 
 \titleformat{\section}
-    {\normalfont\bfseries\fontsize{14}{17}\selectfont}
+    {\normalfont\bfseries\color{black}\fontsize{14}{17}\selectfont}
     {\thesection.}
     {0.7em}
     {}
@@ -73,13 +80,13 @@
     {12pt}
     {12pt}
 
+
 % ------------------------------------------------------------
 % Subsections
-% 12 pt bold
 % ------------------------------------------------------------
 
 \titleformat{\subsection}
-    {\normalfont\bfseries\fontsize{12}{15}\selectfont}
+    {\normalfont\bfseries\color{black}\fontsize{12}{15}\selectfont}
     {\thesubsection.}
     {0.7em}
     {}
@@ -89,13 +96,13 @@
     {6pt}
     {6pt}
 
+
 % ------------------------------------------------------------
 % Subsubsections
-% 12 pt bold
 % ------------------------------------------------------------
 
 \titleformat{\subsubsection}
-    {\normalfont\bfseries\fontsize{12}{15}\selectfont}
+    {\normalfont\bfseries\color{black}\fontsize{12}{15}\selectfont}
     {\thesubsubsection.}
     {0.7em}
     {}
@@ -105,61 +112,125 @@
     {6pt}
     {6pt}
 
+
+% ============================================================
+% RUNNING CHAPTER HEADER
+%
+% Example:
+%
+% REQUIREMENTS ANALYSIS AND SYSTEM SPECIFICATION
 % ------------------------------------------------------------
-% Page numbering
-% Bottom-right
-% ------------------------------------------------------------
+%
+% This matches the visual language of the reference report.
+% Chapter-opening pages keep the large chapter heading without
+% duplicating the running header.
+% ============================================================
+
+\setlength{\headheight}{16pt}
+
+% Store only the chapter title in the running header.
+\renewcommand{\chaptermark}[1]{%
+    \markboth{\MakeUppercase{#1}}{}%
+}
 
 \pagestyle{fancy}
 
 \fancyhf{}
 
-\fancyfoot[R]{\thepage}
+\fancyhead[L]{%
+    \small
+    \bfseries
+    \itshape
+    \nouppercase{\leftmark}
+}
 
-\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[R]{%
+    \textcolor{ReportGray}{\thepage}
+}
+
+\renewcommand{\headrulewidth}{0.45pt}
 \renewcommand{\footrulewidth}{0pt}
 
-% Ensure chapter-opening pages use the same footer.
+
+% Chapter-opening pages.
+% No duplicated running title here.
 \fancypagestyle{plain}{
     \fancyhf{}
-    \fancyfoot[R]{\thepage}
+    \fancyfoot[R]{\textcolor{ReportGray}{\thepage}}
     \renewcommand{\headrulewidth}{0pt}
     \renewcommand{\footrulewidth}{0pt}
 }
 
-% ------------------------------------------------------------
-% Figure numbering
-% Chapter.Figure
-% Example: Figure 3.2
-% ------------------------------------------------------------
+
+% ============================================================
+% FIGURE CAPTIONS
+%
+% FIGURE 1.2     <- teal + bold
+% Description    <- black + italic
+%
+% Position: under the image.
+% ============================================================
 
 \renewcommand{\thefigure}{\thechapter.\arabic{figure}}
 
-\captionsetup[figure]{
-    position=bottom,
-    font={small,it},
-    labelfont={bf,it},
-    justification=centering,
-    singlelinecheck=false,
-    skip=6pt
+\DeclareCaptionLabelFormat{tealfigure}{%
+    \textcolor{ReportTeal}{\textbf{#1~#2}}%
 }
 
-% ------------------------------------------------------------
-% Table numbering
-% Chapter.Table
-% Example: Table 3.1
-% ------------------------------------------------------------
+\captionsetup[figure]{
+    name=FIGURE,
+    position=bottom,
+    font=small,
+    labelformat=tealfigure,
+    labelsep=space,
+    textfont=it,
+    justification=centering,
+    singlelinecheck=false,
+    skip=7pt
+}
+
+
+% ============================================================
+% TABLE CAPTIONS
+%
+% TABLE 2.1      <- teal + bold
+% Description    <- black + italic
+%
+% Position: above the table.
+% ============================================================
 
 \renewcommand{\thetable}{\thechapter.\arabic{table}}
 
+\DeclareCaptionLabelFormat{tealtable}{%
+    \textcolor{ReportTeal}{\textbf{#1~#2}}%
+}
+
 \captionsetup[table]{
+    name=TABLE,
     position=top,
     font=small,
-    labelfont=bf,
+    labelformat=tealtable,
+    labelsep=space,
+    textfont=it,
     justification=centering,
     singlelinecheck=false,
-    skip=6pt
+    skip=8pt
 }
+
+
+% ------------------------------------------------------------
+% Table defaults
+%
+% Clean white tables with thin black grid lines,
+% matching the reference report.
+% ------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.40}
+
+\setlength{\arrayrulewidth}{0.45pt}
+
+\setlength{\tabcolsep}{8pt}
+
 
 % ------------------------------------------------------------
 % List appearance
@@ -177,17 +248,15 @@
     topsep=6pt
 }
 
-% ------------------------------------------------------------
-% Table defaults
-% ------------------------------------------------------------
-
-\renewcommand{\arraystretch}{1.2}
 
 % ------------------------------------------------------------
-% Hyperlink PDF metadata appearance
+% Hyperlinks
+%
+% References remain visually clean but are clickable.
 % ------------------------------------------------------------
 
 \hypersetup{
-    colorlinks=false,
+    hidelinks,
+    unicode,
     pdfborder={0 0 0}
 }

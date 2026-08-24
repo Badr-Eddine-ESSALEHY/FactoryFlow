@@ -175,8 +175,9 @@ public class NumericInterpreter {
      * 30.197 -> ambiguous:
      *           30.197 OR 30197
      *
-     * Plausibility bounds may resolve the ambiguity. If they cannot,
-     * no value is silently selected.
+     * Plausibility bounds may resolve the ambiguity. If they cannot, the
+     * source's decimal reading remains editable while both interpretations
+     * are exposed and explicit review is required.
      */
     private NumericInterpretation interpretSingleSeparator(
             String compact,
@@ -243,8 +244,8 @@ public class NumericInterpreter {
         }
 
         return new NumericInterpretation(
-                null,
-                null,
+                decimalCandidate,
+                decimalCandidate.toPlainString(),
                 true,
                 distinctCandidates(decimalCandidate, groupedCandidate),
                 List.of(ParserWarning.warning(

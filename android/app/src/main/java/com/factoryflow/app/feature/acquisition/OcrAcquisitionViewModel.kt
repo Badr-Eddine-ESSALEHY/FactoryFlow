@@ -115,10 +115,25 @@ private fun AnalyzeReportResponse.asDraft(date: String) = DraftReportRequest(
             warnings = entry.warnings.map { it.code }.toSet(),
             suggestedKpiDefinitionId = entry.suggestions.firstOrNull()?.kpiDefinitionId,
             suggestionScore = entry.suggestions.firstOrNull()?.score,
+            suggestionStrength = entry.suggestions.firstOrNull()?.strength,
+            suggestionMatchMethod = entry.suggestions.firstOrNull()?.matchMethod,
             secondaryExtractedValue = entry.secondaryExtractedValue,
             secondaryCurrentValue = entry.secondaryExtractedValue,
             secondaryUnit = entry.secondaryUnit,
         )
     },
-    unrecognizedLines = unrecognizedLines.map { DraftUnknownLineRequest(it.sourceLine) },
+    unrecognizedLines = unrecognizedLines.map {
+        DraftUnknownLineRequest(
+            sourceLine = it.sourceLine,
+            kind = "KPI_LIKE",
+            classificationReason = it.reason,
+        )
+    } + ignoredLines.map {
+        DraftUnknownLineRequest(
+            sourceLine = it.sourceLine,
+            kind = "SAFE_NOISE",
+            classificationReason = it.classification,
+            safeToIgnore = true,
+        )
+    },
 )

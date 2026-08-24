@@ -2991,11 +2991,11 @@ Additional tables for schedules, notifications, refresh tokens, device tokens, e
 
 61. Current Conceptual API Baseline
 POST /api/auth/login
-POST /api/auth/refresh
+GET  /api/users/me
 
 POST /api/reports/analyze
 POST /api/reports/drafts
-PATCH /api/reports/{id}/draft
+PUT /api/reports/{id}/draft
 POST /api/reports/{id}/confirm
 
 GET  /api/reports
@@ -3004,6 +3004,7 @@ GET  /api/kpi-definitions
 POST /api/kpi-definitions
 
 POST /api/generated-reports
+POST /api/generated-reports/individual
 
 GET /api/statistics
 
@@ -3031,7 +3032,7 @@ Image flows prepend:
 
 Image
  ↓
-On-device OCR
+Authenticated backend OCR / private PaddleOCR runtime
  ↓
 Raw text
 
@@ -3118,25 +3119,42 @@ Do not silently reorder the project because a different feature looks more excit
 
 67. Current Work
 Current milestone:
-Android premium visual migration
+Final client completion pass before physical-device acceptance
 
 Current task:
-Apply the approved Flow UI foundation across the remaining Android application
+Run the PostgreSQL-backed integration suite with valid local test credentials, then
+complete real-device acceptance on the target Vivo device
 
 Last completed:
-Flow UI migration implemented for Login, Reports, acquisition, Review, confirmation/export, Statistics, Schedules, Notifications, Profile, and startup states without changing application contracts
+Exact confirmed-report export; daily/weekly/monthly/custom consolidated export; one-sheet
+Excel and manager PDF cleanup; conditional weekly/monthly PDF analytics; grouped scheduled
+email attachments; truthful partial/SMTP failure states; Android period/format generation
+UX; navigation-safe schedule action; narrow PF/Aymane/Lokbiche safe-noise classification;
+implementation-status documentation; representative PDF/XLSX artifacts; refreshed debug APK
 
 In progress:
-None
+Environment-dependent verification only: PostgreSQL integration tests, live SMTP delivery,
+real release HTTPS URL configuration, and Vivo end-to-end/visual acceptance
 
 Next:
-User visual review of the application-wide Flow migration
+Provide `TEST_DB_PASSWORD`/`DB_PASSWORD` for the local `factoryflow_test` database and
+rerun `mvnw test`; configure SMTP credentials in environment variables; install the
+debug APK and validate the supplied WhatsApp screenshot on the Vivo device
 
 Primary blocker:
-None; visual acceptance remains with the user
+The local PostgreSQL server rejects the available `postgres` connection because no valid
+test password is present in the environment. Production installation additionally
+requires the real HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL` and environment-only SMTP
+credentials.
 
 Implementation status:
-Android presentation migrated to the shared Flow tokens and production components. Navigation, ViewModels, repositories, API/backend contracts, parsing, persistence, and report-generation behavior remain unchanged by this UI pass. `compileDebugKotlin`, `testDebugUnitTest`, `assembleDebug`, and `lintDebug` pass.
+Backend compile/test-compile pass. The database-independent backend suite reports 126
+tests, 0 failures, 0 errors, 1 opt-in PaddleOCR test skipped. The complete backend suite
+discovers 161 tests and currently reports 0 failures, 35 Spring context errors, and 1
+skip; every error follows PostgreSQL authentication failure before test execution.
+Android `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug` pass;
+the unit suite reports 41 tests with 0 failures/errors/skips. Real-device acceptance and
+live SMTP delivery remain external verification steps.
 
 Update this section after every meaningful development session.
 
@@ -3176,7 +3194,7 @@ FactoryFlow cannot be considered presentation-ready until:
 
 [ ] Five KPI acquisition methods work
 
-[ ] OCR works on-device
+[ ] Authenticated backend PaddleOCR flow verified end-to-end on the Vivo device
 
 [x] Deterministic parser handles realistic variations
 

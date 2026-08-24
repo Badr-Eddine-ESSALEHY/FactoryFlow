@@ -12,8 +12,14 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use(::load)
 }
-val apiBaseUrl = providers.gradleProperty("FACTORYFLOW_API_BASE_URL")
+val debugApiBaseUrl = providers.gradleProperty("FACTORYFLOW_API_BASE_URL")
     .orElse(localProperties.getProperty("factoryflow.apiBaseUrl") ?: "http://10.0.2.2:8080/")
+val configuredReleaseApiBaseUrl = providers.gradleProperty("FACTORYFLOW_RELEASE_API_BASE_URL")
+    .orElse(providers.environmentVariable("FACTORYFLOW_RELEASE_API_BASE_URL"))
+    .orElse(localProperties.getProperty("factoryflow.releaseApiBaseUrl") ?: "")
+val releaseApiCandidate = configuredReleaseApiBaseUrl.get().trim()
+val releaseApiConfigured = releaseApiCandidate.startsWith("https://") && releaseApiCandidate.endsWith("/")
+val releaseApiBaseUrl = releaseApiCandidate.ifBlank { "https://configuration-required.invalid/" }
 
 android {
     namespace = "com.factoryflow.app"
@@ -28,16 +34,19 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
-        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.get()}\"")
     }
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("String", "API_BASE_URL", "\"${debugApiBaseUrl.get()}\"")
+            buildConfigField("boolean", "API_CONFIGURED", "true")
         }
         release {
             isMinifyEnabled = true
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiBaseUrl\"")
+            buildConfigField("boolean", "API_CONFIGURED", releaseApiConfigured.toString())
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

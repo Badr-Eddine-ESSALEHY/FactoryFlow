@@ -3,6 +3,7 @@ package com.factoryflow.report.application;
 import com.factoryflow.auth.application.AuthenticationService;
 import com.factoryflow.auth.domain.UserAccount;
 import com.factoryflow.kpi.domain.KpiDefinition;
+import com.factoryflow.kpi.application.KpiDefinitionService;
 import com.factoryflow.kpi.persistence.KpiDefinitionRepository;
 import com.factoryflow.notification.application.NotificationService;
 import com.factoryflow.notification.domain.NotificationType;
@@ -13,6 +14,7 @@ import com.factoryflow.report.api.DraftReportRequest;
 import com.factoryflow.report.api.DraftUnknownLineRequest;
 import com.factoryflow.report.api.ReportResponse;
 import com.factoryflow.report.api.UnknownLineResolutionRequest;
+import com.factoryflow.report.domain.UnknownLineKind;
 import com.factoryflow.report.domain.KpiEntry;
 import com.factoryflow.report.domain.MaintenanceReport;
 import com.factoryflow.report.domain.ReportStatus;
@@ -21,9 +23,7 @@ import com.factoryflow.report.domain.UnknownLineResolution;
 import com.factoryflow.report.persistence.MaintenanceReportRepository;
 import com.factoryflow.shared.error.ApiErrorCode;
 import com.factoryflow.shared.error.ApiException;
-import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -37,13 +37,16 @@ public class ReportDraftService {
     private final KpiDefinitionRepository definitions;
     private final AuthenticationService authentication;
     private final NotificationService notifications;
+    private final KpiDefinitionService kpiDefinitionService;
 
     public ReportDraftService(MaintenanceReportRepository reports, KpiDefinitionRepository definitions,
-                              AuthenticationService authentication, NotificationService notifications) {
+                              AuthenticationService authentication, NotificationService notifications,
+                              KpiDefinitionService kpiDefinitionService) {
         this.reports = reports;
         this.definitions = definitions;
         this.authentication = authentication;
         this.notifications = notifications;
+        this.kpiDefinitionService = kpiDefinitionService;
     }
 
     @Transactional
@@ -52,7 +55,9 @@ public class ReportDraftService {
         MaintenanceReport report = MaintenanceReport.draft(user, request.effectiveDate(), request.source(), request.rawText());
         populate(report, request);
         MaintenanceReport saved = reports.saveAndFlush(report);
-        boolean requiresAttention = !saved.getUnrecognizedLines().isEmpty() || saved.getEntries().stream()
+        boolean requiresAttention = saved.getUnrecognizedLines().stream()
+                .anyMatch(line -> line.getResolution() == UnknownLineResolution.UNRESOLVED)
+                || saved.getEntries().stream()
                 .anyMatch(entry -> entry.getDefinition() == null || entry.getCurrentValue() == null || !entry.getWarningCodes().isEmpty());
         if (requiresAttention) {
             notifications.notify(user, NotificationType.REVIEW_REQUIRED, "Vérification requise",
@@ -82,6 +87,63 @@ public class ReportDraftService {
     }
 
     @Transactional
+    public ReportResponse addDetectedKpi(String email, Long reportId, Long entryId) {
+        MaintenanceReport report = requireOwnedDraft(email, reportId);
+        KpiEntry entry = report.getEntries().stream()
+                .filter(candidate -> candidate.getId().equals(entryId))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.REPORT_NOT_FOUND, "Draft entry not found."));
+        if (entry.getDefinition() == null) {
+            KpiDefinition definition = kpiDefinitionService.resolveOrCreate(entry.getSourceLabel(), entry.getCapturedUnit());
+            entry.assignDefinition(definition);
+        }
+        return ReportResponse.from(reports.saveAndFlush(report));
+    }
+
+    @Transactional
+    public ReportResponse ignoreSafeUnrecognizedLines(String email, Long reportId) {
+        MaintenanceReport report = requireOwnedDraft(email, reportId);
+        report.getUnrecognizedLines().stream()
+                .filter(line -> line.getResolution() == UnknownLineResolution.UNRESOLVED)
+                .filter(ReportUnrecognizedLine::isSafeToIgnore)
+                .forEach(line -> line.resolve(UnknownLineResolution.IGNORED, null));
+        return ReportResponse.from(reports.saveAndFlush(report));
+    }
+
+    @Transactional
+    public ReportResponse resolveUnrecognizedLine(String email, Long reportId, Long lineId,
+                                                   UnknownLineResolutionRequest request) {
+        if (!lineId.equals(request.lineId())) {
+            validationFailure("The unknown-line identifier does not match the request path.");
+        }
+        MaintenanceReport report = requireOwnedDraft(email, reportId);
+        ReportUnrecognizedLine line = report.getUnrecognizedLines().stream()
+                .filter(candidate -> candidate.getId().equals(lineId))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, ApiErrorCode.REPORT_NOT_FOUND, "Unknown draft line not found."));
+        line.resolve(request.resolution(), optionalDefinition(request.resolvedKpiDefinitionId()));
+        return ReportResponse.from(reports.saveAndFlush(report));
+    }
+
+    @Transactional
+    public ReportResponse removeEntry(String email, Long reportId, Long entryId) {
+        MaintenanceReport report = requireOwnedDraft(email, reportId);
+        KpiEntry removed;
+        try {
+            removed = report.removeEntry(entryId);
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.REPORT_NOT_FOUND, exception.getMessage());
+        }
+        if (removed.getSourceLine() != null && !removed.getSourceLine().isBlank()) {
+            report.addUnrecognizedLine(
+                    removed.getSourceLine(), UnknownLineResolution.IGNORED, null,
+                    UnknownLineKind.KPI_LIKE, "REMOVED_EXTRACTION", false);
+        }
+        return ReportResponse.from(reports.saveAndFlush(report));
+    }
+
+    @Transactional
     public ReportResponse confirm(String email, Long reportId, ConfirmReportRequest request) {
         MaintenanceReport report = requireOwnedDraft(email, reportId);
         if (report.getStatus() == ReportStatus.CONFIRMED) {
@@ -90,27 +152,31 @@ public class ReportDraftService {
 
         Map<Long, ConfirmationEntryRequest> submitted = new HashMap<>();
         for (ConfirmationEntryRequest entry : request.entries()) {
-            if (submitted.put(entry.kpiDefinitionId(), entry) != null) {
-                validationFailure("A KPI definition may appear only once in confirmation data.");
+            if (submitted.put(entry.entryId(), entry) != null) {
+                validationFailure("A draft observation may appear only once in confirmation data.");
             }
         }
-        Set<Long> draftDefinitionIds = new HashSet<>();
+        Set<Long> draftEntryIds = new java.util.HashSet<>();
         for (KpiEntry entry : report.getEntries()) {
             if (entry.getDefinition() == null) {
                 validationFailure("Every draft candidate must be assigned to a KPI or removed before confirmation.");
             }
-            Long definitionId = entry.getDefinition().getId();
-            if (!draftDefinitionIds.add(definitionId)) {
-                validationFailure("Duplicate KPI candidates must be resolved before confirmation.");
+            if (entry.getWarningCodes().stream().anyMatch(code -> !"MISSING_VALUE".equals(code))) {
+                validationFailure("Every review warning must be explicitly validated before confirmation.");
             }
-            ConfirmationEntryRequest finalEntry = submitted.get(definitionId);
+            Long entryId = entry.getId();
+            draftEntryIds.add(entryId);
+            ConfirmationEntryRequest finalEntry = submitted.get(entryId);
             if (finalEntry == null) {
                 validationFailure("Confirmation data must include every retained draft KPI entry.");
             }
+            if (!entry.getDefinition().getId().equals(finalEntry.kpiDefinitionId())) {
+                validationFailure("Confirmation data changed the KPI assigned to a draft observation.");
+            }
             entry.confirm(finalEntry.finalValue(), finalEntry.secondaryFinalValue());
         }
-        if (!draftDefinitionIds.equals(submitted.keySet())) {
-            validationFailure("Confirmation data contains a KPI that is not present in the draft.");
+        if (!draftEntryIds.equals(submitted.keySet())) {
+            validationFailure("Confirmation data contains an observation that is not present in the draft.");
         }
 
         Map<Long, UnknownLineResolutionRequest> resolutions = new HashMap<>();
@@ -137,12 +203,15 @@ public class ReportDraftService {
             report.addEntry(optionalDefinition(entry.kpiDefinitionId()), entry.sourceLabel(), entry.sourceLine(),
                     entry.extractedValue(), entry.currentValue(), entry.confidenceScore(), entry.editedByUser(),
                     entry.capturedUnit(), entry.warnings(), optionalDefinition(entry.suggestedKpiDefinitionId()),
-                    entry.suggestionScore(), entry.secondaryExtractedValue(), entry.secondaryCurrentValue(),
+                    entry.suggestionScore(), entry.suggestionStrength(), entry.suggestionMatchMethod(),
+                    entry.secondaryExtractedValue(), entry.secondaryCurrentValue(),
                     entry.secondaryUnit());
         }
         for (DraftUnknownLineRequest line : request.unrecognizedLines()) {
             try {
-                report.addUnrecognizedLine(line.sourceLine(), line.resolution(), optionalDefinition(line.resolvedKpiDefinitionId()));
+                report.addUnrecognizedLine(
+                        line.sourceLine(), line.resolution(), optionalDefinition(line.resolvedKpiDefinitionId()),
+                        line.kind(), line.classificationReason(), line.safeToIgnore());
             } catch (IllegalArgumentException exception) {
                 validationFailure(exception.getMessage());
             }

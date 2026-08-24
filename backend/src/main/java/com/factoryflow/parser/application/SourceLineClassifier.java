@@ -20,7 +20,37 @@ public class SourceLineClassifier {
             "maintenance",
             "rapport kpi",
             "rapport maintenance",
-            "rapport de maintenance"
+            "rapport de maintenance",
+            "kpi production"
+    );
+
+    private static final Set<String> WHATSAPP_SEPARATORS = Set.of(
+            "aujourd hui",
+            "hier",
+            "message"
+    );
+
+    private static final Set<String> KNOWN_CONTEXTUAL_OCR_NOISE = Set.of(
+            "pf",
+            "aymane",
+            "lokbiche"
+    );
+
+    private static final Pattern ISOLATED_OCR_NOISE = Pattern.compile(
+            "^(?:[\\p{L}]|[\\p{Punct}…•·]+)$",
+            Pattern.UNICODE_CHARACTER_CLASS
+    );
+
+    private static final Pattern SOURCE_DATE_HEADER = Pattern.compile(
+            "^(?i:de)\\s+\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}$"
+    );
+
+    private static final Pattern KNOWN_CONVERSATION_CONTEXT = Pattern.compile(
+            "^(?i:suivi\\s+des\\s+consommations(?:\\s+liquides)?)[.!…]*$"
+    );
+
+    private static final Pattern SITE_SENDER_METADATA = Pattern.compile(
+            "^(?=.*(?i:\\balf\\b))(?!.*\\d)(?!.*(?:->|→|=>|:|=)).+$"
     );
 
     private static final Pattern TIME_ONLY = Pattern.compile(
@@ -85,18 +115,25 @@ public class SourceLineClassifier {
 
         return normalized.matches(
                 "^(?:kpi|kpis|indicateurs?)"
-                        + "(?:\\s+(?:du jour|quotidiens?|maintenance))?$"
+                        + "(?:\\s+(?:du jour|quotidiens?|maintenance|production))?$"
         );
     }
 
     private boolean isWhatsAppMetadata(String source) {
         String value = source.strip();
+        String normalized = TextNormalizer.normalizeLabel(value);
 
         return TIME_ONLY.matcher(value).matches()
                 || BRACKETED_TIME_PREFIX.matcher(value).matches()
                 || TIME_PREFIXED_METADATA.matcher(value).matches()
                 || DATE_ONLY.matcher(value).matches()
-                || DATE_PREFIXED_METADATA.matcher(value).matches();
+                || DATE_PREFIXED_METADATA.matcher(value).matches()
+                || SOURCE_DATE_HEADER.matcher(value).matches()
+                || WHATSAPP_SEPARATORS.contains(normalized)
+                || KNOWN_CONTEXTUAL_OCR_NOISE.contains(normalized)
+                || ISOLATED_OCR_NOISE.matcher(value).matches()
+                || KNOWN_CONVERSATION_CONTEXT.matcher(value).matches()
+                || SITE_SENDER_METADATA.matcher(value).matches();
     }
 
     public enum LineType {

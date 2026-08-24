@@ -54,8 +54,8 @@
     <string name="verification_state">État de la vérification</string>
     <string name="not_provided">Non renseigné</string>
     <string name="report_confirmed_detail">Les valeurs validées sont maintenant enregistrées comme données de référence.</string>
-    <string name="export_now">Créer un document</string>
-    <string name="export_now_detail">Choisissez le format. Le document sera généré, conservé dans l’historique et prêt à être partagé.</string>
+    <string name="export_now">Exporter ce rapport uniquement</string>
+    <string name="export_now_detail">Choisissez le format. Seul ce rapport de maintenance confirmé sera utilisé.</string>
     <string name="open_confirmed_report">Voir le rapport confirmé</string>
     <string name="back_to_reports">Retrouver mes rapports</string>
     <string name="share_report_subject">Rapport FactoryFlow du %1$s</string>
@@ -81,7 +81,7 @@
     <string name="share_into_factoryflow">Partager vers FactoryFlow</string>
     <string name="share_supported_detail">Texte WhatsApp ou image, puis vérification humaine</string>
     <string name="ocr_confidence">Confiance OCR : %1$d %%</string>
-    <string name="detected_text">Texte détecté</string>
+    <string name="detected_text">Texte extrait</string>
     <string name="review_before_analysis">Relisez si nécessaire avant l’analyse</string>
     <string name="change">Changer</string>
     <string name="analyze_and_review">Analyser et vérifier</string>

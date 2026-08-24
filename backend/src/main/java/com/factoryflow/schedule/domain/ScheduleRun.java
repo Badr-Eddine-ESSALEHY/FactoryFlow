@@ -50,6 +50,15 @@ public class ScheduleRun {
         this.generatedReport = report; this.emailDeliveryStatus = emailStatus; this.finishedAt = finishedAt;
         status = emailStatus == EmailDeliveryStatus.FAILED ? ScheduleRunStatus.PARTIAL_SUCCESS : ScheduleRunStatus.SUCCEEDED;
     }
+    public void partialSuccess(GeneratedReport report, EmailDeliveryStatus emailStatus, String code, String message,
+                               Instant finishedAt) {
+        this.generatedReport = report;
+        this.emailDeliveryStatus = emailStatus;
+        this.status = ScheduleRunStatus.PARTIAL_SUCCESS;
+        this.errorCode = code;
+        this.errorMessage = message == null ? null : message.substring(0, Math.min(500, message.length()));
+        this.finishedAt = finishedAt;
+    }
     public void fail(String code, String message, Instant finishedAt) {
         status = ScheduleRunStatus.FAILED; errorCode = code;
         errorMessage = message == null ? null : message.substring(0, Math.min(500, message.length()));

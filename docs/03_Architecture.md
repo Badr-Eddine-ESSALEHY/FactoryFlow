@@ -6,7 +6,7 @@
 >
 > Status: Active
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-22
 >
 > This document defines the **technical architecture of FactoryFlow**.
 >
@@ -93,9 +93,8 @@ The implementation should remain pragmatic and understandable.
 │ - Notifications             │
 │ - Schedules                 │
 └───────┬─────────┬────────────┘
-        │ REST    │ WebSocket/STOMP
-        │         │
-        ▼         ▼
+        │ REST
+        ▼
 ┌──────────────────────────────┐
 │      Spring Boot Backend     │
 │                              │
@@ -107,7 +106,7 @@ The implementation should remain pragmatic and understandable.
 │ - Document generation        │
 │ - Scheduling                 │
 │ - Email                      │
-│ - Realtime events            │
+│ - In-app notifications       │
 └───────┬──────────┬───────────┘
         │          │
         ▼          ▼
@@ -119,9 +118,14 @@ The implementation should remain pragmatic and understandable.
 
 Optional integrations:
     ├── Firebase Cloud Messaging
+    ├── WebSocket/STOMP
     ├── RabbitMQ
     ├── Prometheus / Grafana
-    └── SMTP
+    └── external observability
+
+Implemented external services:
+    ├── private PaddleOCR runtime
+    └── SMTP for scheduled report delivery
 ```
 
 ---
@@ -162,21 +166,20 @@ PASTE TEXT                          │
 GALLERY IMAGE         │             │
       │               │             │
       ▼               │             │
-   ML KIT OCR          │             │
+ BACKEND OCR API       │             │
+      │               │             │
+      ▼               │             │
+ PRIVATE PADDLEOCR     │             │
       │               │             │
       ├───────────────┤             │
       │               │             │
 SHARED IMAGE          │             │
       │               │             │
       ▼               │             │
-   ML KIT OCR          │             │
-      │               │             │
-      ├───────────────┤             │
-      │               │             │
-SHARED IMAGE          │             │
+ BACKEND OCR API       │             │
       │               │             │
       ▼               │             │
-   ML KIT OCR          │             │
+ PRIVATE PADDLEOCR     │             │
       │               │             │
       └───────────────┘             │
               │                     │
@@ -220,7 +223,7 @@ The Android application is responsible for:
 - displaying parser results
 - collecting human corrections
 - local cache/drafts where appropriate
-- receiving realtime/push updates
+- displaying persisted in-app notifications and refreshing authoritative REST state
 - opening/sharing generated files
 
 Android is **not** authoritative for:
@@ -320,7 +323,7 @@ Spring Security
     ↓
 Credential Verification
     ↓
-Access Token + Refresh Token
+Access Token
     ↓
 Android secure storage
     ↓
@@ -332,22 +335,13 @@ When the access token expires:
 ```text
 401 / token expiry
     ↓
-Refresh token request
+Clear authenticated session
     ↓
-New access token
-    ↓
-Retry original request where safe
+Return to login
 ```
 
-If refresh fails:
-
-```text
-Logout/session expired
-```
-
-Refresh tokens are opaque random values. The backend stores only token hashes with
-expiration and revocation metadata, rotates them on every refresh, and revokes the
-active refresh/session token through `POST /api/auth/logout`.
+Refresh-token rotation is not implemented. It remains a future security enhancement
+that requires a separate persistence/API contract before it can be claimed.
 
 ---
 
@@ -875,9 +869,10 @@ Never require complete event history merely to rebuild state.
 
 ---
 
-# 38. FCM Architecture
+# 38. Future FCM Architecture
 
-FCM handles push delivery.
+FCM is not implemented. If added later, it would handle push delivery while persisted
+in-app notifications remain authoritative.
 
 Conceptual flow:
 
@@ -1102,11 +1097,14 @@ PaddleOCR lives in a private local runtime behind the backend `OcrProvider` inte
 
 ```text
 Image
-→ OCR API / PaddleOCR
-→ text
+→ authenticated backend OCR API
+→ private PaddleOCR runtime
+→ extracted text
 ```
 
-No backend OCR service exists.
+The backend OCR endpoint owns authentication, upload validation, timeout/error mapping,
+and delegation through `OcrProvider`; the separate PaddleOCR runtime performs text
+recognition only.
 
 For MVP, one screenshot feeds one review flow even when OCR sees multiple WhatsApp
 bubbles. The system does not automatically split it into multiple maintenance reports;
@@ -1155,12 +1153,11 @@ These are two separate intent flows.
 
 REST is the main contract between Android and backend.
 
-Conceptual baseline:
+Implemented baseline:
 
 ```text
 POST /api/auth/login
-POST /api/auth/refresh
-POST /api/auth/logout
+GET  /api/users/me
 
 POST /api/reports/analyze
 POST /api/reports/drafts
@@ -1172,6 +1169,7 @@ GET  /api/kpi-definitions
 POST /api/kpi-definitions
 
 POST /api/generated-reports
+POST /api/generated-reports/individual
 
 GET /api/statistics
 ```

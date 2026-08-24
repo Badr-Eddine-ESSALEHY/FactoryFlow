@@ -44,9 +44,9 @@ class ReportPeriodTest {
     }
 
     @Test
-    void acceptsArbitraryManualDateRange() {
+    void acceptsArbitraryCustomDateRange() {
         assertThat(ReportPeriod.validated(
-                GeneratedReportType.MANUAL,
+                GeneratedReportType.CUSTOM,
                 LocalDate.of(2026, 8, 3),
                 LocalDate.of(2026, 8, 11)
         )).isEqualTo(new ReportPeriod(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 11)));

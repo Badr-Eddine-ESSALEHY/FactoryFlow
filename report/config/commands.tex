@@ -2,30 +2,68 @@
 % CUSTOM COMMANDS
 % ============================================================
 
+
 % ------------------------------------------------------------
 % Project names
 % ------------------------------------------------------------
 
 \newcommand{\FactoryFlow}{\textit{FactoryFlow}}
+
 \newcommand{\DosageAnalysis}{\textit{AlfMbrouk Dosage Analysis}}
+
 
 % ------------------------------------------------------------
 % Common technology names
 % ------------------------------------------------------------
 
 \newcommand{\SpringBoot}{Spring Boot}
+
 \newcommand{\PostgreSQL}{PostgreSQL}
+
 \newcommand{\JetpackCompose}{Jetpack Compose}
+
 \newcommand{\PaddleOCR}{PaddleOCR}
+
 \newcommand{\PDFBox}{Apache PDFBox}
+
 \newcommand{\ApachePOI}{Apache POI}
 
+
+% ============================================================
+% TABLE / FIGURE SUPPORT
+% ============================================================
+
+% Explanatory text displayed directly below a table.
+%
+% Example:
+% \tableNote{Summary of the principal stakeholders involved
+% in the FactoryFlow workflow.}
+
+\newcommand{\tableNote}[1]{%
+    \vspace{6pt}
+    \par
+    \noindent
+    {\small\itshape #1\par}
+}
+
+
+% Optional source displayed below a figure.
+%
+% Example:
+% \figureSource{Source: Alf Mabrouk technical documentation.}
+
+\newcommand{\figureSource}[1]{%
+    \vspace{3pt}
+    \begin{center}
+        {\small\itshape #1}
+    \end{center}
+}
+
+
 % ------------------------------------------------------------
-% Placeholder for content intentionally not written yet.
-% Keeps unfinished sections obvious while drafting.
-% Remove all TODOs before final submission.
+% Draft-only TODO marker
 % ------------------------------------------------------------
 
-\newcommand{\reporttodo}[1]{
-    \textcolor{red}{[TODO: #1]}
+\newcommand{\reporttodo}[1]{%
+    \textcolor{red}{[TODO: #1]}%
 }

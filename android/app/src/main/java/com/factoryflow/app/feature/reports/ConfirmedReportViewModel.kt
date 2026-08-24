@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.factoryflow.app.core.data.GeneratedReportsRepository
 import com.factoryflow.app.core.data.ReportsRepository
-import com.factoryflow.app.core.network.dto.GenerateReportRequest
+import com.factoryflow.app.core.network.dto.IndividualReportExportRequest
 import com.factoryflow.app.core.network.dto.GeneratedReportDto
 import com.factoryflow.app.core.network.dto.ReportDto
 import com.factoryflow.app.core.util.UiError
@@ -57,12 +57,10 @@ class ConfirmedReportViewModel @Inject constructor(
         if (format !in setOf("PDF", "EXCEL") || _state.value.exportingFormat != null) return@launch
         _state.update { it.copy(exportingFormat = format, error = null, sharedFile = null) }
         val generated = runCatching {
-            generatedReports.generate(
-                GenerateReportRequest(
-                    type = "DAILY",
+            generatedReports.generateIndividual(
+                IndividualReportExportRequest(
+                    reportId = report.id,
                     format = format,
-                    periodStart = report.effectiveDate,
-                    periodEnd = report.effectiveDate,
                 ),
             )
         }.getOrElse { error ->

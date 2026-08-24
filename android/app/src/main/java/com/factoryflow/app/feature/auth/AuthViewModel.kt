@@ -57,7 +57,8 @@ class LoginViewModel @Inject constructor(private val repository: AuthRepository)
 
 sealed interface SessionUiState {
     data object Loading : SessionUiState
-    data object SignedOut : SessionUiState
+    data class SignedOut(val expired: Boolean = false) : SessionUiState
+    data class RestoreFailed(val error: UiError) : SessionUiState
     data class SignedIn(val user: UserDto) : SessionUiState
 }
 
@@ -81,7 +82,7 @@ class SessionViewModel @Inject constructor(
                 .drop(1)
                 .collect { authenticated ->
                     if (!authenticated) {
-                        _state.value = SessionUiState.SignedOut
+                        _state.value = SessionUiState.SignedOut(repository.sessionExpired.value)
                     }
                 }
         }
@@ -99,27 +100,23 @@ class SessionViewModel @Inject constructor(
             } ?: false
 
             if (!hasSession) {
-                _state.value = SessionUiState.SignedOut
+                _state.value = SessionUiState.SignedOut()
                 return@launch
             }
 
-            val user = withTimeoutOrNull(5000) {
-                runCatching {
-                    repository.currentUser()
-                }.getOrNull()
-            }
-
-            if (user != null) {
-                _state.value = SessionUiState.SignedIn(user)
-            } else {
-                repository.logout()
-                _state.value = SessionUiState.SignedOut
+            val restored = withTimeoutOrNull(5000) { runCatching { repository.currentUser() } }
+            when {
+                restored == null -> _state.value = SessionUiState.RestoreFailed(AppError.NetworkUnavailable.toUiError())
+                restored.isSuccess -> _state.value = SessionUiState.SignedIn(restored.getOrThrow())
+                restored.exceptionOrNull() == AppError.Unauthorized ->
+                    _state.value = SessionUiState.SignedOut(expired = true)
+                else -> _state.value = SessionUiState.RestoreFailed(checkNotNull(restored.exceptionOrNull()).toUiError())
             }
         }
     }
 
     fun logout() {
         repository.logout()
-        _state.value = SessionUiState.SignedOut
+        _state.value = SessionUiState.SignedOut()
     }
 }

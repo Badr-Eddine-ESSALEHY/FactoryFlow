@@ -6,7 +6,7 @@
 >
 > Status: Active
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-22
 >
 > This document defines the **Android application architecture, package organization, implementation rules, state-management patterns, navigation behavior, data access, backend OCR integration, Share Intent handling, FileProvider usage, notifications, Room usage, Retrofit contracts, testing expectations, and premium Compose implementation standards** for FactoryFlow.
 >
@@ -800,7 +800,8 @@ Avoid every failed request starting its own token refresh concurrently.
 
 Use secure Android storage appropriate to selected Android SDK/library stack.
 
-Do not store access/refresh tokens in plain shared preferences.
+Do not store the current access token in plain shared preferences. Refresh tokens are
+not part of the current client/backend contract.
 
 Do not log tokens.
 
@@ -1884,6 +1885,9 @@ Do not provide edit action unless future correction workflow exists.
 
 Generated report feature handles:
 
+- consolidated generation for daily, weekly, monthly, or custom periods
+- Excel/PDF multi-selection for consolidated generation
+- exact single-report Excel/PDF export from a confirmed report detail
 - list
 - detail
 - download/cache file
@@ -1894,6 +1898,10 @@ Generated report feature handles:
 It does not generate Excel/PDF locally.
 
 Backend generates documents.
+
+The two generation intents are visibly distinct. “Exporter ce rapport uniquement”
+uses the report-ID endpoint. “Générer un rapport consolidé” uses explicit period dates.
+The app never implements single-report export by substituting a daily date query.
 
 ---
 
@@ -2022,7 +2030,7 @@ calendar month. Do not expose a `dayOfMonth` field for MVP.
 
 In-app notification list comes from backend if implemented.
 
-FCM is delivery transport.
+FCM is not implemented. Sections 133–137 are future design guidance only.
 
 ---
 
@@ -2421,9 +2429,11 @@ Notifications screen may show a subtle enable prompt.
 
 # 166. Image Privacy
 
-Do not upload original images unless a future requirement adds image archival/backend OCR.
+Selected gallery/shared image bytes are uploaded transiently to the authenticated OCR
+endpoint. Do not persist or archive the original image unless a future requirement adds
+that capability.
 
-The current architecture performs OCR locally.
+The current backend delegates recognition to the private PaddleOCR runtime.
 
 ---
 
@@ -2794,6 +2804,13 @@ Single vertical scroll hierarchy.
 # 198. History Scroll
 
 Preserve scroll state when returning from detail if practical.
+
+Review uses stable item keys and a remembered `LazyListState`. The selected Review
+tab is explicit ViewModel state and is not derived again from changing counts.
+Ignoring, assigning, validating, or creating an inline KPI therefore keeps the user
+on the current tab and near the same list position. Inline creation and bulk safe
+ignore call draft-scoped backend operations; Android does not duplicate source-line
+classification or KPI-equivalence rules.
 
 ---
 
@@ -3225,6 +3242,11 @@ Initial simple implementation may redownload on explicit open.
 Use typed values.
 
 Do not store day/time as raw unvalidated strings where Material pickers can provide structured data.
+
+The implemented schedule form supports daily/weekly/monthly frequency, execution time,
+weekday for weekly schedules, Excel/PDF toggles, e-mail enablement, recipients, and
+enabled/paused state. Its save CTA lives in the navigation-safe scaffold bottom action
+bar so system navigation does not cover it.
 
 ---
 
@@ -3926,6 +3948,33 @@ The Android file boundaries follow these release rules:
 - Share intents are consumed once by SharedAcquisitionStore; recomposition does not repeat acquisition processing.
 - The terminal confirmation route clears the completed acquisition/review stack before exposing report and document actions.
 - Android app and splash branding use the FactoryFlow identity. Alf Mabrouk artwork remains reserved for backend-generated PDF and Excel documents.
+
+### Review completion state model
+
+The Review ViewModel, not Compose warning text, determines the presentation state:
+
+```text
+READY
+ATTENTION_ACKNOWLEDGE
+ATTENTION_DUPLICATE
+MISSING
+MISSING_CORRECTED
+UNRESOLVED_STRONG_SUGGESTION
+UNRESOLVED_WEAK_SUGGESTION
+UNRESOLVED_NEW
+SAFE_NOISE_PENDING
+SAFE_NOISE_IGNORED
+```
+
+Untouched `MISSING` is legitimate and nonblocking. `MISSING_CORRECTED` blocks until explicit validation. Every attention state blocks until validation. Safe noise remains blocking until ignored. The Non tab keeps bulk ignore pinned below the tab control whenever any unresolved line has `safeToIgnore = true`; the endpoint remains flag-scoped and never includes unflagged KPI-like content, even when flagged lines appear in a different visual subsection.
+
+Paste, Manual Entry, and Review apply IME resizing at the focused scaffold boundary. Persistent CTAs use the shared `FlowBottomActionBar`, which owns navigation-bar clearance without adding redundant content gaps. Report Detail uses the same safe bottom-action container.
+
+The launcher identity is a vector factory silhouette crossed by a three-node process path. Android uses adaptive foreground, gradient background, monochrome themed-icon, standard fallback, and round fallback resources; the Alf Mabrouk corporate logo remains excluded from launcher and in-app branding.
+
+The KPI picker owns real editable query state, filters names/codes/aliases case- and accent-insensitively, and remains IME-safe. The Review screen owns its Back handling and displays Save/leave/cancel choices when dirty.
+
+Debug builds use `FACTORYFLOW_API_BASE_URL` or `factoryflow.apiBaseUrl`. Release builds require an HTTPS target through `FACTORYFLOW_RELEASE_API_BASE_URL` (Gradle property or environment variable) or `factoryflow.releaseApiBaseUrl`; no localhost release fallback exists.
 
 ---
 

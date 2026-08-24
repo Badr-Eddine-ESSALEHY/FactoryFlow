@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,10 @@ import com.factoryflow.app.core.design.*
 import com.factoryflow.app.core.network.dto.*
 import com.factoryflow.app.core.util.*
 import com.factoryflow.app.feature.acquisition.FocusedTopBar
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,14 +123,185 @@ private fun ReportRow(report: ReportSummaryDto, onClick: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 private fun GeneratedReports(onGenerated: (Long) -> Unit, viewModel: GeneratedListViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    when {
-        state.loading -> SkeletonRows(Modifier.padding(FlowSpacing.xl), 5)
-        state.documents.isEmpty() -> EmptyPane(stringResource(R.string.no_documents), stringResource(R.string.no_dashboard_data_detail), Modifier.padding(FlowSpacing.xl))
-        else -> GeneratedDocumentsContent(state.documents, onGenerated)
+    var showGenerator by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.generationCompleted) {
+        if (state.generationCompleted) {
+            showGenerator = false
+            viewModel.generationResultHandled()
+        }
+    }
+    Column(Modifier.fillMaxSize()) {
+        FlowCard(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.sm),
+            contentPadding = PaddingValues(FlowSpacing.lg),
+            onClick = { showGenerator = true },
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FlowIconTile(Icons.Outlined.PostAdd, stringResource(R.string.generate_consolidated), FlowTeal)
+                Spacer(Modifier.width(FlowSpacing.md))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.generate_consolidated), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.generate_consolidated_detail),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        state.error?.let { error ->
+            Text(
+                stringResource(error.detail),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = FlowSpacing.xl, vertical = FlowSpacing.xs),
+            )
+        }
+        Box(Modifier.weight(1f)) {
+            when {
+                state.loading -> SkeletonRows(Modifier.padding(FlowSpacing.xl), 5)
+                state.documents.isEmpty() -> EmptyPane(
+                    stringResource(R.string.no_documents),
+                    stringResource(R.string.no_dashboard_data_detail),
+                    Modifier.padding(FlowSpacing.xl),
+                )
+                else -> GeneratedDocumentsContent(state.documents, onGenerated)
+            }
+        }
+    }
+    if (showGenerator) {
+        ConsolidatedReportSheet(
+            generating = state.generating,
+            onDismiss = { if (!state.generating) showGenerator = false },
+            onGenerate = viewModel::generate,
+        )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun ConsolidatedReportSheet(
+    generating: Boolean,
+    onDismiss: () -> Unit,
+    onGenerate: (String, Set<String>, ConsolidatedReportPeriod) -> Unit,
+) {
+    val businessToday = remember { LocalDate.now(ZoneId.of("Africa/Casablanca")) }
+    var type by rememberSaveable { mutableStateOf("DAILY") }
+    var selectedDateText by rememberSaveable { mutableStateOf(businessToday.toString()) }
+    var customStartText by rememberSaveable { mutableStateOf("") }
+    var customEndText by rememberSaveable { mutableStateOf("") }
+    var formats by rememberSaveable { mutableStateOf(setOf("PDF", "EXCEL")) }
+    var datePickerVisible by remember { mutableStateOf(false) }
+    var rangePickerVisible by remember { mutableStateOf(false) }
+
+    val selectedDate = runCatching { LocalDate.parse(selectedDateText) }.getOrDefault(businessToday)
+    val customStart = customStartText.takeIf(String::isNotBlank)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val customEnd = customEndText.takeIf(String::isNotBlank)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val period = resolveConsolidatedReportPeriod(type, selectedDate, customStart, customEnd)
+    val typeOptions = listOf(
+        "DAILY" to stringResource(R.string.daily),
+        "WEEKLY" to stringResource(R.string.weekly),
+        "MONTHLY" to stringResource(R.string.monthly),
+        "CUSTOM" to stringResource(R.string.custom_period),
+    )
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = FlowSpacing.xl)
+                .padding(bottom = FlowSpacing.xl),
+        ) {
+            Text(stringResource(R.string.generate_consolidated), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                stringResource(R.string.generate_consolidated_detail),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(FlowSpacing.lg))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
+                typeOptions.forEach { (value, label) ->
+                    FilterChip(selected = type == value, onClick = { type = value }, label = { Text(label) })
+                }
+            }
+            Spacer(Modifier.height(FlowSpacing.md))
+            FlowListRow(
+                icon = Icons.Outlined.DateRange,
+                title = stringResource(
+                    when (type) {
+                        "WEEKLY" -> R.string.select_week
+                        "MONTHLY" -> R.string.select_month
+                        "CUSTOM" -> R.string.select_period
+                        else -> R.string.select_date
+                    },
+                ),
+                meta = period?.let {
+                    stringResource(R.string.document_period, it.start.toString().toFrenchDate(), it.end.toString().toFrenchDate())
+                } ?: stringResource(R.string.select_period),
+                accent = FlowTeal,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { if (type == "CUSTOM") rangePickerVisible = true else datePickerVisible = true },
+            )
+            Spacer(Modifier.height(FlowSpacing.lg))
+            SectionHeader(stringResource(R.string.formats))
+            Row(horizontalArrangement = Arrangement.spacedBy(FlowSpacing.sm)) {
+                listOf("EXCEL" to R.string.excel, "PDF" to R.string.pdf).forEach { (value, label) ->
+                    FilterChip(
+                        selected = value in formats,
+                        onClick = { formats = if (value in formats) formats - value else formats + value },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(FlowSpacing.lg))
+            PrimaryAction(
+                label = stringResource(R.string.generate_documents),
+                loading = generating,
+                enabled = period != null && formats.isNotEmpty(),
+                onClick = { period?.let { onGenerate(type, formats, it) } },
+            )
+        }
+    }
+
+    if (datePickerVisible) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate.toUtcMillis())
+        DatePickerDialog(
+            onDismissRequest = { datePickerVisible = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { selectedDateText = it.toUtcLocalDate().toString() }
+                    datePickerVisible = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { datePickerVisible = false }) { Text(stringResource(R.string.cancel)) } },
+        ) { DatePicker(pickerState) }
+    }
+
+    if (rangePickerVisible) {
+        val rangeState = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = customStart?.toUtcMillis(),
+            initialSelectedEndDateMillis = customEnd?.toUtcMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { rangePickerVisible = false },
+            confirmButton = {
+                TextButton(
+                    enabled = rangeState.selectedStartDateMillis != null && rangeState.selectedEndDateMillis != null,
+                    onClick = {
+                        customStartText = rangeState.selectedStartDateMillis!!.toUtcLocalDate().toString()
+                        customEndText = rangeState.selectedEndDateMillis!!.toUtcLocalDate().toString()
+                        rangePickerVisible = false
+                    },
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { rangePickerVisible = false }) { Text(stringResource(R.string.cancel)) } },
+        ) { DateRangePicker(rangeState, modifier = Modifier.height(520.dp)) }
+    }
+}
+
+private fun LocalDate.toUtcMillis(): Long = atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+private fun Long.toUtcLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 @Composable
 fun GeneratedDocumentsContent(documents: List<GeneratedReportDto>, onGenerated: (Long) -> Unit, modifier: Modifier = Modifier) {
@@ -161,8 +337,7 @@ fun ReportDetailScreen(
         topBar = { FocusedTopBar(stringResource(R.string.report_detail), onBack) },
         bottomBar = {
             state.report?.let { report ->
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 10.dp) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                FlowBottomActionBar {
                         if (report.status == "DRAFT") {
                             PrimaryAction(stringResource(R.string.continue_verification), onClick = { onResumeDraft(report.id) })
                             TextButton(
@@ -181,7 +356,6 @@ fun ReportDetailScreen(
                         } else if (report.status == "CONFIRMED") {
                             PrimaryAction(stringResource(R.string.download_share), onClick = { onExport(report.id) })
                         }
-                    }
                 }
             }
         },
@@ -384,6 +558,13 @@ fun GeneratedDetailScreen(onBack: () -> Unit, viewModel: GeneratedDetailViewMode
 @Composable private fun reportStatusColor(status: String) = when (status) { "CONFIRMED" -> Success; "DRAFT" -> MaterialTheme.colorScheme.onSurfaceVariant; else -> Warning }
 @Composable private fun reportStatusLabel(status: String) = stringResource(when (status) { "CONFIRMED" -> R.string.confirmed; "DRAFT" -> R.string.draft; else -> R.string.pending_review })
 @Composable private fun unknownResolutionLabel(value: String) = stringResource(when (value) { "IGNORED" -> R.string.ignore_line; "ASSIGNED" -> R.string.assign_kpi; else -> R.string.keep_unresolved })
-@Composable private fun generatedTypeLabel(value: String) = stringResource(when (value) { "DAILY" -> R.string.daily; "WEEKLY" -> R.string.weekly; "MONTHLY" -> R.string.monthly; else -> R.string.manual })
+@Composable private fun generatedTypeLabel(value: String) = stringResource(when (value) {
+    "INDIVIDUAL" -> R.string.individual_report
+    "DAILY" -> R.string.daily
+    "WEEKLY" -> R.string.weekly
+    "MONTHLY" -> R.string.monthly
+    "CUSTOM", "MANUAL" -> R.string.custom_period
+    else -> R.string.manual
+})
 @Composable private fun generationStatusLabel(value: String) = stringResource(if (value == "READY") R.string.status_ready else R.string.status_failed)
 @Composable private fun emailStatusLabel(value: String) = stringResource(when (value) { "DELIVERED" -> R.string.email_delivered; "FAILED" -> R.string.email_failed; else -> R.string.not_requested })

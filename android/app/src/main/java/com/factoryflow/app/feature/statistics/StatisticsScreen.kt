@@ -4,7 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -319,9 +320,10 @@ private fun StatisticsTrendChart(
     Column(modifier) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(FlowSize.analyticsChartHeight)) {
             val axisWidth = 44.dp
-            val tooltipWidth = 92.dp
+            val tooltipWidth = 112.dp
             val plotWidth = maxWidth - axisWidth
-            val selectedX = axisWidth + plotWidth * selectedIndex.coerceIn(0, points.lastIndex) / points.lastIndex
+            val selectedX = if (points.size == 1) axisWidth + plotWidth / 2
+                else axisWidth + plotWidth * selectedIndex.coerceIn(0, points.lastIndex) / points.lastIndex
             val tooltipX = (selectedX - tooltipWidth / 2).coerceIn(0.dp, maxWidth - tooltipWidth)
 
             Column(
@@ -344,11 +346,21 @@ private fun StatisticsTrendChart(
                     .fillMaxSize()
                     .semantics { contentDescription = description }
                     .pointerInput(points) {
-                        detectTapGestures { tap ->
-                            val index = if (points.size == 1) 0 else {
-                                (tap.x / size.width.toFloat() * points.lastIndex).roundToInt().coerceIn(0, points.lastIndex)
-                            }
-                            onSelected(index)
+                        fun selectNearest(x: Float) {
+                            onSelected(if (points.size == 1) 0 else {
+                                (x / size.width.toFloat() * points.lastIndex)
+                                    .roundToInt()
+                                    .coerceIn(0, points.lastIndex)
+                            })
+                        }
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            selectNearest(down.position.x)
+                            do {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                change?.let { selectNearest(it.position.x) }
+                            } while (change?.pressed == true)
                         }
                     },
             ) {
@@ -404,14 +416,22 @@ private fun StatisticsTrendChart(
                 shape = RoundedCornerShape(FlowRadius.control),
                 color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
-                Text(
-                    text = points[selectedIndex.coerceIn(0, points.lastIndex)].value.displayValue(),
-                    modifier = Modifier.padding(horizontal = FlowSpacing.sm, vertical = FlowSpacing.xs),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
+                val selectedPoint = points[selectedIndex.coerceIn(0, points.lastIndex)]
+                Column(Modifier.padding(horizontal = FlowSpacing.sm, vertical = FlowSpacing.xs)) {
+                    Text(
+                        text = selectedPoint.value.displayValue(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = selectedPoint.effectiveDate.toFrenchDate(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 44.dp), horizontalArrangement = Arrangement.SpaceBetween) {

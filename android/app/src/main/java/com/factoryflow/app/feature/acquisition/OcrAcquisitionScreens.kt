@@ -105,7 +105,7 @@ fun OcrResultContent(
                 value = state.extractedText,
                 onValueChange = onEditText,
                 modifier = Modifier.fillMaxSize(),
-                label = { Text(stringResource(R.string.raw_text_label)) },
+                label = { Text(stringResource(R.string.ocr_extracted_text_label)) },
                 shape = RoundedCornerShape(FlowRadius.control),
                 isError = state.noTextDetected,
                 supportingText = { if (state.noTextDetected) Text(stringResource(R.string.ocr_empty)) },

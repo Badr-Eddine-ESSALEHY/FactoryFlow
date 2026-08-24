@@ -40,12 +40,22 @@ public class GeneratedReportController {
     }
 
     @PostMapping
-    @Operation(summary = "Synchronously generate an Excel or PDF report from confirmed KPI data")
+    @Operation(summary = "Generate a consolidated Excel or PDF report from all confirmed data in a period")
     public ResponseEntity<GeneratedReportResponse> generate(
             Principal principal,
             @Valid @RequestBody GenerateReportRequest request
     ) {
         GeneratedReportResponse created = service.generate(principal.getName(), request);
+        return ResponseEntity.created(URI.create("/api/generated-reports/" + created.id())).body(created);
+    }
+
+    @PostMapping("/individual")
+    @Operation(summary = "Export exactly one confirmed maintenance report as Excel or PDF")
+    public ResponseEntity<GeneratedReportResponse> generateIndividual(
+            Principal principal,
+            @Valid @RequestBody IndividualReportExportRequest request
+    ) {
+        GeneratedReportResponse created = service.generateIndividual(principal.getName(), request);
         return ResponseEntity.created(URI.create("/api/generated-reports/" + created.id())).body(created);
     }
 

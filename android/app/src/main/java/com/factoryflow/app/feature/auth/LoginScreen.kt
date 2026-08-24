@@ -34,6 +34,7 @@ import com.factoryflow.app.core.design.*
 @Composable
 fun LoginScreen(
     onAuthenticated: () -> Unit,
+    sessionExpired: Boolean = false,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -41,7 +42,8 @@ fun LoginScreen(
         state = state,
         onEmailChanged = viewModel::email,
         onPasswordChanged = viewModel::password,
-        onLogin = { viewModel.login(onAuthenticated) }
+        onLogin = { viewModel.login(onAuthenticated) },
+        sessionExpired = sessionExpired,
     )
 }
 
@@ -52,6 +54,7 @@ fun LoginContent(
     onPasswordChanged: (String) -> Unit,
     onLogin: () -> Unit,
     modifier: Modifier = Modifier,
+    sessionExpired: Boolean = false,
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     val focus = LocalFocusManager.current
@@ -92,6 +95,21 @@ fun LoginContent(
         )
 
         Spacer(Modifier.height(FlowSpacing.xxl))
+
+        if (sessionExpired) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(bottom = FlowSpacing.md),
+                shape = RoundedCornerShape(FlowRadius.card),
+                color = MaterialTheme.colorScheme.errorContainer,
+            ) {
+                Text(
+                    stringResource(R.string.session_expired),
+                    Modifier.padding(FlowSpacing.md),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
 
         // Form Fields
         LoginField(
