@@ -1,20 +1,619 @@
 \chapter{System Design and Architecture}
+\label{chap:architecture}
+
+% ============================================================
+% INTRODUCTION
+% ============================================================
 
 \section{Introduction}
+\label{sec:architecture-introduction}
+
+The previous chapter defined what \textbf{FactoryFlow} must achieve and the rules that protect the integrity of the maintenance information it processes. The next step is to explain how these requirements were translated into a coherent software architecture.
+
+FactoryFlow was designed as a set of \textbf{clearly separated responsibilities}. The Android application manages user interaction and field acquisition, the backend coordinates business logic and secure access to data, \textbf{the OCR runtime} extracts text from imported images, and \textbf{PostgreSQL} provides persistent storage for validated information. Around this core, dedicated components support reporting, scheduling, notifications, and analytical processing.
+
+This separation is particularly important because the platform does not treat acquisition, interpretation, and validation as a single operation. Information moves through a controlled sequence in which \textbf{raw input is preserved}, deterministic processing structures the data, uncertain elements remain under \textbf{human control}, and only confirmed information becomes available for reporting and analysis.
+
+This chapter presents the architecture from the outside inward. It first introduces the \textbf{global system architecture} and the communication between the main components. It then examines the Android application, backend architecture, persistence, security, OCR and deterministic interpretation, reporting and scheduling, Maintenance Intelligence, deployment and integration, and finally the principal UML class relationships that support these architectural responsibilities.
+
+% ============================================================
+% GLOBAL SYSTEM ARCHITECTURE
+% ============================================================
 
 \section{Global System Architecture}
+\label{sec:global-system-architecture}
+
+FactoryFlow follows a \textbf{modular client--server architecture} in which the main responsibilities of the platform are deliberately separated. The Android application manages field interaction, the backend coordinates business processing, the OCR runtime extracts text from imported images, PostgreSQL stores persistent information, and dedicated services support reporting, automation, and analytical processing. This separation makes the system easier to understand, maintain, and extend while preserving the integrity of the maintenance information lifecycle.
+
+\textbf{Figure~\ref{fig:global-system-architecture}} presents the \textbf{high-level architectural map} of FactoryFlow. It summarizes the main subsystems and the principal information flow that connects operational acquisition, controlled validation, persistent storage, reporting, and Maintenance Intelligence.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{diagrams/source/figure 3.1_Global_System_Architecture_of_FactoryFlow.png}
+    \caption{Global system architecture of FactoryFlow}
+    {\footnotesize \textit{Source: Created by the author using Figma (\url{https://www.figma.com}).}\par}
+    \label{fig:global-system-architecture}
+\end{figure}
+
+As shown in \textbf{Figure~\ref{fig:global-system-architecture}}, the process begins with the \textbf{Maintenance Engineer}, who interacts with the \textbf{FactoryFlow Android application} to acquire, review, and consult maintenance information. The mobile client acts as the system's field interaction layer. It supports operational acquisition and human review, but it does not communicate directly with the database or the OCR engine.
+
+All protected communication passes through the \textbf{Spring Boot backend} using a \textbf{REST API over JSON and HTTPS}. At this level, the backend acts as the \textbf{central coordination layer} of FactoryFlow. It manages business workflows, secure access, human-validation orchestration, and the integration of the other technical services shown in the figure.
+
+For image-based acquisition, the backend communicates with a separate \textbf{PaddleOCR runtime}. This component is responsible only for \textbf{text extraction}. Once text has been extracted, FactoryFlow continues the processing through its own deterministic interpretation logic, including parsing, KPI matching, and review preparation. This distinction is essential: \textbf{OCR extraction and business interpretation remain two different responsibilities}.
+
+Validated and persistent information is stored in \textbf{PostgreSQL}, which forms the historical data foundation of the platform. From this validated base, FactoryFlow supports two major exploitation paths. The first is \textbf{Reporting and Automation}, which covers PDF and Excel generation, scheduling, notification support, generated-report storage, and optional email distribution through the external \textbf{SMTP / Email Service}. The second is \textbf{Maintenance Intelligence}, where validated historical KPI data feeds anomaly detection, trend analysis, forecasting, and contextual alerts.
+
+A central architectural principle visible in Figure~\ref{fig:global-system-architecture} is the separation between \textbf{raw acquisition}, \textbf{deterministic interpretation}, \textbf{human validation}, and \textbf{analytical exploitation}. Unreviewed OCR or parser output is never treated as trusted historical information. Only \textbf{validated data} is allowed to feed reporting, statistics, and Maintenance Intelligence.
+
+This high-level figure serves as the architectural entry point for the remainder of the chapter. The next section focuses on the Android application and progressively refines the client-side organization introduced here.
+
+
+% ============================================================
+% ANDROID APPLICATION ARCHITECTURE
+% ============================================================
+
+\section{Android Application Architecture}
+\label{sec:android-application-architecture}
+
+Within FactoryFlow, the Android application forms the \textbf{interaction layer} between the Maintenance Engineer and the services coordinated by the backend. It supports the complete user-facing maintenance workflow, from operational acquisition and review to historical consultation, reporting, statistics, notifications, and scheduling.
+
+These functions belong to different stages of the maintenance-information lifecycle. The mobile client is therefore structured so that \textbf{acquisition, validation, consultation, and reporting} remain clearly separated while sharing a consistent state and communication model. This organization prevents individual screens from becoming tightly coupled and allows each functional area to evolve without disrupting the rest of the application.
+
+The Android client remains focused on \textbf{user interaction, state representation, workflow coordination, and secure service access}. Business responsibilities such as deterministic interpretation, persistent validation, report generation, scheduling execution, and analytical processing remain coordinated by the backend. This separation keeps the mobile layer centred on presenting information and guiding the Maintenance Engineer through controlled workflows rather than duplicating server-side logic.
+
+The following subsections first examine the \textbf{internal functional organization} of the Android application and then progressively introduce the architectural patterns and technologies that support its operation.
+
+
+
+% ------------------------------------------------------------
+% INTERNAL APPLICATION ARCHITECTURE
+% ------------------------------------------------------------
+
+\subsection{Internal Application Architecture}
+\label{subsec:android-internal-architecture}
+
+The FactoryFlow Android application is organized around the \textbf{lifecycle of maintenance information} rather than around isolated screens. Its functional areas guide the Maintenance Engineer from secure access and acquisition to human validation, confirmation, and the subsequent consultation and exploitation of validated information.
+
+\textbf{Figure~\ref{fig:android-internal-architecture}} presents this functional organization and shows how the main Android capabilities participate in the same controlled workflow.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.94\textwidth]
+{diagrams/source/figure_3.2_Internal_Functional_Architecture_of_FactoryFlow_Android_Application.png}
+\caption{Internal functional architecture of the FactoryFlow Android application}
+{\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+\label{fig:android-internal-architecture}
+\end{figure}
+
+As illustrated in \textbf{Figure~\ref{fig:android-internal-architecture}}, authenticated access leads to three complementary acquisition paths: \textbf{Manual Entry}, \textbf{Paste Message}, and \textbf{Image Import}. Although these paths introduce information in different forms, they all converge toward the same \textbf{Review \& Validation} stage. The acquisition method therefore does not change the level of control applied before information can be trusted.
+
+Review forms the principal human-control point of the mobile workflow. The Maintenance Engineer inspects the structured interpretation prepared by the processing pipeline, corrects detected values when necessary, and explicitly resolves elements that require human judgment. Confirmation then marks the transition from information under review to \textbf{validated historical information}, while draft continuity and traceability preserve the context in which that information was acquired and validated.
+
+After confirmation, validated information becomes available to the application's consultation and exploitation functions. These include \textbf{Statistics}, \textbf{Maintenance Intelligence}, generated PDF and Excel documents, notifications, and recurring report schedules. Maintenance Intelligence exposes anomaly detection, trend analysis, forecasting, and contextual alerts derived from validated historical measurements; the mechanisms behind these analytical capabilities are examined later in their dedicated architecture section.
+
+The Android workflow can therefore be summarized as \textit{Authenticate $\rightarrow$ Acquire $\rightarrow$ Review $\rightarrow$ Confirm $\rightarrow$ Consult and Exploit}. Supporting these functional areas requires a consistent mechanism for managing state, user actions, and data access. This role is provided by the \textbf{MVVM and Repository pattern}, introduced next.
+
+\subsection{MVVM and Repository Pattern}
+\label{subsec:android-mvvm-repository}
+
+FactoryFlow organizes its Android client around the \textbf{Model--View--ViewModel (MVVM) pattern}, complemented by a \textbf{Repository layer}. This architecture separates interface responsibilities from state management and remote data access, preventing screens from directly coordinating network operations or backend-facing data logic. \textbf{Figure~\ref{fig:android-mvvm-architecture}} summarizes these relationships.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.90\textwidth]
+{diagrams/source/figure_3.3_MVVM_pattern.png}
+\caption{MVVM and Repository architecture of the FactoryFlow Android application}
+{\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+\label{fig:android-mvvm-architecture}
+\end{figure}
+
+At the presentation level, the \textbf{Jetpack Compose UI} displays application state and forwards user actions to the corresponding \textbf{ViewModel}. Each ViewModel exposes a structured \textbf{UiState}, propagated through \textbf{StateFlow}, so that screens react consistently to loaded information, validation states, progress indicators, and operation results. This keeps visual components focused on presentation while the ViewModel coordinates their state.
+
+When data access is required, the ViewModel delegates operations through the \textbf{Repository}. Repositories provide stable domain-facing operations and isolate the presentation layer from the technical details of remote communication. Domain models and \textbf{DTOs} represent the information exchanged across these layers, while the \textbf{Remote Data Source} uses \textbf{Retrofit} to communicate with the authenticated Spring Boot REST API.
+
+This separation establishes an important FactoryFlow boundary: the Android application \textbf{never accesses PostgreSQL directly}. Persistent information and server-side business processing remain behind the backend API, while responses return through the Repository and ViewModel until the resulting UiState is reflected by the interface. The resulting architecture improves \textbf{maintainability, testability, and consistency} while allowing presentation, state management, and communication concerns to evolve independently.
+
+With this structure established, the next subsection focuses on the technologies used to implement the Android presentation layer: \textbf{Kotlin and Jetpack Compose}.
+\subsection{Kotlin and Jetpack Compose}
+\label{subsec:android-kotlin-compose}
+
+The FactoryFlow Android application is implemented natively in \textbf{Kotlin}. Its strong type system, concise syntax, and integration with the Android ecosystem provide a reliable basis for implementing the application's presentation logic, state handling, and interaction flows while keeping the codebase maintainable as the platform evolves.
+
+The user interface is built with \textbf{Jetpack Compose}, using a declarative model in which the visible screen reflects the current application state. This approach is particularly suitable for FactoryFlow because several interfaces, including acquisition, Review and Validation, notifications, statistics, and Maintenance Intelligence, must react to changes in data and user decisions.
+
+Compose also promotes the creation of \textbf{reusable UI components} and a consistent visual structure across the application. Combined with the state management provided by the MVVM architecture, it keeps the interface synchronized with the underlying \textit{UiState} while preserving a clear separation between presentation, workflow coordination, and data access.
+
+As several Android components depend on shared services such as repositories, API clients, and ViewModels, their creation and lifecycle must also remain consistent across the application. This responsibility is handled through \textbf{Hilt dependency injection}, introduced in the following subsection.
+
+\subsection{Dependency Injection with Hilt}
+\label{subsec:android-hilt}
+
+FactoryFlow uses \textbf{Hilt} as its dependency injection framework. Built on top of Dagger, Hilt is the \textbf{recommended dependency injection solution for Android applications} and provides Android-aware mechanisms for creating, providing, and managing dependencies according to application lifecycles.
+
+In FactoryFlow, several components depend on shared services such as API clients, repositories, and authentication-related services. Rather than allowing each component to construct these dependencies independently, Hilt provides them through a centralized dependency graph. This keeps object creation separate from the components that consume them and reduces unnecessary coupling across the application.
+
+This organization reinforces the separation established by the \textbf{MVVM architecture}. ViewModels receive the repositories they require, while repositories depend on the communication services and remote data sources used to access backend functionality. Hilt also manages their lifecycles so that shared services can be reused where appropriate while screen-related ViewModels remain scoped to the interfaces that consume them.
+
+The resulting structure improves \textbf{maintainability and testability} by making dependencies explicit and allowing concrete implementations to be replaced without tightly coupling them to presentation components. The communication services provided through this architecture interact with the FactoryFlow backend using \textbf{Retrofit and Moshi}, examined in the following subsection.
+
+\subsection{REST Communication with Retrofit and Moshi}
+\label{subsec:android-retrofit-moshi}
+
+The FactoryFlow Android application and the Spring Boot backend operate as separate software components and therefore communicate through a clearly defined service interface. FactoryFlow adopts a \textbf{REST-based communication model}, in which the mobile application sends HTTP requests to backend endpoints and receives structured responses represented primarily as JSON. This approach preserves a clear client--server boundary and allows the Android application to consume backend capabilities without depending on their internal implementation.
+
+On the Android side, \textbf{Retrofit} provides the client abstraction used to access \textbf{the REST API}. Backend operations are represented as typed service operations and invoked through the Repository layer rather than directly from the user interface. Depending on the requested workflow, FactoryFlow uses HTTP methods such as GET, POST, PATCH, and DELETE. Protected requests also carry the authenticated session token using the Bearer authorization mechanism; the complete \textbf{JWT authentication architecture} is examined later in the dedicated security section.
+
+\textbf{Moshi} complements Retrofit by managing the conversion between the JSON representations exchanged through the API and the typed data structures used within the Android application. Outgoing application data can therefore be serialized into JSON when required, while incoming responses are deserialized into objects that repositories and ViewModels can consume. This prevents presentation components from handling raw JSON and keeps communication concerns separated from interface behaviour.
+
+\textbf{Figure~\ref{fig:android-rest-communication}} illustrates how Retrofit, Moshi, and the REST interface participate in the communication between the Android application and the Spring Boot backend.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]
+{diagrams/source/figure_3.4_REST_Communication_Android_Spring_Boot.png}
+\caption{REST communication between the FactoryFlow Android application and Spring Boot backend}
+{\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+\label{fig:android-rest-communication}
+\end{figure}
+
+As shown in \textbf{Figure~\ref{fig:android-rest-communication}}, a user operation is propagated from the UI and ViewModel through the Repository to the Retrofit client. The request then crosses the authenticated REST boundary as \textbf{JSON over HTTPS} and reaches the corresponding Spring Boot controller, after which the backend coordinates the required application processing. The resulting response returns with an HTTP status and, when necessary, a JSON payload that Moshi converts into typed application data before it is propagated back through the Repository and ViewModel to the interface.
+
+Together, Retrofit and Moshi maintain a clear separation between \textbf{network communication and application behaviour}. ViewModels do not construct HTTP requests or interpret raw JSON, while repositories preserve the stable data-access boundary established by the MVVM architecture. Since these remote operations must be executed without blocking the Android interface, their asynchronous coordination relies on \textbf{Kotlin Coroutines and Flow}, examined in the following subsection.
+
+
+\subsection{Asynchronous Processing with Coroutines and Flow}
+\label{subsec}
+
+Android interfaces must remain responsive while operations such as API requests, authentication, report retrieval, image processing requests, or analytical-data loading are executed in the background. FactoryFlow addresses this requirement using \textbf{Kotlin Coroutines}, lightweight \textbf{concurrency} components designed to execute asynchronous tasks without requiring a dedicated operating-system thread for each operation. A coroutine can suspend its execution while waiting for an external operation, such as a network response, and later resume when the result becomes available, allowing system resources to be used more efficiently.
+
+Within FactoryFlow, \textbf{asynchronous operations} are coordinated primarily from the \textbf{ViewModel and Repository layers}. When the Maintenance Engineer triggers an action, the ViewModel initiates the corresponding coroutine and delegates the required data operation to the Repository. While the remote request is being processed, the Android main thread remains available for interface rendering and user interaction. Once the operation completes, its result is propagated back to the ViewModel, which updates the state represented by the screen.
+
+Kotlin \textbf{Flow} complements coroutines by representing asynchronous streams of values. FactoryFlow particularly relies on \textbf{StateFlow} to expose the current \textbf{\textit{UiState}} from ViewModels to Jetpack Compose. As previously illustrated in \textbf{Figure~\ref{fig:android-mvvm-architecture}}, changes in loading status, retrieved information, validation results, errors, or operation outcomes are reflected through this observable state. Compose can therefore react to state changes and update the visible interface without requiring manual synchronization between individual UI components.
+
+The combination of Coroutines, Flow, and StateFlow reinforces the \textbf{state-driven MVVM architecture} adopted by FactoryFlow. Long-running or remote operations remain separated from visual rendering, while the interface continues to represent their progress and results consistently. This asynchronous model is particularly important for workflows involving backend communication, report operations, notifications, and Maintenance Intelligence data, where processing time may vary without affecting the responsiveness of the mobile application.
+
+As application state must also remain coherent when the Maintenance Engineer moves between different functional areas, the next subsection examines the \textbf{Navigation Architecture} used to coordinate transitions between FactoryFlow screens.
+
+
+\subsection{Navigation Architecture}
+\label{subsec:android-navigation-architecture}
+
+FactoryFlow uses \textbf{Navigation Compose} to coordinate movement between Compose destinations through a centralized navigation structure. Integrated with the declarative interface model used by the application, it provides explicit control over active destinations and navigation history. The navigation layer determines where the Maintenance Engineer is located within the application, while the state and operations associated with each destination remain managed by their corresponding ViewModels.
+
+Navigation begins with a \textbf{session-aware application entry}. Authentication is therefore not treated as an ordinary destination alongside the functional areas of FactoryFlow. At startup, the current authentication state is evaluated before protected content is exposed. A valid session provides access to the authenticated application, whereas an unavailable or invalid session directs the user to the authentication interface. The JWT mechanisms supporting authenticated access are examined later in the dedicated \textbf{Security Architecture} section.
+
+\textbf{Figure~\ref{fig:android-navigation-architecture}} distinguishes the stable application destinations from the task-oriented workflows that impose a specific sequence of operations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\textwidth]
+{diagrams/source/figure_3.5_Navigation_Architecture_FactoryFlow_Android.png}
+\caption{Navigation architecture of the FactoryFlow Android application}
+{\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+\label{fig:android-navigation-architecture}
+\end{figure}
+
+As illustrated in \textbf{Figure~\ref{fig:android-navigation-architecture}}, the main navigation exposes \textit{Accueil}, \textit{Rapports}, \textit{Créer}, \textit{Stats}, and \textit{Alertes}, while \textit{Profil} remains available through secondary access. \textbf{Maintenance Intelligence} belongs to the analytical scope of \textit{Stats}. These stable destinations differ from controlled task flows such as \textbf{\textit{Créer $\rightarrow$ Vérification $\rightarrow$ Rapport confirmé}}, where the sequence is significant because Review and confirmation protect the transition from acquired information to validated historical data.
+
+Navigation Compose also maintains the \textbf{back stack} required to return between destinations, while application data remains outside the responsibility of the navigation layer. \textbf{Navigation determines the active destination and navigation history, whereas ViewModels remain responsible for the state and operations associated with each functional area}. Loading states, validation edits, retrieved information, and operation results therefore continue to be represented through StateFlow and structured \textit{UiState} objects.
+
+This separation keeps access control, workflow progression, and navigation history coherent without transferring business responsibility to the navigation mechanism. Coroutines and StateFlow preserve and propagate application state, whereas Navigation Compose determines where that state is presented as the Maintenance Engineer moves through FactoryFlow. The following subsection completes the Android architecture by synthesizing these mechanisms through the application's \textbf{end-to-end data flow}.
+
+
+\subsection{Android Data Flow}
+\label{subsec:android-data-flow}
+
+The complete Android-side data flow results from the mechanisms previously illustrated in \textbf{Figures~\ref{fig:android-mvvm-architecture}--\ref{fig:android-navigation-architecture}}. A FactoryFlow operation begins when the Maintenance Engineer performs an action in a Compose screen. The interface captures that intent but does not execute the operation itself. Instead, it delegates the event to the screen's ViewModel, which coordinates the interaction through the appropriate Repository. Hilt supplies the dependencies required by these components, keeping their construction separate from presentation logic and application behaviour.
+
+The outgoing path can therefore be summarised as \textbf{\textit{User action $\rightarrow$\allowbreak{} Compose UI $\rightarrow$\allowbreak{} ViewModel $\rightarrow$\allowbreak{} Coroutine $\rightarrow$\allowbreak{} Repository $\rightarrow$\allowbreak{} Retrofit/Moshi $\rightarrow$\allowbreak{} Spring Boot API}}. The ViewModel launches the operation within a coroutine so that remote work does not block the main interface thread. The Repository exposes the requested operation through an application-facing abstraction, while Retrofit performs the HTTP exchange and Moshi converts between Kotlin models and the structured JSON representation exchanged with the backend.
+
+The return path reverses these responsibilities. Retrofit and Moshi receive the backend response, the Repository maps the data-access result, and the ViewModel converts it into a stable \textit{UiState}. StateFlow then propagates that state to Compose, which renders the corresponding loading, success, empty, or error presentation. Depending on the workflow, the backend response may result from persistence, OCR processing, report generation, or analytical processing. Android does not expose raw HTTP responses or JSON documents directly to the screen.
+
+Navigation determines where the resulting state is presented, while each destination's ViewModel remains responsible for owning and updating that state. From the Android perspective, the \textbf{Spring Boot API} therefore constitutes the controlled boundary through which persistent data, business processing, reporting, interpretation, and analytics are accessed. Everything beyond this boundary belongs to the \textbf{backend architecture}, examined in the following section.
 
 \section{Backend Architecture}
 
-\section{Android Application Architecture}
+\subsection{Java 21 and Spring Boot Foundation}
+\label{subsec:backend-java-spring-boot}
 
+FactoryFlow's backend is implemented as a \textbf{single deployable application} using \textbf{Java 21 \& Spring Boot 3.5.16}. It forms the authoritative server-side boundary of the platform: the Android client collects user actions and presents application state, while the backend coordinates protected access to persistent data and business capabilities. This centralized foundation is appropriate for FactoryFlow because authentication, KPI processing, validation, reporting, scheduling, and analytical operations must follow consistent rules regardless of the Android screen initiating them.
+
+\textbf{Java 21} provides a stable long-term-support foundation for this implementation. Its strong static type system and mature tooling help detect inconsistencies during development, while its established ecosystem supports the security, persistence, document-generation, and scheduling libraries required by the platform. FactoryFlow uses \textbf{Maven} to define the Java version, manage dependency versions, execute tests, and produce a reproducible backend build. The selected Java version is therefore an implementation baseline recorded by the build configuration rather than a permanent business constraint.
+
+\textbf{Spring Boot} provides the runtime and integration foundation surrounding the application's business modules. It simplifies application startup, configuration profiles, dependency injection, validation, REST endpoint exposure, and integration with the wider Spring ecosystem. FactoryFlow consequently benefits from \textbf{Spring Web} for HTTP communication, \textbf{Spring Security} for protected access, \textbf{Spring Data JPA} for persistence integration, and \textbf{framework support} for scheduling and email delivery. These capabilities are integrated within one coherent backend application rather than assembled as disconnected technical services.
+
+The use of \textbf{Spring Boot} does not remove the architectural separation established for FactoryFlow. \textbf{Controllers} define the HTTP boundary, application services coordinate use cases, domain components represent business concepts and rules, while repositories and infrastructure adapters provide access to persistence and external systems. The resulting \textbf{modular monolith} combines straightforward deployment and testing with clear internal boundaries, allowing major capabilities such as deterministic interpretation, reporting automation, and Maintenance Intelligence to evolve without collapsing into a single tightly coupled implementation.
+
+The following subsection examines how this foundation is organized into the \textbf{layered and modular architecture of the FactoryFlow backend}.
+
+
+
+\subsection{Layered and Modular Backend Organization}
+\label{subsec:backend-layered-modular-organization}
+
+FactoryFlow adopts a \textbf{modular-monolith architecture}: the backend is deployed as one Spring Boot application while remaining internally divided into explicit architectural layers and cohesive functional modules. Authentication, acquisition, deterministic interpretation, reporting, analytics, and notifications therefore belong to the same deployable system rather than to independent microservices. PostgreSQL, the private PaddleOCR runtime, generated-report storage, and SMTP remain outside this application boundary and are accessed through dedicated infrastructure adapters. \textbf{Figure~\ref{fig:backend-layered-modular-architecture}} presents this organization.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]
+    {diagrams/source/figure_3.6_FactoryFlow_Spring_Boot_Backend_Architecture.png}
+    \caption{Layered and modular architecture of the FactoryFlow Spring Boot backend}
+    {\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+    \label{fig:backend-layered-modular-architecture}
+\end{figure}
+
+The \textbf{API layer} constitutes the authenticated HTTP boundary exposed to the Android application. REST controllers receive typed API DTOs, apply request validation, and delegate accepted operations to the application layer. Controllers do not determine how KPI values are interpreted, how documents are generated, or how analytical results are calculated. These responsibilities belong to application services organized around FactoryFlow capabilities, including Authentication and Access, Acquisition and Validation, Deterministic Interpretation, Report Management, Reporting and Scheduling, Statistics and History, Maintenance Intelligence, and Notifications. This separation also distinguishes acquisition workflow coordination from the deterministic mechanism that assigns business meaning to acquired information.
+
+The \textbf{domain layer} preserves the business concepts and rules that remain meaningful independently of HTTP communication or database representation. It includes concepts such as KPIs, maintenance reports, validation states, schedules, notifications, generated-report metadata, and analytical results. Validated KPI information is especially important because conventional statistics and Maintenance Intelligence must operate on confirmed historical data rather than directly on unreviewed acquisition results. Keeping this meaning separate from controllers and persistence structures prevents infrastructure decisions from redefining business behaviour.
+
+The \textbf{infrastructure and data-access layer} implements the technical boundaries required by the application. Spring Data JPA and Hibernate provide persistence access to PostgreSQL, while dedicated adapters connect the backend to the private PaddleOCR runtime, generated-report storage, and SMTP delivery. PaddleOCR remains responsible only for text extraction; deterministic interpretation stays inside the Spring Boot application. Quartz similarly supports Reporting and Scheduling by determining when an operation should begin, without owning report content, storage rules, period semantics, or email delivery.
+
+This organization allows complex capabilities such as deterministic interpretation, reporting automation, and Maintenance Intelligence to coexist inside one backend without becoming one tightly coupled block of code. FactoryFlow consequently retains the deployment and testing simplicity of a single application while preserving replaceable infrastructure boundaries and maintainable business modules. The architecture establishes where each responsibility belongs; the following subsection explains how an individual request crosses these boundaries.
+
+\subsection{Request Processing and Service Boundaries}
+\label{subsec:backend-request-processing}
+
+The layered organization described previously becomes concrete when an operation reaches the FactoryFlow backend. For a conventional client request, processing begins at a \textbf{REST controller}, which receives the HTTP request, validates its API representation, and delegates the requested use case to the appropriate application service. The service coordinates the required domain rules and accesses persistence or external systems only through the corresponding repository or infrastructure abstraction. The result then returns through the controller as a structured API response to the Android application.
+
+This processing path can be summarized as \textbf{\textit{Android request $\rightarrow$ Controller $\rightarrow$ Application Service $\rightarrow$ Domain Rules / Repository or Adapter $\rightarrow$ Response}}. However, FactoryFlow is not limited to simple CRUD operations. An acquisition request may require text extraction through the OCR provider followed by deterministic interpretation and preparation of review data; confirmation applies validation rules before information becomes trusted historical data; reporting operations may generate and store documents; and analytical requests may invoke Statistics or Maintenance Intelligence over validated KPI history. The application-service layer therefore acts as the \textbf{workflow coordination boundary} rather than as a direct bridge between controllers and PostgreSQL.
+
+Not every backend workflow originates from an Android request. Scheduled operations can also be initiated internally when \textbf{Quartz} triggers a configured reporting task. In this case, the same application services remain responsible for period calculation, document generation, storage, notification, and optional email delivery. The trigger changes, but the business workflow remains inside the same controlled service boundaries. This avoids duplicating reporting logic between manually requested and automatically scheduled operations.
+
+These boundaries preserve a clear distinction between \textbf{communication, business coordination, domain rules, and technical integration}. Controllers remain focused on the API contract, application services coordinate use cases, domain components preserve business meaning, and repositories or adapters isolate persistence and external technologies. The following sections examine these backend responsibilities in greater detail, beginning with the \textbf{data model and persistence architecture}.
 \section{Data Model and Persistence}
+\subsection{PostgreSQL and Relational Persistence}
+\label{subsec:backend-postgresql-persistence}
+
+FactoryFlow uses \textbf{PostgreSQL} as its central relational database because industrial maintenance information is structured, strongly connected, and expected to remain reliable over time. KPI measurements are associated with maintenance reports, generated documents originate from validated information, and schedules, notifications, and analytical operations depend on persistent application context. A relational model represents these relationships explicitly while providing transactions, constraints, referential integrity, and consistent querying. PostgreSQL also integrates naturally with the Spring Boot persistence ecosystem and provides a mature foundation for historical consultation, filtering, reporting, analytics, and continued system evolution.
+
+The database preserves the information required to maintain FactoryFlow's operational and historical continuity. This includes KPI definitions and approved interpretation metadata, maintenance reports, individual measurements, acquisition and review state, generated-report metadata, schedules, notifications, and the confirmed historical information consumed by Statistics and \textbf{Maintenance Intelligence}. Validated KPI history therefore forms the persistent analytical foundation of the platform. Analytical outputs that require historical traceability, such as contextual alerts or retained analysis results, are persisted according to their application lifecycle. The objective is not to store every temporary technical value indiscriminately, but to preserve the information required for reliable workflows, traceability, document generation, analytics, and later consultation.
+
+A crucial distinction is that \textbf{acquired or interpreted information does not automatically constitute trusted historical data}. Values obtained from pasted text, manual entry, shared content, or OCR must pass through the Review and confirmation workflow before becoming official. The persistence model must therefore preserve relevant lifecycle states and distinguish original input, interpreted information, user corrections, missing values, and confirmed results instead of prematurely reducing them to a single final value. PostgreSQL remains exclusively behind the backend boundary: the \textbf{Android application never accesses the database directly}. Every persistent operation passes through the Spring Boot backend, where authentication, validation, and business rules determine what may be stored, updated, or returned.
+\subsection{Persistence with Spring Data JPA and Hibernate}
+\label{subsec:backend-jpa-hibernate}
+
+FactoryFlow uses three complementary persistence technologies with distinct responsibilities. The \textbf{Jakarta Persistence API (JPA)} defines the standard annotations and contracts used to map Java persistence objects to relational structures. \textbf{Hibernate} implements this standard and performs the object--relational mapping operations required to translate entity state and relationships into SQL operations against PostgreSQL. \textbf{Spring Data JPA} builds on this foundation by providing repository abstractions that reduce repetitive data-access code. The resulting technical path can be summarized as \textbf{\textit{JPA entity $\rightarrow$ JPA mapping $\rightarrow$ Hibernate $\rightarrow$ SQL/PostgreSQL}}. This mapping reconciles the object-oriented representation used by the backend with the tables, columns, keys, and relationships used by the relational database.
+
+FactoryFlow application services do not construct SQL statements or manage database connections directly. Instead, they depend on repository interfaces representing the persistent information required by each use case. These repositories support the retrieval and storage of maintenance reports, KPI measurements, validation information, schedules, notifications, generated-report metadata, and analytical results that require persistence. The complete access path is therefore \textbf{\textit{Application Service $\rightarrow$ Repository $\rightarrow$ Spring Data JPA/Hibernate $\rightarrow$ PostgreSQL}}. This structure reinforces the layered organization illustrated in \textbf{Figure~\ref{fig:backend-layered-modular-architecture}} while preventing database-specific concerns from spreading into application workflows.
+
+The repository boundary ensures that persistence technology supports the business model without defining its rules. A service confirming a maintenance report, \textbf{for example}, remains responsible for validation and confirmation behaviour rather than SQL syntax, connection handling, or entity-loading mechanics. Concepts such as missing measurements, validation status, user corrections, traceability, and trusted historical information retain their business meaning \textbf{independently} of their database representation. When an operation modifies several related persistent elements, Spring transaction management allows those changes to be treated as \textbf{one logical unit}, reducing the risk of partial updates leaving the stored state inconsistent.
+
+Mapping Java objects to relational storage explains how information is persisted technically; the following subsection examines how FactoryFlow preserves its meaning and history through \textbf{Data Integrity and Traceability}.
+
+\subsection{Data Integrity and Traceability}
+\label{subsec:data-integrity-traceability}
+
+Within FactoryFlow, \textbf{data integrity is not limited to database constraints or valid column types}. It also represents \textbf{semantic integrity}: preserving what maintenance information means, where it originated, and how trustworthy it is at each stage. A measurement entered manually, extracted from an image, interpreted from operational text, corrected during Review, and explicitly confirmed does not possess the same trust status throughout its lifecycle. FactoryFlow therefore preserves this progression instead of treating every acquired value as immediately trusted. \textbf{Figure~\ref{fig:factoryflow-traceability-lifecycle}} illustrates this controlled lifecycle.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\textwidth]
+{diagrams/source/figure_3.7_Controlled_Traceability_Lifecycle_FactoryFlow.png}
+\caption{Controlled traceability lifecycle of FactoryFlow maintenance data}
+{\footnotesize \textit{Source: Created by the author using Figma (figma.com).}\par}
+\label{fig:factoryflow-traceability-lifecycle}
+\end{figure}
+
+The traceability model distinguishes the successive representations of maintenance information: \textbf{original source $\rightarrow$ extracted or interpreted information $\rightarrow$ reviewed or corrected value $\rightarrow$ confirmed value}. The original acquisition context remains preserved even when the Maintenance Engineer corrects an interpreted measurement. A correction changes the value that may subsequently be confirmed, but it \textbf{does not erase provenance}. Relevant interpretation context, including warnings, uncertainty information, and Review decisions, remains traceable where applicable without coupling persistence to the internal implementation of the parser. The system can therefore preserve both the accepted result and the controlled process through which it was obtained.
+
+Several rules protect the transition into trusted history. \textbf{Missing information remains missing and is never converted automatically to zero}, because absence and a measured zero represent different industrial conditions. \textbf{Ambiguous or unresolved information remains under Review} until the Maintenance Engineer resolves or rejects it. Most importantly, acquired or interpreted information cannot become trusted historical data without \textbf{explicit confirmation}. The persistence model therefore distinguishes acquisition, Review, correction, and confirmation states rather than relying on the mere existence of a database record. Only validated history, not raw acquisition output, provides the trusted foundation for generated reports, historical statistics, and Maintenance Intelligence.
+
+Once confirmed, the resulting information can safely contribute to PDF and Excel reporting, KPI statistics, trend analysis, anomaly detection, forecasting, and contextual alerts because it has passed through a controlled human-validation lifecycle. FactoryFlow can therefore automate downstream exploitation while retaining accountability: \textbf{automation remains trustworthy because provenance is preserved and trusted history requires confirmation}. Preserving information integrity during application operation is one requirement; preserving the consistency of the database structure as FactoryFlow evolves is another. The following subsection therefore examines \textbf{Schema Evolution with Flyway}.
+\subsection{Schema Evolution with Flyway}
+\label{subsec:schema-evolution-flyway}
+
+FactoryFlow uses \textbf{Flyway} to manage PostgreSQL schema evolution through \textbf{ordered and versioned migration files}. Instead of applying informal modifications directly to a database, each structural change is described in a migration that becomes part of the backend source code and version history. Flyway executes pending migrations in their defined order and records the versions already applied in a dedicated schema-history table. The conceptual sequence is therefore \textbf{\textit{migration files $\rightarrow$ ordered execution $\rightarrow$ schema version history $\rightarrow$ current PostgreSQL schema}}. This process keeps the application's persistence expectations synchronized with the actual database structure and makes schema creation reproducible across development, testing, and deployment environments.
+
+Throughout FactoryFlow's development, schema evolution accompanies capabilities requiring \textbf{tables, columns, constraints, indexes, or relationships} supporting reporting, scheduling, notifications, validation history, and Maintenance Intelligence. These modifications are introduced through new migrations rather than by rewriting previously applied database changes. A database environment can consequently be advanced to the expected schema state in a controlled manner without manually reproducing earlier modifications. The essential engineering principle is that \textbf{the database schema evolves under version control together with the backend instead of being modified informally}.
+
+While Flyway preserves the \textbf{structural consistency} of persistent storage, access to that data and to protected backend capabilities must also be controlled. The following section therefore examines the \textbf{FactoryFlow Security Architecture}.
+
 
 \section{Security Architecture}
+\subsection{Spring Security and Authentication Boundary}
+\label{subsec:security-spring-security}
+
+FactoryFlow uses \textbf{Spring Security} to establish the security boundary that protects access to backend capabilities before requests reach application services. Spring Security integrates with the Spring web stack through a configurable chain of security filters that examines incoming requests and determines whether they may continue toward the REST controllers. This approach is appropriate for FactoryFlow because authentication and access control must remain centralized at the backend rather than being trusted to individual Android screens or application services.
+
+The backend defines this behaviour through a \textbf{SecurityFilterChain}. FactoryFlow follows a \textbf{stateless REST architecture}: the authentication endpoint, \textbf{\texttt{POST /api/auth/login}}, remains publicly accessible so that a user can establish an authenticated session, while the remaining protected API operations require valid authentication. Traditional server-side form login is not used. Instead, authentication is based on \textbf{bearer tokens}, allowing each protected request to carry the information required for the backend to verify the caller independently.
+
+For subsequent API calls, FactoryFlow installs a dedicated \textbf{JwtAuthenticationFilter} before Spring Security's \textbf{\texttt{UsernamePasswordAuthenticationFilter}}. The filter examines the \texttt{Authorization} header of incoming requests, validates the supplied bearer token, and establishes the authenticated security context required by downstream processing when the token is valid. Invalid or expired authentication information is therefore rejected before protected application functionality is reached. Once authentication has been established, controllers and application services can operate under a verified user identity rather than trusting identity information supplied directly by the Android interface.
+
+This architecture creates a clear separation between \textbf{security enforcement and business processing}. Spring Security determines whether a protected request is allowed to cross the backend security boundary, while controllers and application services remain responsible for FactoryFlow workflows such as report management, validation, scheduling, and analytics. The Android application may control which authenticated screens are presented to the Maintenance Engineer, but \textbf{the backend remains the authoritative access-control boundary}. The following subsection examines how this security boundary is implemented through the \textbf{JWT-based authentication flow}, from credential verification and token issuance to authenticated REST requests.
+
+
+\subsection{JWT Authentication and Secure Session Lifecycle}
+\label{subsec:jwt-authentication-secure-session}
+
+FactoryFlow implements authentication as a \textbf{stateless exchange between the Android application and the Spring Boot backend}. A JSON Web Token \textbf{(JWT)} is a compact signed representation through which the backend can associate subsequent requests with an authenticated identity. Unlike a traditional server-side session, the backend does not retain an HTTP session for each Android client. The interaction instead follows the sequence \textbf{\textit{credentials establish identity once $\rightarrow$ backend issues a JWT $\rightarrow$ Android presents that JWT with every protected request}}. A JWT contains a header, a payload, and a signature. In FactoryFlow, the token is \textbf{signed rather than encrypted}: its signature protects its integrity and authenticity, whereas its payload must not be considered confidential storage.
+
+Authentication begins when the Maintenance Engineer submits an email address and password from the Android login screen. The endpoint \textbf{\texttt{POST /api/auth/login}} receives these credentials, and the \textbf{\texttt{AuthController}} delegates the operation to the \textbf{\texttt{AuthenticationService}}. Passwords are not compared with stored plaintext values. Instead, the submitted password is verified against the persisted \textbf{BCrypt password hash}. The \textbf{\texttt{JwtTokenService}} then issues an access token signed with the \textbf{HS256} algorithm. HS256 uses a \textbf{symmetric HMAC key} constructed from the protected \path{JWT_SECRET} configuration value, which FactoryFlow requires to contain at least 32 characters.
+
+\textbf{Figure~\ref{fig:jwt-authentication-secure-session}} summarizes token issuance, secure Android storage, and authenticated access to protected backend operations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.8_JWT_Authentication_and_Secure_Session_FactoryFlow.png}
+\caption{JWT authentication and secure session flow in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:jwt-authentication-secure-session}
+\end{figure}
+
+The issued token contains the issuer \texttt{factoryflow}, the user's email address as its subject, the database user identifier in the \textbf{\texttt{uid}} claim, the issuance time in \textbf{\texttt{iat}}, and the expiration time in \texttt{exp}. The implemented token contains no role claim, token identifier (\texttt{jti}), or refresh-token information. FactoryFlow therefore uses a deliberately compact, short-lived access-token model rather than embedding additional authorization or token-management state in the JWT. The default validity period is \textbf{15 minutes}, equivalent to 900 seconds. It can be changed through \path{JWT_ACCESS_TOKEN_TTL}. The login response exposes the lifetime through \texttt{expiresInSeconds}. Nevertheless, the backend remains authoritative for token validity: a retained Android token is considered usable only while protected requests continue to be accepted by the server.
+
+As illustrated in \textbf{Figure~\ref{fig:jwt-authentication-secure-session}}, receiving a JWT is followed by a distinct \textbf{local-storage protection stage}. The \texttt{DefaultAuthRepository} passes the access token to \texttt{SecureTokenStore}. The token is not written as plaintext to Android preferences. The \texttt{AES/GCM/NoPadding} transformation encrypts it instead. The associated AES key is retained by the \textbf{Android Keystore} under the alias \path{factoryflow_access_token}. The encrypted token and its initialization vector are Base64-encoded and stored in the application's private \path{secure_session} \texttt{SharedPreferences} file. This separation gives two mechanisms different responsibilities: the JWT signature protects the client--server authentication protocol, while AES-GCM and Android Keystore protect the token retained on the device.
+
+For every subsequent protected operation, Retrofit creates the REST request and the Android \texttt{AuthInterceptor} retrieves the stored token through \texttt{SecureTokenStore}. After local decryption, the interceptor adds the token to the request using the \texttt{Authorization: Bearer} header. The Android application only presents this credential; it does not decide whether the token is valid. On the backend, the configured security filter chain receives the request first. The \textbf{\texttt{JwtAuthenticationFilter}} runs before protected controllers are reached. The token decoder verifies the HS256 signature and temporal validity. The \texttt{FactoryFlowUserDetailsService} then uses the extracted subject email to load the corresponding user account from the database. A valid result establishes an authenticated Spring Security context, after which the request may proceed to the REST controller and its application service.
+
+A protected operation may return \texttt{HTTP 401 Unauthorized}. In that case, the Android \texttt{AuthInterceptor} clears the locally stored token and marks the session as expired. The authenticated application state therefore ends and the Maintenance Engineer must authenticate again. This behaviour also handles access-token expiration: once the backend refuses the expired credential, Android removes the unusable local session instead of continuing to present it.
+
+FactoryFlow currently implements \textbf{local logout rather than server-side token revocation}. Logging out calls \texttt{SecureTokenStore.clear()}, removes the encrypted token and initialization vector from the Android client, and returns the application to its unauthenticated state. There is currently no backend logout endpoint, token blacklist, revocation store, refresh-token mechanism, or \texttt{jti} claim. Consequently, an independently copied token is not cryptographically invalidated by local logout and remains usable only until its configured expiration. FactoryFlow limits this exposure through its deliberately short default access-token lifetime while retaining a fully stateless backend authentication model.
+
+
+\subsection{Security Responsibilities and Trust Boundaries}
+\label{subsec:security-responsibilities-trust-boundaries}
+
+FactoryFlow's security architecture combines several controls whose responsibilities must remain distinct. \textbf{BCrypt} protects stored passwords through one-way hashing and is used only when credentials are verified during login. \textbf{HS256} protects the integrity and authenticity of JWT access tokens exchanged with the backend. \textbf{AES-GCM} protects a retained token against plaintext disclosure from Android application storage, while \textbf{Android Keystore} isolates the corresponding encryption key from the stored ciphertext. Because a signed JWT payload is not encrypted, confidentiality for credentials and bearer tokens while crossing the network depends on using \textbf{HTTPS in the deployment environment}.
+
+The Android interface manages authentication state and controls visible screens, but UI visibility is not an authorization mechanism. Every protected request must cross the Spring Security filter chain, and the backend remains responsible for validating the caller before exposing application capabilities. Controllers then delegate operations to application services, where input validation and business rules remain server-side. The Android client never connects directly to PostgreSQL; persistent information is accessible only through authenticated backend operations. Hiding a screen or action on Android therefore improves the user experience but cannot replace backend enforcement.
+
+These boundaries create a defense-in-depth structure across the platform: Android securely retains and presents the credential, Spring Security verifies requests at the backend boundary, application services protect workflow rules, and PostgreSQL remains isolated behind the backend. The adopted model deliberately favors short-lived stateless access tokens over server-side revocation state. Refresh-token rotation or explicit token revocation represent possible security-hardening options for deployments requiring longer-lived sessions, but they are outside the implemented FactoryFlow authentication model.
 
 \section{OCR and Acquisition Architecture}
+\subsection{Acquisition Channels and OCR Boundary}
+\label{subsec:acquisition-channels-ocr-boundary}
 
-\section{Reporting and Analytics Architecture}
+FactoryFlow deliberately supports three complementary acquisition channels because industrial maintenance information does not always reach the Maintenance Engineer in the same form: \textbf{Manual Entry}, \textbf{Paste Message}, and \textbf{Image Import}. Although these channels eventually converge toward the same controlled Review and confirmation lifecycle, \textbf{their processing routes are not identical}. Manual Entry already provides structured KPI values and therefore bypasses both OCR and textual interpretation. Paste Message provides machine-readable text and consequently bypasses OCR while entering deterministic interpretation directly. Image Import first requires text extraction before its result can be interpreted. The three routes can therefore be summarized as \textbf{\textit{image $\rightarrow$ OCR $\rightarrow$ deterministic interpretation}}, \textbf{\textit{pasted text $\rightarrow$ deterministic interpretation}}, and \textbf{\textit{manual values $\rightarrow$ structured validation and draft workflow}}.
+
+\textbf{Optical Character Recognition (OCR)} converts visible textual content contained in an image into machine-readable text. This capability is particularly relevant to FactoryFlow because operational maintenance information may already exist in \textbf{WhatsApp screenshots or other imported images}. Requiring the Maintenance Engineer to transcribe this content manually would reproduce part of the repetitive workflow that FactoryFlow is intended to reduce. However, OCR has a deliberately restricted architectural responsibility. It identifies characters and textual lines, but it does not determine which KPI a line represents, whether a missing marker denotes an absent measurement, whether zero is a legitimate value, whether two observations are duplicates, whether a fuzzy suggestion is acceptable, or whether acquired information may become trusted. These decisions belong to FactoryFlow's deterministic interpretation and human-validation pipeline. The essential distinction is therefore that \textbf{OCR extraction $\neq$ business interpretation}.
+
+For image-based acquisition, an image may originate from the Android gallery or arrive through an \textbf{Android Share Intent}. Both routes use the same acquisition workflow. The \textbf{\texttt{OcrAcquisitionViewModel}} coordinates the operation and delegates image access and transmission to \textbf{\texttt{DefaultOcrRepository}}. The repository reads the selected Android URI, accepts \textbf{JPEG, PNG, and WebP} content, and enforces a maximum upload size of \textbf{10~MiB}. The selected image is transmitted to \textbf{\texttt{POST /api/ocr/recognize}} as \textbf{\texttt{multipart/form-data}} using its binary image bytes rather than a Base64 representation. After receiving the request, the Spring Boot backend performs the MIME-type and size checks again before invoking OCR. This duplication is intentional: \textbf{backend correctness and security must not depend exclusively on validation performed by the Android client}.
+
+\textbf{Figure~\ref{fig:acquisition-channels-ocr-boundary}} presents the three acquisition routes and identifies the exact boundary between OCR extraction and FactoryFlow business interpretation.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.9_Acquisition_Channels_and_OCR_Boundary_FactoryFlow.png}
+\caption{Acquisition channels and OCR boundary in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:acquisition-channels-ocr-boundary}
+\end{figure}
+
+As illustrated in \textbf{Figure~\ref{fig:acquisition-channels-ocr-boundary}}, the Spring Boot application does not embed PaddleOCR directly. The \textbf{\texttt{OcrService}} depends on the \textbf{\texttt{OcrProvider}} contract, whose current concrete adapter is \textbf{\texttt{PaddleOcrProvider}}. This adapter forwards the image through a private HTTP request to a separate Python runtime. The resulting sequence is \textbf{\textit{Android $\rightarrow$ Spring Boot $\rightarrow$ OcrProvider $\rightarrow$ private PaddleOCR runtime}}. In particular, \textbf{the Android application never communicates directly with PaddleOCR}. This provider boundary keeps the Spring application independent from Python-specific OCR internals, allows PaddleOCR to execute in its appropriate runtime environment, and permits the OCR implementation or its configuration to evolve without redesigning the Android acquisition workflow or the backend application services.
+
+The private runtime is implemented using \textbf{FastAPI}. It exposes the \textbf{\texttt{POST /v1/ocr}} endpoint, which is invoked by \texttt{PaddleOcrProvider}. The runtime executes \textbf{PaddleOCR PP-OCRv5 configured for French (\texttt{fr})}. Document-orientation classification and text-line orientation are enabled to accommodate imported content that may not be perfectly normalized, whereas document unwarping is disabled. Images whose longest edge exceeds \textbf{2400 pixels} are resized before recognition to limit unnecessary processing cost. The runtime returns the \textbf{combined recognized text}, individual recognized lines, per-line confidence scores and bounding boxes, an overall confidence score, the engine identifier, processing duration, and warnings such as low confidence or image downscaling. The Android acquisition state consumes the combined text, overall confidence, engine information, and warnings; line-level bounding boxes remain part of the OCR response but are not retained in the current UI state.
+
+These confidence values must also be interpreted within their proper boundary. \textbf{OCR confidence expresses confidence in character and text recognition, not confidence in the industrial meaning of the recognized information}. A line may be recognized with high confidence while still containing an unknown label, representing the wrong KPI, using an unexpected unit, or requiring human judgment. Confidence can therefore support Review, but \textbf{it cannot establish business truth or replace explicit confirmation}. Once the OCR response has been received, the extracted text remains editable in Android and is subsequently sent to the report-analysis workflow. At that point, \textbf{OCR has completed its responsibility}: FactoryFlow possesses machine-readable text, but that text has not yet been assigned reliable industrial meaning.
+
+The \textbf{Paste Message} path enters deterministic interpretation without invoking OCR. The Android application submits the pasted content to \textbf{\texttt{POST /api/reports/analyze}} with the acquisition source identified as \textbf{\texttt{PASTE}}, after which \textbf{\texttt{ReportAnalysisService}} delegates the text to \textbf{\texttt{DeterministicKpiParser}} together with the active KPI definitions. The internal interpretation rules applied by this parser are examined in the following subsection.
+
+\textbf{Manual Entry} bypasses both OCR and the deterministic text parser because the Maintenance Engineer explicitly selects the KPI definition and enters its numerical value in structured form. Nevertheless, \textbf{bypassing interpretation does not mean bypassing validation}. Android verifies that non-missing values can be represented numerically and compares them with the configured plausible range. A value outside that range produces an \textbf{\texttt{OUTSIDE\_PLAUSIBLE\_RANGE}} warning rather than being silently accepted or rejected. The structured request is then processed by the common server-side draft workflow, and the \textbf{common Review and confirmation safeguards remain applicable}. Manual Entry therefore bypasses heterogeneous-text interpretation, \textbf{not the trust lifecycle through which information becomes official}.
+
+Traceability begins when the analyzed or structured information is used to create a server-side draft. For Paste Message, the submitted textual source is persisted as \textbf{\texttt{MaintenanceReport.rawText}}. For OCR-based acquisition, FactoryFlow persists the \textbf{OCR-extracted text after any edits made in the acquisition interface} and records whether the source was \textbf{\texttt{GALLERY\_OCR}} or \textbf{\texttt{SHARE\_OCR}}. The original image bytes, Android URI, and PaddleOCR bounding boxes remain transient during recognition and are \textbf{not persisted by the current backend}. FactoryFlow therefore preserves the textual source that actually enters deterministic interpretation, but it does not claim permanent provenance for the imported image artifact itself. For Manual Entry, \texttt{rawText} is null because no textual source exists; provenance instead consists of the \textbf{\texttt{MANUAL}} source type, selected KPI definition, entered value, warnings, authenticated user, and report timestamps. Having established how information enters FactoryFlow and where OCR ends, the next subsection explains \textbf{how deterministic interpretation assigns structured industrial meaning to the resulting textual source}.
+
+\subsection{Deterministic Interpretation Pipeline}
+\label{subsec:deterministic-interpretation-pipeline}
+
+The acquisition mechanisms presented in the previous subsection produce either structured manual values or a textual source obtained from Paste Message or OCR. However, recognizing characters does not by itself establish their industrial meaning. A source may contain KPI labels, numerical measurements, missing-value markers, percentages, WhatsApp metadata, OCR artefacts, duplicated observations, or previously unknown business information. Consequently, FactoryFlow introduces a deterministic interpretation layer between text acquisition and human validation. Its central principle is that \textbf{text recognition provides syntax, whereas deterministic interpretation assigns controlled business meaning}.
+
+In FactoryFlow, \textbf{deterministic} means that the same source text, processed with the same active KPI definitions and configured rules, produces the same interpretation. The backend does not rely on opaque probabilistic interpretation for authoritative KPI extraction and does not allow uncertain information to become trusted data automatically. Instead, it applies explicit rules for normalization, source-line classification, segmentation, numerical interpretation, KPI matching, validation, and duplicate detection. This approach supports the \textbf{reproducibility, explainability, and traceability} required for industrial maintenance reporting.
+
+Textual analysis enters the backend through \texttt{POST /api/reports/analyze}. The \texttt{ReportAnalysisController} delegates the request to \texttt{ReportAnalysisService}, which retrieves the active KPI definitions and invokes \texttt{DeterministicKpiParser}. The parser receives both the complete \texttt{rawText} and its acquisition source. This separation is important: normalized representations are used for comparison, but the original submitted text and individual source lines remain available as evidence. \textbf{Normalization supports interpretation without rewriting provenance.}
+
+The first processing stage applies safe structural normalization. FactoryFlow normalizes Unicode text using NFKC, standardizes line endings, converts non-breaking spaces and selected Unicode hyphen variants, and removes surrounding whitespace. Label matching additionally uses lowercase, accent-independent, punctuation-normalized, and compact representations. These working forms allow labels such as \texttt{EAU}, \texttt{Eau}, and spacing or punctuation variants to be compared consistently. Nevertheless, the original label and source line are retained in the resulting candidate so that the Maintenance Engineer can compare the interpretation with the submitted evidence.
+
+Each original line is then classified as \textbf{empty}, \textbf{header}, \textbf{WhatsApp metadata}, or \textbf{business content}. Recognized headers and metadata, including timestamps and known contextual lines, are returned as \texttt{ignoredLines} with their classification reason. Empty lines are skipped. Business-like content is never discarded merely because its KPI association is unknown. This creates a deliberate distinction between \textbf{safe contextual noise} and \textbf{unresolved KPI-like information}: the former may be excluded from active interpretation, whereas the latter must remain visible for human resolution.
+
+Content lines pass through conservative segmentation. The parser first recognizes explicit separators such as colons, equals signs, and arrow forms, followed by a controlled whitespace-based label/value pattern. It also supports a restricted two-line form in which a recognized KPI label is immediately followed by a standalone value or missing marker. If no safe segmentation can be established, the line is preserved in \texttt{unrecognizedLines} instead of being silently removed or forcefully interpreted.
+
+Figure~\ref{fig:deterministic-interpretation-pipeline} summarizes the complete transformation from preserved textual evidence to the structured projection presented for Review.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.10_Deterministic_Interpretation_Pipeline_FactoryFlow.png}
+\caption{Deterministic interpretation and Review-preparation pipeline in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:deterministic-interpretation-pipeline}
+\end{figure}
+
+Numerical interpretation distinguishes valid measurements, missing information, and invalid or ambiguous representations. FactoryFlow accepts signed integers and decimals, supports decimal commas and points, handles valid grouping separators, and captures an optional attached unit. An explicit missing marker, including repeated hyphens, \texttt{N/A}, \texttt{NA}, \texttt{vide}, \texttt{manquant}, or \texttt{non renseigné}, produces a null extracted value with a \texttt{MISSING\_VALUE} warning. It never becomes numerical zero. Conversely, an explicit \texttt{0} remains a valid measurement. This distinction is essential because \textbf{zero represents an observed value, while missing represents the absence of a usable observation}.
+
+Some numerical forms cannot be interpreted safely from punctuation alone. For example, \texttt{30.197} may represent a decimal value or a grouped integer. When a single separator followed by three digits creates this ambiguity, the parser preserves an editable candidate and emits an ambiguity warning. A configured plausible range may resolve which interpretation is credible, but this resolution remains visible through a warning and therefore still reaches Review. FactoryFlow consequently avoids hiding numerical uncertainty behind an apparently precise value.
+
+The value parser also supports the implemented compressor composite format. For KPI definitions whose code follows the compressor convention, a source such as \texttt{Compresseur 1: 77108-77\%} is interpreted as a \textbf{primary value of 77108} associated with a \textbf{secondary percentage of 77\%}. Both values remain linked to the same source observation. The parser separately validates the primary value, the secondary value, and the percentage range. This preserves the meaning of the original composite measurement instead of splitting it into unrelated KPI records.
+
+KPI association follows an ordered authority hierarchy. FactoryFlow first attempts an \textbf{exact canonical match} with a score of 1.0000, followed by an \textbf{exact approved alias} with a score of 0.9900. Normalized and compact comparisons use scores of 0.9700 and 0.9500 respectively. A restricted OCR-aware comparison, including controlled substitutions such as \texttt{0} for \texttt{o} or \texttt{1} for \texttt{l}, uses a score of 0.9200 and explicitly requires Review. Only after these stronger mechanisms fail does the parser apply fuzzy similarity.
+
+The fuzzy matcher combines normalized Levenshtein similarity with token-based Dice similarity. Its default acceptance threshold is 0.82, and at most three suggestions are returned. Candidates whose leading scores remain too close are treated as ambiguous instead of being resolved by an arbitrary highest-score choice. A fuzzy association therefore produces a \texttt{LOW\_CONFIDENCE} warning and enters the \texttt{ATTENTION} state. \textbf{Fuzzy matching assists Review; it does not establish business truth.}
+
+FactoryFlow also separates suggestions from reusable knowledge. A fuzzy or OCR-corrected association does not automatically create an alias. An alias is remembered only when the Maintenance Engineer explicitly approves the proposed association and requests that it be retained. Android then submits the decision to the KPI-definition alias endpoint, and the backend records the alias with the \texttt{USER\_APPROVED} origin and authenticated approval information. This prevents one incorrect suggestion from silently modifying the interpretation of future reports.
+
+After matching and value extraction, the parser applies validation rules. Captured units are compared with the expected KPI unit, numerical values are checked against configured plausible ranges, composite values are verified, and match-specific warnings are retained. If the same canonical KPI appears more than once, the observations remain separate and each receives a \texttt{DUPLICATE\_KPI} warning. FactoryFlow does not overwrite the first value with the second because repeated entries may represent an accidental duplicate, a correction, or distinct source observations requiring human judgement.
+
+The resulting review projection uses four actual states. A known KPI with a valid value and no warnings becomes \texttt{READY}. An explicit absence becomes \texttt{MISSING}. Any recognized candidate carrying a correction, ambiguity, range, unit, composite, fuzzy-match, or duplicate warning becomes \texttt{ATTENTION}. A candidate for which no KPI definition can be established becomes \texttt{UNRESOLVED}. Composite values and duplicate observations are therefore \textbf{structured evidence or warning conditions}, not independent top-level review states. Safe headers and metadata are returned separately as ignored-source evidence.
+
+The backend returns an \texttt{AnalyzeReportResponse} containing the original source and raw text, state counters, structured entries, unrecognized lines, and safely ignored lines. Each structured entry provides the original source label and line, matched or suggested KPI information, primary and optional secondary values, captured and expected units, match method, confidence, warnings, and review state. Android uses this projection to construct the editable draft presented to the Maintenance Engineer.
+
+The deterministic parser therefore produces \textbf{explainable and traceable interpretation proposals}, not official maintenance history. Original evidence, uncertainty, warnings, unresolved content, and repeated observations survive processing so that they can be inspected rather than hidden. The governing boundary is explicit: \textbf{the parser proposes structured meaning; human confirmation establishes trusted history}. The following subsection examines how Review enforces this boundary and prevents uncertain information from becoming official without explicit validation.
+
+\subsection{Review, Uncertainty and Human Validation}
+\label{subsec:review-human-validation}
+
+Deterministic interpretation produces structured observations, but structure alone does not make information authoritative. A candidate may still contain a warning, an explicit absence, an uncertain KPI association, a duplicate observation, or unresolved business content. FactoryFlow therefore implements Review as the \textbf{human-control layer between automated interpretation and trusted historical information}. The Android interface presents the available evidence and controlled resolution actions, while a persistent server-side draft keeps the information non-authoritative until the confirmation conditions are satisfied.
+
+\subsubsection{Review States and Evidence}
+
+The analysis result is converted by Android from \texttt{AnalyzeReportResponse} into a \texttt{DraftReportRequest} and submitted to \texttt{POST /api/reports/drafts}. The backend persists a \texttt{MaintenanceReport} whose status remains \texttt{DRAFT} throughout Review. This makes Review a resumable business workflow rather than temporary Compose state. The engineer may leave the screen, reload the report, and continue from the persisted draft without promoting its values into official history.
+
+The Android \texttt{ReviewViewModel} loads the persisted draft together with the active KPI definitions, while \texttt{ReviewScreen} organizes the observations into four semantic states: \texttt{READY}, \texttt{MISSING}, \texttt{ATTENTION}, and \texttt{UNRESOLVED}. These states describe what human action remains before confirmation; they are not persisted report statuses.
+
+A \texttt{READY} observation has an assigned KPI, a usable interpreted value, and no warning that blocks confirmation. \textbf{Ready means eligible for confirmation, not already confirmed.} The current Ready card allows the engineer to inspect the result and its source evidence or remove the observation. It does not expose a value editor once the observation has reached this state.
+
+A \texttt{MISSING} observation represents an explicit and understood absence of measurement. The engineer may preserve the absence, enter a corrective value, or remove the observation. An unchanged missing entry does not block confirmation and may retain a null final value. If the engineer enters a value, the entry becomes a corrected-missing case and requires explicit validation before it can become Ready. This distinction is fundamental: \textbf{missing is a valid semantic state, whereas unresolved means that the business meaning remains incomplete}.
+
+An \texttt{ATTENTION} observation contains structured information, but automated interpretation alone is insufficient for authoritative acceptance. This state covers duplicate observations, numerical ambiguity, plausible-range and unit warnings, fuzzy or OCR-aware associations, and composite-integrity conditions. The interface allows the engineer to inspect the original source and warning, edit primary or secondary values where applicable, remove the observation, and explicitly validate it. Validation clears the blocking warning set from the current draft. \textbf{Attention does not mean incorrect; it means that the interpretation requires an accountable human decision.}
+
+Duplicate KPI observations remain separate entries carrying \texttt{DUPLICATE\_KPI}; neither value overwrites the other. Each occurrence must be validated independently because the parser cannot determine whether it represents repetition, correction, or a distinct observation. Composite compressor measurements remain one linked entry containing primary and secondary extracted, current, and final values. This preserves the relationship between the principal measurement and its associated percentage throughout Review and confirmation.
+
+An \texttt{UNRESOLVED} parsed entry may be associated with its suggested KPI, assigned to another existing definition, used to create or reuse a detected KPI, edited, or removed. An unsegmentable but potentially business-relevant source line follows a narrower path: it may be assigned to an existing KPI or explicitly ignored. Direct KPI creation is not exposed for this unrecognized-line path. FactoryFlow therefore retains business-like content without pretending that every unknown line already has a reliable numerical interpretation.
+
+Review remains evidence-based because the draft does not contain only a proposed final number. It retains the original source label and line, extracted and current values, assigned or suggested KPI, confidence and matching information, captured unit, warnings, unknown-line resolution, and linked secondary measurement where applicable. The complete \texttt{rawText} also remains available in the source panel. The source records what FactoryFlow received, the extracted value records what automation initially interpreted, and the current value records the editable draft decision.
+
+Figure~\ref{fig:human-review-confirmation-trust-boundary} shows how these states and evidence pass through human resolution and the backend confirmation gate before becoming trusted history.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.11_Human_Review_Confirmation_Trust_Boundary_FactoryFlow.png}
+\caption{Human Review, confirmation, and trust boundary in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:human-review-confirmation-trust-boundary}
+\end{figure}
+
+\subsubsection{Corrections, Draft Continuity and Provenance}
+
+FactoryFlow separates the automated interpretation, editable decision, and authoritative result through three persisted values:
+
+\[
+\texttt{extractedValue}
+\;\longrightarrow\;
+\texttt{currentValue}
+\;\longrightarrow\;
+\texttt{finalValue}
+\]
+
+The same structure exists for the secondary component of a composite measurement. \texttt{extractedValue} records the parser or manual-entry candidate, \texttt{currentValue} records the editable draft state, and \texttt{finalValue} is assigned only during confirmation. For example, if the source contains \texttt{Eau : 45,7} and the engineer corrects the interpretation to \texttt{45.2}, FactoryFlow retains \texttt{45.7} as the extracted value and confirms \texttt{45.2} as the final value. \textbf{Correction changes the value eligible for confirmation; it does not rewrite the original evidence.}
+
+The persisted \texttt{editedByUser} flag identifies entries whose value or KPI association has been changed. It becomes true when the primary or secondary current value differs from its extracted counterpart, when the engineer assigns a KPI, when a synthetic missing entry is added, or when a submitted final value differs from the extracted value. Acknowledging an unchanged warning does not by itself necessarily mark the entry as edited; validation and modification remain distinct actions.
+
+Draft continuity is implemented through authenticated creation, retrieval, replacement, entry-removal, unknown-line-resolution, and deletion endpoints. A complete draft update replaces the editable entry and unknown-line collections while preserving the report identity, source, and lifecycle. Report-level provenance includes the submitting user, submission time, last-update time, confirmation time, and optimistic-lock version. These fields support traceable state transitions, but the model should not be described as a complete per-edit audit ledger because it does not persist a separate historical record for every intermediate edit or warning acknowledgement.
+
+\subsubsection{KPI Resolution and Explicit Knowledge Approval}
+
+Resolving an observation against an existing KPI modifies the current draft association. The engineer may accept the leading suggestion or select another active KPI definition. This action removes association-specific warnings such as unknown, ambiguous, low-confidence, or OCR-corrected matching conditions. It does not remove unrelated numerical, range, unit, duplicate, or composite warnings. \textbf{Resolving KPI identity does not automatically resolve every other data-quality concern.}
+
+For a parsed unresolved entry, FactoryFlow also provides the detected-KPI create/reuse operation through \texttt{POST} at:
+
+\begin{center}
+\path{/api/reports/{reportId}/draft/entries/{entryId}/add-kpi}
+\end{center}
+
+The backend first searches for an equivalent active definition. If one exists, it is reused. Otherwise, \texttt{KpiDefinitionService} creates an active definition from the detected label and captured unit, generates a normalized code, and assigns the result to the current draft entry. This is a focused resolution mechanism rather than a complete KPI-administration form; category, plausible ranges, and other configuration are not entered through this Review action.
+
+Associating a label with a KPI for the current draft is separate from preserving that label as reusable parser knowledge. When the option is offered, the engineer must explicitly select \emph{remember alias}. Android then sends a separate authenticated request to:
+
+\begin{center}
+\texttt{POST }\path{/api/kpi-definitions/{id}/aliases}
+\end{center}
+
+The backend persists the alias and its normalized representation with the \texttt{USER\_APPROVED} origin, approving user, and approval timestamp. This request is executed separately during Save or Confirm and is not an automatic consequence of association. \textbf{Accepting an association is not automatically the same as teaching the parser.} This separation prevents an uncertain or accidental mapping from silently changing future interpretation.
+
+\subsubsection{Confirmation Gate and Trusted History}
+
+The normal Android workflow enables confirmation only when a report is loaded, at least one KPI entry exists, no Review entry remains blocking, and no unknown source line remains unresolved. This client-side gate guides the engineer and prevents incomplete actions from being presented as ready for submission. Nevertheless, the authoritative transition is enforced by the backend rather than by screen state.
+
+Android submits the reviewed observations to \texttt{POST /api/reports/\{id\}/confirm}, where \texttt{ReportDraftController} delegates to the transactional \texttt{ReportDraftService.confirm(...)} operation. The service validates the request against the persisted draft. It verifies report ownership and editability, requires every retained draft entry to appear exactly once, rejects omitted or additional entry identities, prevents the client from changing the persisted KPI association during confirmation, checks the remaining warning state, and requires every unknown line to be assigned or ignored. \textbf{The Android interface guides Review; the backend controls the transition into confirmed history.}
+
+In the implemented normal workflow, \texttt{MISSING\_VALUE} is the only warning that may remain at confirmation. Duplicate, ambiguity, range, unit, fuzzy-match, OCR-correction, and composite-integrity warnings must first be explicitly reviewed and cleared. An accepted missing observation may therefore be confirmed with \texttt{finalValue = null}; confirmation does not require inventing a numerical value where the source supplied none.
+
+When validation succeeds, each retained entry receives its \texttt{finalValue} and optional \texttt{secondaryFinalValue}. The report status changes from \texttt{DRAFT} to \texttt{CONFIRMED}, \texttt{confirmedAt} is recorded, and \texttt{editedByUser} reflects relevant differences between extracted and confirmed values. The backend then emits a \texttt{REPORT\_CONFIRMED} notification.
+
+A confirmed report is immutable through the normal workflow. Draft update, entry-removal, draft-deletion, and other editable operations reject a report whose status is already \texttt{CONFIRMED}; no confirmed-report correction endpoint currently exists. Confirmation therefore closes the Review lifecycle instead of creating another editable stage.
+
+Only confirmed final values cross the trust boundary into downstream use. Dashboard queries, statistics, Excel and PDF generation, consolidated or scheduled reporting, and the current analytics services read reports whose status is \texttt{CONFIRMED} and use persisted final values rather than raw parser output. The same validated history forms the input boundary for the Maintenance Intelligence architecture presented later. \textbf{Confirmation is not merely the end of a mobile workflow; it authorizes maintenance information for downstream use as trusted historical evidence.}
+
+\section{Reporting and Scheduling Architecture}
+
+\subsection{Reporting Architecture}
+\label{subsec:reporting-architecture}
+
+FactoryFlow reporting begins only after human confirmation. The reporting layer does not consume OCR output, parser candidates, or editable draft values; it queries reports whose status is \texttt{CONFIRMED} and projects their \texttt{finalValue} and optional \texttt{secondaryFinalValue}. This boundary ensures that generated documents reproduce trusted maintenance history rather than provisional interpretation.
+
+\subsubsection{Individual and Consolidated Reporting}
+
+FactoryFlow supports two reporting scopes through the same \texttt{GeneratedReportService}. An individual export starts from one explicitly selected maintenance report. The backend loads that exact report, rejects it unless it is confirmed, and preserves its identity as the sole reporting source. \textbf{An individual export is therefore not equivalent to a one-day consolidated report}: it represents one validated source report.
+
+A consolidated export combines confirmed reports belonging to an inclusive date interval. The implemented reporting types are \texttt{DAILY}, \texttt{WEEKLY}, \texttt{MONTHLY}, and \texttt{CUSTOM}. These types change the reporting scope and period validation, but not the underlying generation architecture. Consolidated generation also prepares an equal-length preceding period for comparative KPI analysis, whereas individual generation has no comparison period.
+
+Reporting preserves the distinction between absence and zero. A confirmed null value remains missing and is excluded from ordinary numerical aggregates, while an explicit numerical zero remains a valid observation. Consequently, \textbf{missing information is never converted into zero merely to simplify document generation}.
+
+\subsubsection{PDF and Excel Generation}
+
+After resolving the reporting scope, \texttt{GeneratedReportService} constructs a common \texttt{ReportGenerationData} projection containing the period, source reports, confirmed measurements, data-quality information, and traceability metadata. Format-specific generators consume this projection, allowing PDF and Excel output to share the same trusted source while adapting their presentation to different uses.
+
+\textbf{PDF generation} is implemented by \texttt{PdfReportGenerator} using Apache PDFBox. It produces an A4 document containing report identification and period information, a reporting summary, KPI analysis, confirmed measurement details, data-quality indicators, traceability information, branding, and pagination. For weekly and monthly reports, a trend chart may be included when sufficient valid observations and page space exist. The generator selects one eligible KPI with at least two points rather than combining unrelated indicators or incompatible units in a single chart. PDF is therefore treated as a human-readable reporting artifact rather than a direct database export.
+
+\textbf{Excel generation} is implemented by \texttt{ExcelReportGenerator} using Apache POI and \texttt{XSSFWorkbook}. Each workbook contains exactly one worksheet named \texttt{Rapport}. This worksheet organizes the report summary, KPI analysis, confirmed measurement details, data quality, traceability, and generation information into distinct sections. Dates and measurements are written as actual Excel date and numeric cells, preserving their usefulness for subsequent calculations. The current workbook contains no Excel charts.
+
+Both generators preserve the same missing-value semantics but adapt their representation to the destination format. PDF renders a missing measurement as \emph{Non renseigné}; Excel leaves the corresponding numeric cell blank and explains that blank cells represent unreported values. This prevents textual placeholders from contaminating numeric Excel columns while retaining the distinction between missing information and zero.
+
+Figure~\ref{fig:reporting-generation-storage-retrieval} summarizes the complete path from confirmed history to format-specific generation, persistent document storage, and controlled Android retrieval.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.12_Reporting_Generation_Storage_Retrieval_Architecture_FactoryFlow.png}
+\caption{Reporting generation, storage, and retrieval architecture in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:reporting-generation-storage-retrieval}
+\end{figure}
+
+\subsubsection{Document Storage, Retrieval and Manual Sharing}
+
+Document generation is separated from storage through the \texttt{ReportStorageService} interface, which exposes storage, reading, and deletion operations. Its current implementation, \texttt{LocalReportStorageService}, writes the generated bytes to a temporary file and then moves that file atomically into the configured local storage root. The service returns a relative storage reference, keeping filesystem mechanics outside the PDF and Excel generators.
+
+The document bytes and their application metadata have different persistence responsibilities. The binary PDF or Excel file resides in the configured filesystem, while PostgreSQL stores a \texttt{GeneratedReport} entity containing its format, reporting period, file name, relative storage reference, generation origin, generating user when applicable, generation timestamp, version, source reports, and lifecycle statuses. \textbf{File content belongs to document storage; document identity, provenance, and lifecycle belong to persistent application metadata.}
+
+This separation also supports failure isolation. If file storage succeeds but metadata persistence fails, the backend performs compensating deletion of the stored file. Conversely, a later distribution failure does not delete a successfully generated document. Generation, persistence, and distribution therefore remain distinct lifecycle stages.
+
+Android retrieves a generated document through
+\path{GET /api/generated-reports/{id}/file}
+and stores the response temporarily under the application's controlled \texttt{generated-reports} cache directory. It then exposes the cached file through Android \texttt{FileProvider}, producing a temporary \texttt{content://} URI instead of sharing a backend or local filesystem path. From the generated-document interface, the user may open the file, save it to a selected location, share it through another application, or address it through an installed email application. These are user-initiated Android actions; unattended backend email delivery belongs to the scheduling architecture examined in the following subsection.
+\subsection{Scheduling and Automated Distribution}
+\label{subsec:scheduling-automated-distribution}
+
+FactoryFlow separates scheduling infrastructure from reporting business logic. Quartz determines when an execution begins, while FactoryFlow application services determine the reporting period, generate the requested documents, store successful results, and coordinate optional distribution. \textbf{Quartz is therefore the runtime timing mechanism, not the reporting engine.}
+
+\subsubsection{Scheduling and Reporting Periods}
+
+A persisted \texttt{ReportSchedule} defines the recurrence, execution time, requested PDF and Excel formats, optional email distribution, recipients, and activation state. Scheduled reporting supports \texttt{DAILY}, \texttt{WEEKLY}, and \texttt{MONTHLY} recurrence; individual and custom exports remain user-initiated. All schedules use the \texttt{Africa/Casablanca} business timezone.
+
+PostgreSQL is the persistent source of schedule configuration, whereas Quartz uses an in-memory runtime job store. The \texttt{QuartzScheduleCoordinator} translates each enabled schedule into a cron trigger and reconstructs these runtime definitions from PostgreSQL when the backend starts. When a trigger fires, \texttt{FactoryFlowReportJob} delegates the scheduled identifier and planned execution time to \texttt{ScheduleExecutionService}. This keeps reporting rules outside the Quartz job.
+
+Scheduled generation targets the most recent completed period rather than the incomplete current period. \texttt{SchedulePeriodCalculator} maps a daily execution to the previous calendar day, a weekly execution to the previous completed Monday--Sunday week, and a monthly execution to the previous complete calendar month. The resulting inclusive period is then evaluated against confirmed maintenance history. \textbf{Scheduling determines when processing begins; period calculation determines which trusted data belongs to that execution.}
+
+Figure~\ref{fig:scheduled-reporting-execution} presents the complete sequence from persisted schedule configuration to durable execution feedback.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]
+{diagrams/source/figure_3.13_Scheduled_Reporting_Distribution_Execution_Architecture_FactoryFlow.png}
+\caption{Scheduled reporting, distribution, and execution-traceability architecture in FactoryFlow}
+{\footnotesize \textit{Source: Created by the author.}\par}
+\label{fig:scheduled-reporting-execution}
+\end{figure}
+
+\subsubsection{Automated Generation and Email Distribution}
+
+For each requested format, \texttt{ScheduleExecutionService} creates a separate \texttt{ScheduleRun} and invokes the reporting architecture established in the previous subsection. PDF and Excel are generated independently from confirmed final values, and each successful document is stored as a \texttt{GeneratedReport}. A period containing no confirmed observations remains a valid reporting outcome: FactoryFlow produces an explicit empty report instead of treating the absence of data as a technical failure.
+
+When every requested format has been generated successfully and email distribution is enabled, the backend sends one grouped multipart message through \texttt{JavaMailSender}. The message contains plain-text and HTML representations together with all requested PDF and Excel attachments. Email is attempted only after document generation and storage; if one requested format fails, FactoryFlow suppresses the incomplete attachment batch.
+
+A \texttt{DELIVERED} status means that the backend mail operation completed without an exception. It does not prove final mailbox delivery, user access, or the absence of a later rejection because FactoryFlow does not implement external delivery receipts. This distinction prevents infrastructure acknowledgement from being presented as stronger evidence than the implementation provides.
+
+\subsubsection{Execution Outcomes and Notifications}
+
+Each per-format \texttt{ScheduleRun} records the reporting period, format, scheduled and actual execution times, associated generated document, execution status, email status, and failure information. The meaningful execution states are \texttt{STARTED}, \texttt{SUCCEEDED}, \texttt{PARTIAL\_SUCCESS}, and \texttt{FAILED}. State transitions are persisted independently so that a successful intermediate result is not rolled back by a later failure.
+
+If one requested format fails, the failed run records the generation error while every successfully generated document remains available. The corresponding successful run becomes \texttt{PARTIAL\_SUCCESS}, and no incomplete grouped email is sent. If all documents are generated but email delivery fails, the documents remain \texttt{READY}, their email status becomes \texttt{FAILED}, and the associated runs also become \texttt{PARTIAL\_SUCCESS}. \textbf{A distribution failure cannot retroactively invalidate a document that was generated and stored successfully.}
+
+FactoryFlow persists in-app notifications for outcomes such as \texttt{SCHEDULED\_DOCUMENT\_READY}, \texttt{SCHEDULE\_FAILED}, and \texttt{EMAIL\_FAILED}. Android retrieves these notifications through the authenticated REST API and may mark them as read. They therefore provide durable execution feedback rather than real-time push delivery.
+\section{Maintenance Intelligence Architecture}
+
+\section{Deployment and Integration Architecture}
 
 \section{UML Class Modeling}
 

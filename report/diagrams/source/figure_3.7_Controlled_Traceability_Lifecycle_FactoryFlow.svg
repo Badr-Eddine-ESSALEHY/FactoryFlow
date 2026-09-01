@@ -1,0 +1,350 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Controlled traceability lifecycle of FactoryFlow maintenance data</title>
+  <desc id="desc">Maintenance data progresses from original acquisition through deterministic interpretation, human review, confirmation, and validated history. Original, interpreted, reviewed, and confirmed information remains traceable, while missing or unresolved information requires review.</desc>
+
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#17324D" flood-opacity="0.12"/>
+    </filter>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#244766"/>
+    </marker>
+
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="8.5" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#C65545"/>
+    </marker>
+
+    <style>
+      .font {
+        font-family: Inter, Arial, sans-serif;
+        fill: #17324D;
+      }
+
+      .stage-title {
+        font-size: 25px;
+        font-weight: 750;
+        letter-spacing: .6px;
+      }
+
+      .stage-main {
+        font-size: 22px;
+        font-weight: 650;
+      }
+
+      .stage-sub {
+        font-size: 18px;
+        font-weight: 450;
+        fill: #5D6D7C;
+      }
+
+      .connector {
+        fill: none;
+        stroke: #244766;
+        stroke-width: 4;
+        marker-end: url(#arrow);
+      }
+
+      .association {
+        fill: none;
+        stroke: #77899A;
+        stroke-width: 4;
+        stroke-dasharray: 10 8;
+      }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#FFFFFF"/>
+
+  <!-- Title -->
+  <text x="800" y="58" text-anchor="middle" class="font"
+        font-size="34" font-weight="750">
+    CONTROLLED TRACEABILITY LIFECYCLE
+  </text>
+
+  <text x="800" y="91" text-anchor="middle" class="font"
+        font-size="20" font-weight="500" fill="#647789">
+    FactoryFlow maintenance data
+  </text>
+
+  <!-- Primary lifecycle -->
+  <g filter="url(#shadow)">
+    <rect x="65" y="130" width="250" height="160" rx="20"
+          fill="#E7F3FF" stroke="#3F8FCC" stroke-width="3"/>
+
+    <rect x="370" y="130" width="250" height="160" rx="20"
+          fill="#F2EDFF" stroke="#8F72D8" stroke-width="3"/>
+
+    <rect x="675" y="130" width="250" height="160" rx="20"
+          fill="#FFF3D4" stroke="#D99A2B" stroke-width="3"/>
+
+    <rect x="980" y="130" width="250" height="160" rx="20"
+          fill="#EAF8ED" stroke="#5AB96D" stroke-width="3"/>
+
+    <rect x="1285" y="130" width="250" height="160" rx="20"
+          fill="#DDF5E2" stroke="#31964A" stroke-width="3.5"/>
+  </g>
+
+  <!-- Acquisition -->
+  <text x="190" y="169" text-anchor="middle"
+        class="font stage-title" fill="#2B6F9F">
+    ACQUISITION
+  </text>
+
+  <text x="190" y="211" text-anchor="middle"
+        class="font stage-main">
+    Original source
+  </text>
+
+  <text x="190" y="243" text-anchor="middle"
+        class="font stage-sub">
+    Manual • Text • Image
+  </text>
+
+  <!-- Interpretation -->
+  <text x="495" y="169" text-anchor="middle"
+        class="font stage-title" fill="#6947B5">
+    INTERPRETATION
+  </text>
+
+  <text x="495" y="202" text-anchor="middle"
+        class="font" font-size="19" font-weight="650">
+    <tspan x="495" dy="0">Extracted information +</tspan>
+    <tspan x="495" dy="26">interpreted meaning</tspan>
+  </text>
+
+  <text x="495" y="260" text-anchor="middle"
+        class="font stage-sub">
+    Context and warnings retained
+  </text>
+
+  <!-- Review -->
+  <text x="800" y="169" text-anchor="middle"
+        class="font stage-title" fill="#9A6618">
+    REVIEW
+  </text>
+
+  <text x="800" y="207" text-anchor="middle"
+        class="font stage-main">
+    Inspect • Correct
+  </text>
+
+  <text x="800" y="239" text-anchor="middle"
+        class="font stage-sub">
+    Resolve uncertainty
+  </text>
+
+  <!-- Confirmation -->
+  <text x="1105" y="169" text-anchor="middle"
+        class="font stage-title" fill="#357E45">
+    CONFIRMATION
+  </text>
+
+  <text x="1105" y="207" text-anchor="middle"
+        class="font stage-main">
+    Confirmed value
+  </text>
+
+  <text x="1105" y="239" text-anchor="middle"
+        class="font stage-sub">
+    Explicitly validated
+  </text>
+
+  <!-- Validated history -->
+  <text x="1410" y="169" text-anchor="middle"
+        class="font" font-size="22" font-weight="750"
+        letter-spacing=".4" fill="#246C37">
+    VALIDATED HISTORY
+  </text>
+
+  <text x="1410" y="207" text-anchor="middle"
+        class="font stage-main">
+    Trusted persistent data
+  </text>
+
+  <text x="1410" y="239" text-anchor="middle"
+        class="font stage-sub">
+    Available downstream
+  </text>
+
+  <!-- Lifecycle connectors -->
+  <path d="M315 210 H362" class="connector"/>
+  <path d="M620 210 H667" class="connector"/>
+  <path d="M925 210 H972" class="connector"/>
+  <path d="M1230 210 H1277" class="connector"/>
+
+  <!-- Review-required branch -->
+  <path d="M495 290 V345 H675"
+        fill="none"
+        stroke="#C65545"
+        stroke-width="3.5"
+        marker-end="url(#arrowRed)"/>
+
+  <rect x="284" y="322" width="376" height="70" rx="17"
+        fill="#FFF0ED" stroke="#E07868" stroke-width="2.5"/>
+
+  <text x="472" y="350" text-anchor="middle"
+        class="font" font-size="18" font-weight="700"
+        fill="#A33C2E">
+    MISSING • AMBIGUOUS • UNRESOLVED
+  </text>
+
+  <text x="472" y="376" text-anchor="middle"
+        class="font" font-size="18" font-weight="650"
+        fill="#A33C2E">
+    Human Review Required
+  </text>
+
+  <!-- Trusted downstream uses -->
+  <path d="M1410 290 V330" class="connector"/>
+  <path d="M1410 330 H935 V372" class="connector"/>
+  <path d="M1410 330 H1160 V372" class="connector"/>
+  <path d="M1410 330 H1415 V372" class="connector"/>
+
+  <rect x="840" y="380" width="190" height="70" rx="16"
+        fill="#E6FAF7" stroke="#55BDB3" stroke-width="2.5"/>
+
+  <rect x="1055" y="380" width="210" height="70" rx="16"
+        fill="#E6FAF7" stroke="#55BDB3" stroke-width="2.5"/>
+
+  <rect x="1290" y="380" width="250" height="70" rx="16"
+        fill="#E6FAF7" stroke="#55BDB3" stroke-width="2.5"/>
+
+  <text x="935" y="423" text-anchor="middle"
+        class="font" font-size="21" font-weight="700">
+    REPORTS
+  </text>
+
+  <text x="1160" y="423" text-anchor="middle"
+        class="font" font-size="21" font-weight="700">
+    STATISTICS
+  </text>
+
+  <text x="1415" y="423" text-anchor="middle"
+        class="font" font-size="15" font-weight="750">
+    MAINTENANCE INTELLIGENCE
+  </text>
+
+  <!-- Traceability strip -->
+  <rect x="65" y="570" width="1470" height="390" rx="24"
+        fill="#F7F5FC" stroke="#9E83DE" stroke-width="3"/>
+
+  <text x="105" y="618" class="font"
+        font-size="27" font-weight="750" fill="#6947B5">
+    TRACEABILITY PRESERVED
+  </text>
+
+  <text x="105" y="649" class="font"
+        font-size="18" font-weight="500" fill="#667788">
+    Corrections update the value to be confirmed without erasing provenance
+  </text>
+
+  <!-- Original source preserved -->
+  <circle cx="135" cy="712" r="15" fill="#3F8FCC"/>
+
+  <text x="170" y="720" class="font"
+        font-size="22" font-weight="700">
+    Original source
+  </text>
+
+  <path d="M390 712 H1455" class="association"/>
+
+  <rect x="1295" y="690" width="185" height="44" rx="22"
+        fill="#E7F3FF" stroke="#3F8FCC" stroke-width="2"/>
+
+  <text x="1387" y="719" text-anchor="middle"
+        class="font" font-size="18" font-weight="700"
+        fill="#2B6F9F">
+    PRESERVED
+  </text>
+
+  <!-- Interpreted information retained -->
+  <circle cx="430" cy="790" r="15" fill="#8F72D8"/>
+
+  <text x="465" y="798" class="font"
+        font-size="20" font-weight="700">
+    Extracted / interpreted information
+  </text>
+
+  <path d="M865 790 H1455" class="association"/>
+
+  <rect x="1295" y="768" width="185" height="44" rx="22"
+        fill="#F2EDFF" stroke="#8F72D8" stroke-width="2"/>
+
+  <text x="1387" y="797" text-anchor="middle"
+        class="font" font-size="18" font-weight="700"
+        fill="#6947B5">
+    RETAINED
+  </text>
+
+  <!-- Reviewed value becomes confirmed -->
+  <circle cx="755" cy="868" r="15" fill="#D99A2B"/>
+
+  <text x="790" y="876" class="font"
+        font-size="22" font-weight="700">
+    Reviewed / corrected value
+  </text>
+
+  <path d="M1140 868 H1265" class="connector"/>
+
+  <rect x="1270" y="838" width="220" height="60" rx="30"
+        fill="#DDF5E2" stroke="#31964A" stroke-width="2.5"/>
+
+  <text x="1380" y="876" text-anchor="middle"
+        class="font" font-size="20" font-weight="750"
+        fill="#246C37">
+    CONFIRMED VALUE
+  </text>
+
+  <!-- Trust rules -->
+  <rect x="65" y="1000" width="455" height="105" rx="18"
+        fill="#FFF0ED" stroke="#E07868" stroke-width="2.5"/>
+
+  <rect x="573" y="1000" width="455" height="105" rx="18"
+        fill="#FFF3D4" stroke="#D99A2B" stroke-width="2.5"/>
+
+  <rect x="1080" y="1000" width="455" height="105" rx="18"
+        fill="#EAF8ED" stroke="#5AB96D" stroke-width="2.5"/>
+
+  <text x="292" y="1042" text-anchor="middle"
+        class="font" font-size="22" font-weight="750"
+        fill="#A33C2E">
+    MISSING INFORMATION
+  </text>
+
+  <text x="292" y="1075" text-anchor="middle"
+        class="font" font-size="20" font-weight="650">
+    remains missing — never zero
+  </text>
+
+  <text x="800" y="1042" text-anchor="middle"
+        class="font" font-size="22" font-weight="750"
+        fill="#9A6618">
+    UNRESOLVED INFORMATION
+  </text>
+
+  <text x="800" y="1075" text-anchor="middle"
+        class="font" font-size="20" font-weight="650">
+    remains under Review
+  </text>
+
+  <text x="1307" y="1042" text-anchor="middle"
+        class="font" font-size="22" font-weight="750"
+        fill="#357E45">
+    ONLY CONFIRMED DATA
+  </text>
+
+  <text x="1307" y="1075" text-anchor="middle"
+        class="font" font-size="20" font-weight="650">
+    becomes trusted history
+  </text>
+
+  <!-- Final principle -->
+  <text x="800" y="1160" text-anchor="middle"
+        class="font" font-size="20" font-weight="600"
+        fill="#617487">
+    Automation is trustworthy because trusted history follows explicit human confirmation
+  </text>
+</svg>

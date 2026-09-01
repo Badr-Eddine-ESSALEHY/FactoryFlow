@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1500" viewBox="0 0 2400 1500">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#17324D" flood-opacity="0.10"/>
+    </filter>
+    <marker id="navyArrow" markerUnits="userSpaceOnUse" viewBox="0 0 28 28" refX="26" refY="14" markerWidth="28" markerHeight="28" orient="auto-start-reverse">
+      <path d="M0 0L28 14L0 28Z" fill="#173B5F"/>
+    </marker>
+    <marker id="blueArrow" markerUnits="userSpaceOnUse" viewBox="0 0 24 24" refX="22" refY="12" markerWidth="24" markerHeight="24" orient="auto-start-reverse">
+      <path d="M0 0L24 12L0 24Z" fill="#2F80C9"/>
+    </marker>
+    <marker id="greenArrow" markerUnits="userSpaceOnUse" viewBox="0 0 24 24" refX="22" refY="12" markerWidth="24" markerHeight="24" orient="auto-start-reverse">
+      <path d="M0 0L24 12L0 24Z" fill="#2C9B68"/>
+    </marker>
+    <marker id="purpleArrow" markerUnits="userSpaceOnUse" viewBox="0 0 24 24" refX="22" refY="12" markerWidth="24" markerHeight="24" orient="auto-start-reverse">
+      <path d="M0 0L24 12L0 24Z" fill="#7257C8"/>
+    </marker>
+    <style>
+      .stage{font:700 35px Inter,Arial,sans-serif;fill:#173B5F;letter-spacing:.2px}
+      .h2{font:700 32px Inter,Arial,sans-serif;fill:#173B5F}
+      .h3{font:700 28px Inter,Arial,sans-serif;fill:#173B5F}
+      .body{font:500 28px Inter,Arial,sans-serif;fill:#365B79}
+      .strong{font:700 28px Inter,Arial,sans-serif;fill:#173B5F}
+      .small{font:600 25px Inter,Arial,sans-serif;fill:#496C88}
+      .micro{font:600 23px Inter,Arial,sans-serif;fill:#496C88}
+      .rule{font:700 31px Inter,Arial,sans-serif;fill:#173B5F}
+      .center{text-anchor:middle}
+      .mono{font-family:Consolas,'Courier New',monospace}
+    </style>
+  </defs>
+
+  <rect width="2400" height="1500" fill="#F7F9FC"/>
+
+  <!-- Four readable architecture stages -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="70" width="500" height="1170" rx="28" fill="#F1F6FB" stroke="#5B91C7" stroke-width="3"/>
+    <rect x="610" y="70" width="440" height="1170" rx="28" fill="#F0F8F4" stroke="#50A87C" stroke-width="3"/>
+    <rect x="1110" y="70" width="720" height="1170" rx="28" fill="#FFF7EE" stroke="#D9904F" stroke-width="3"/>
+    <rect x="1890" y="70" width="460" height="1170" rx="28" fill="#F7F3FC" stroke="#8469CE" stroke-width="3"/>
+  </g>
+
+  <path d="M78 70h444a28 28 0 0 1 28 28v90H50V98a28 28 0 0 1 28-28z" fill="#DCEAF7"/>
+  <path d="M638 70h384a28 28 0 0 1 28 28v90H610V98a28 28 0 0 1 28-28z" fill="#D8EFE3"/>
+  <path d="M1138 70h664a28 28 0 0 1 28 28v90h-720V98a28 28 0 0 1 28-28z" fill="#FBE6CE"/>
+  <path d="M1918 70h404a28 28 0 0 1 28 28v90h-460V98a28 28 0 0 1 28-28z" fill="#E8DFF8"/>
+  <text x="80" y="143" class="stage">01  SCHEDULE &amp; TRIGGER</text>
+  <text x="640" y="143" class="stage">02  COMPLETED PERIOD</text>
+  <text x="1140" y="143" class="stage">03  GENERATE &amp; DISTRIBUTE</text>
+  <text x="1920" y="143" class="stage">04  OUTCOMES</text>
+
+  <!-- Stage 1: persisted configuration and runtime timing -->
+  <rect x="80" y="220" width="440" height="310" rx="22" fill="#FFFFFF" stroke="#5B91C7" stroke-width="3"/>
+  <text x="300" y="275" class="h2 center mono">ReportSchedule</text>
+  <text x="300" y="320" class="small center">PostgreSQL • persistent source</text>
+  <line x1="105" y1="348" x2="495" y2="348" stroke="#C6DDF1" stroke-width="2"/>
+  <text x="300" y="401" class="strong center">DAILY • WEEKLY • MONTHLY</text>
+  <text x="300" y="450" class="body center">Time • requested formats</text>
+  <text x="300" y="494" class="body center">Optional email • enabled state</text>
+
+  <path d="M300 530v42" stroke="#2F80C9" stroke-width="6" marker-end="url(#blueArrow)"/>
+  <rect x="80" y="590" width="440" height="315" rx="22" fill="#FFFFFF" stroke="#5B91C7" stroke-width="3"/>
+  <text x="300" y="647" class="h3 center mono">QuartzScheduleCoordinator</text>
+  <line x1="105" y1="676" x2="495" y2="676" stroke="#C6DDF1" stroke-width="2"/>
+  <text x="300" y="727" class="body center">Recreates enabled schedules</text>
+  <text x="300" y="769" class="body center">after backend startup</text>
+  <rect x="120" y="805" width="360" height="62" rx="24" fill="#E4F0FA"/>
+  <text x="300" y="846" class="small center">CRON • Africa/Casablanca</text>
+
+  <path d="M300 905v42" stroke="#2F80C9" stroke-width="6" marker-end="url(#blueArrow)"/>
+  <rect x="105" y="965" width="390" height="120" rx="22" fill="#DCEAF7" stroke="#5B91C7" stroke-width="3"/>
+  <text x="300" y="1037" class="h3 center mono">FactoryFlowReportJob</text>
+  <rect x="80" y="1120" width="440" height="80" rx="20" fill="#EAF2FA" stroke="#8EB3D6" stroke-width="2"/>
+  <text x="300" y="1153" class="small center">Quartz starts execution;</text>
+  <text x="300" y="1184" class="small center">it does not generate reports</text>
+
+  <!-- Stage 2: completed business period -->
+  <rect x="640" y="220" width="380" height="115" rx="22" fill="#FFFFFF" stroke="#50A87C" stroke-width="3"/>
+  <text x="830" y="288" class="h3 center mono">SchedulePeriodCalculator</text>
+
+  <path d="M830 335v40" stroke="#2C9B68" stroke-width="6" marker-end="url(#greenArrow)"/>
+  <rect x="640" y="392" width="380" height="145" rx="20" fill="#FFFFFF" stroke="#7CB696" stroke-width="2"/>
+  <text x="670" y="446" class="h3">DAILY</text>
+  <text x="670" y="496" class="body">Previous calendar day</text>
+
+  <rect x="640" y="565" width="380" height="160" rx="20" fill="#FFFFFF" stroke="#7CB696" stroke-width="2"/>
+  <text x="670" y="619" class="h3">WEEKLY</text>
+  <text x="670" y="669" class="body">Previous completed</text>
+  <text x="670" y="709" class="body">Monday–Sunday week</text>
+
+  <rect x="640" y="753" width="380" height="160" rx="20" fill="#FFFFFF" stroke="#7CB696" stroke-width="2"/>
+  <text x="670" y="807" class="h3">MONTHLY</text>
+  <text x="670" y="857" class="body">Previous complete</text>
+  <text x="670" y="897" class="body">calendar month</text>
+
+  <rect x="640" y="950" width="380" height="125" rx="20" fill="#E3F2E9" stroke="#50A87C" stroke-width="3"/>
+  <text x="830" y="1004" class="strong center">CONFIRMED DATA ONLY</text>
+  <text x="830" y="1049" class="small center">Inclusive date boundaries</text>
+  <rect x="640" y="1120" width="380" height="80" rx="20" fill="#EEF7F2" stroke="#7CB696" stroke-width="2"/>
+  <text x="830" y="1171" class="small center">TRIGGER TIME ≠ DATA PERIOD</text>
+
+  <!-- Stage 3: independent formats then grouped delivery -->
+  <rect x="1140" y="220" width="660" height="115" rx="22" fill="#FFFFFF" stroke="#D9904F" stroke-width="3"/>
+  <text x="1470" y="272" class="h2 center mono">ScheduleExecutionService</text>
+  <text x="1470" y="316" class="small center">One execution record per requested format</text>
+
+  <path d="M1470 335v40M1470 375H1290v35M1470 375H1650v35" fill="none" stroke="#D9904F" stroke-width="6"/>
+  <path d="M1290 385v24" stroke="#D9904F" stroke-width="6" marker-end="url(#navyArrow)"/>
+  <path d="M1650 385v24" stroke="#D9904F" stroke-width="6" marker-end="url(#navyArrow)"/>
+
+  <rect x="1140" y="425" width="300" height="280" rx="22" fill="#FFFFFF" stroke="#D9904F" stroke-width="3"/>
+  <rect x="1170" y="451" width="126" height="47" rx="23" fill="#FCE4D3"/>
+  <text x="1233" y="484" class="small center">PDF</text>
+  <text x="1290" y="548" class="h3 center">GENERATE</text>
+  <path d="M1290 578v38" stroke="#D9904F" stroke-width="5" marker-end="url(#navyArrow)"/>
+  <text x="1290" y="649" class="small center">Store as</text>
+  <text x="1290" y="681" class="small center mono">GeneratedReport</text>
+
+  <rect x="1500" y="425" width="300" height="280" rx="22" fill="#FFFFFF" stroke="#4D9B72" stroke-width="3"/>
+  <rect x="1530" y="451" width="150" height="47" rx="23" fill="#DFF1E8"/>
+  <text x="1605" y="484" class="small center">EXCEL</text>
+  <text x="1650" y="548" class="h3 center">GENERATE</text>
+  <path d="M1650 578v38" stroke="#2C9B68" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <text x="1650" y="649" class="small center">Store as</text>
+  <text x="1650" y="681" class="small center mono">GeneratedReport</text>
+
+  <path d="M1290 705v50h180M1650 705v50h-180M1470 755v38" fill="none" stroke="#D9904F" stroke-width="6" marker-end="url(#navyArrow)"/>
+  <rect x="1200" y="810" width="540" height="105" rx="22" fill="#FFF0DF" stroke="#D9904F" stroke-width="3"/>
+  <text x="1470" y="876" class="h3 center">ALL REQUESTED FORMATS SUCCEEDED?</text>
+
+  <path d="M1470 915v46" stroke="#2C9B68" stroke-width="6" marker-end="url(#greenArrow)"/>
+  <text x="1490" y="950" class="micro" fill="#2C7B57">YES</text>
+  <rect x="1200" y="980" width="540" height="155" rx="22" fill="#E5F3EA" stroke="#50A87C" stroke-width="3"/>
+  <text x="1470" y="1032" class="h3 center">OPTIONAL GROUPED EMAIL</text>
+  <text x="1470" y="1076" class="body center mono">JavaMailSender</text>
+  <text x="1470" y="1118" class="small center">One message • all requested attachments</text>
+
+  <rect x="1200" y="1158" width="540" height="48" rx="24" fill="#FFF9F1" stroke="#D7AD79" stroke-width="2"/>
+  <text x="1470" y="1191" class="micro center">EMPTY CONFIRMED PERIOD = VALID DOCUMENT</text>
+
+  <!-- Stage 4: durable outcomes and feedback -->
+  <rect x="1920" y="220" width="400" height="335" rx="22" fill="#FFFFFF" stroke="#8469CE" stroke-width="3"/>
+  <text x="2120" y="275" class="h2 center mono">ScheduleRun</text>
+  <text x="2120" y="320" class="small center">PostgreSQL • per format</text>
+  <line x1="1945" y1="348" x2="2295" y2="348" stroke="#D8CFF0" stroke-width="2"/>
+  <text x="2120" y="391" class="strong center">STARTED</text>
+  <text x="2120" y="433" class="strong center">SUCCEEDED</text>
+  <text x="2120" y="475" class="strong center">PARTIAL_SUCCESS • FAILED</text>
+  <text x="2120" y="517" class="micro center">period • format • times</text>
+  <text x="2120" y="546" class="micro center">report • email • error</text>
+
+  <rect x="1920" y="590" width="400" height="300" rx="22" fill="#FFF7F3" stroke="#D65A4A" stroke-width="3"/>
+  <text x="2120" y="644" class="h3 center" fill="#9C3C31">FAILURE ISOLATION</text>
+  <text x="1950" y="704" class="strong">FORMAT FAILURE</text>
+  <text x="1950" y="746" class="body">Valid document survives</text>
+  <text x="1950" y="787" class="body">No incomplete batch email</text>
+  <line x1="1950" y1="817" x2="2290" y2="817" stroke="#E8C2BC" stroke-width="2"/>
+  <text x="1950" y="858" class="strong">EMAIL FAILURE</text>
+  <text x="1950" y="884" class="micro">Documents remain READY</text>
+
+  <rect x="1920" y="925" width="400" height="240" rx="22" fill="#FFFFFF" stroke="#8469CE" stroke-width="3"/>
+  <text x="2120" y="978" class="h3 center">NOTIFICATIONS</text>
+  <text x="2120" y="1026" class="micro center mono">SCHEDULED_DOCUMENT_READY</text>
+  <text x="2120" y="1066" class="micro center mono">SCHEDULE_FAILED</text>
+  <text x="2120" y="1098" class="micro center mono">EMAIL_FAILED</text>
+  <line x1="1950" y1="1117" x2="2290" y2="1117" stroke="#D8CFF0" stroke-width="2"/>
+  <text x="2120" y="1152" class="small center">Android refreshes through REST</text>
+
+  <!-- Main flow across the four stages -->
+  <path d="M550 650h44" stroke="#173B5F" stroke-width="9" stroke-linecap="round" marker-end="url(#navyArrow)"/>
+  <path d="M1050 650h44" stroke="#173B5F" stroke-width="9" stroke-linecap="round" marker-end="url(#navyArrow)"/>
+  <path d="M1830 650h44" stroke="#173B5F" stroke-width="9" stroke-linecap="round" marker-end="url(#navyArrow)"/>
+
+  <!-- Bottom architectural rules -->
+  <rect x="135" y="1300" width="2130" height="140" rx="28" fill="#EEF2FA" stroke="#6C83B4" stroke-width="3"/>
+  <text x="1200" y="1355" class="rule center">QUARTZ DETERMINES TIMING — APPLICATION SERVICES DETERMINE BUSINESS EXECUTION</text>
+  <text x="1200" y="1407" class="rule center">GENERATION SUCCESS AND DELIVERY SUCCESS ARE INDEPENDENT OUTCOMES</text>
+</svg>
