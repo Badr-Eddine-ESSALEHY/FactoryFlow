@@ -1,7 +1,6 @@
 \chapter{Requirements Analysis and System Specification}
 \label{chap:requirements}
 
-
 % ============================================================
 % INTRODUCTION
 % ============================================================
@@ -11,11 +10,21 @@
 
 The industrial analysis presented in
 \textbf{Chapter~\ref{chap:industrial-context}}
-established the need for a structured process capable of transforming heterogeneous maintenance information into reliable and exploitable data. The next step was to translate this need into explicit system requirements and business constraints.
+established that the main challenge was not the absence of maintenance data,
+but the way this information was acquired, interpreted, validated, and reused.
+Heterogeneous operational messages had to be transformed into reliable
+industrial information without losing their meaning or origin.
 
-This chapter defines the expected behaviour of \textbf{FactoryFlow}, the actors interacting with the platform, its functional and non-functional requirements, and the business rules governing data interpretation and validation. Particular attention is given to \textbf{traceability, human-controlled validation, missing-value management, automated reporting, and maintenance-oriented intelligence}, as these elements directly respond to the limitations identified in \textbf{Section~\ref{sec:existing-process-limitations}}.
+This chapter translates that need into the functional and quality requirements
+of \textbf{FactoryFlow}. Particular attention is given to the mechanisms that
+protect the value of the collected data: \textbf{human-controlled validation},
+source traceability, explicit management of missing information, deterministic
+interpretation, and controlled automation.
 
-The chapter concludes with the acceptance criteria and the use case model that formalize the principal interactions between the user and the system.
+The chapter also defines the business rules that govern the information
+lifecycle, the conditions used to validate the main workflows, and the use case
+model representing the interactions between the Maintenance Engineer and the
+platform.
 
 
 % ============================================================
@@ -25,18 +34,19 @@ The chapter concludes with the acceptance criteria and the use case model that f
 \section{Stakeholders and System Actors}
 \label{sec:stakeholders}
 
-\textbf{FactoryFlow} was designed for a limited group of maintenance professionals rather than for a large public user base. The principal system actor is therefore the \textbf{Maintenance Engineer}, who interacts directly with the mobile application throughout KPI acquisition, validation, consultation, analysis, and reporting.
+FactoryFlow was designed for a focused industrial context rather than for a
+large public user base. Its principal human actor is the
+\textbf{Maintenance Engineer}, who interacts directly with the mobile
+application throughout acquisition, review, validation, consultation,
+analysis, and reporting.
 
-The Maintenance Engineer acquires operational information, reviews interpreted measurements, resolves ambiguous or unrecognized values, confirms reports, consults historical data and statistics, and uses the analytical information produced by the platform.
-
-Beyond the direct user, the information produced by FactoryFlow also supports the broader technical reporting process within Alf Mabrouk. Confirmed KPI histories, generated documents, alerts, and analytical results can therefore contribute to technical follow-up and decision-making.
-
-Some operations are initiated automatically by the platform rather than directly by the user. These include \textbf{scheduled report generation, report distribution, notification delivery, anomaly analysis, and forecasting tasks}. These automated operations are considered when defining the system behaviour and use cases.
-
+The information produced by the platform also supports
+\textbf{Technical Management}, particularly through consolidated reports,
+historical indicators, statistics, alerts, and analytical results used for
+technical follow-up and decision-making.
 
 \begin{table}[H]
     \centering
-
     \caption{Main FactoryFlow stakeholders and responsibilities}
     \label{tab:factoryflow-stakeholders}
 
@@ -44,62 +54,44 @@ Some operations are initiated automatically by the platform rather than directly
         |>{\raggedright\arraybackslash\bfseries}p{0.27\textwidth}
         |>{\raggedright\arraybackslash}X|
     }
-
         \hline
-
         \textbf{Stakeholder}
         &
         \textbf{Main responsibilities and interests}
         \\
-
         \hline
 
         Maintenance Engineer
         &
-        Acquires KPI information, reviews interpreted measurements,
-        resolves uncertain data, confirms reports, consults historical
-        indicators, and uses analytical results for maintenance follow-up.
+        Acquires maintenance information, reviews interpreted measurements,
+        resolves uncertain data, confirms reports, consults KPI history and
+        statistics, and uses the resulting information for maintenance
+        follow-up.
         \\
-
         \hline
 
         Technical Management
         &
-        Uses consolidated maintenance information, generated reports,
-        statistics, alerts, and analytical indicators to support technical
-        supervision and decision-making.
+        Uses confirmed and consolidated maintenance information, generated
+        reports, statistics, alerts, and analytical indicators to support
+        technical supervision and decision-making.
         \\
-
         \hline
-
-        FactoryFlow Platform
-        &
-        Performs OCR-assisted acquisition, deterministic interpretation,
-        validation support, centralized persistence, automated reporting,
-        notifications, anomaly detection, forecasting, and
-        maintenance-intelligence operations.
-        \\
-
-        \hline
-
     \end{tabularx}
 
     \tableNote{
-        Summary of the principal actors involved in the FactoryFlow
-        information workflow and their respective responsibilities.
+        FactoryFlow has one principal human actor, while Technical Management
+        benefits from the validated information produced by the platform.
     }
-
 \end{table}
 
-The responsibilities summarized in
-\textbf{Table~\ref{tab:factoryflow-stakeholders}}
-provide the foundation for the functional requirements defined in
-\textbf{Section~\ref{sec:functional-requirements}}.
+Several operations are performed automatically by the platform rather than
+initiated manually at execution time. These include
+\textbf{scheduled report generation}, document distribution, notification
+creation, and the analytical processing associated with Maintenance
+Intelligence. They represent system responsibilities rather than additional
+human actors.
 
-
-% ============================================================
-% FUNCTIONAL REQUIREMENTS
-% ============================================================
 
 % ============================================================
 % FUNCTIONAL REQUIREMENTS
@@ -108,187 +100,167 @@ provide the foundation for the functional requirements defined in
 \section{Functional Requirements}
 \label{sec:functional-requirements}
 
-The functional requirements define the operations that FactoryFlow must provide in order to satisfy the objectives established in
-\textbf{Section~\ref{sec:internship-objectives}}. They cover the complete information lifecycle, from acquisition of raw maintenance data to validated reporting and maintenance-oriented analysis.
-
-The requirements are organized according to the principal functional areas of the platform.
+The functional requirements describe the services required to transform raw
+maintenance information into \textbf{validated, traceable, and exploitable
+industrial data}. They cover the complete lifecycle of an observation, from
+its acquisition to reporting and analytical use.
 
 \begin{enumerate}[label=\textbf{\arabic*.}]
 
     \item \textbf{Authentication and secure access}
 
-    FactoryFlow shall provide authenticated access to the platform and maintain the user session through a secure token-based mechanism. A user whose session is no longer valid must be informed clearly and redirected to authentication without losing the distinction between a session problem and an ordinary application error.
+    Access to protected FactoryFlow functions requires authentication.
+    The application maintains the user session through token-based
+    authentication and clearly distinguishes an expired or invalid session
+    from an ordinary application or communication error.
 
 
     \item \textbf{Maintenance KPI acquisition}
 
-    The platform shall support several acquisition methods in order to remain compatible with the operational practices identified in
+    FactoryFlow supports the different acquisition situations encountered in
+    the maintenance workflow described in
     \textbf{Section~\ref{sec:existing-kpi-process}}.
 
-    The user shall be able to:
-
+    The Maintenance Engineer can:
     \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item paste a maintenance message directly into the application;
+        \item paste the content of a maintenance message;
         \item import an image or WhatsApp screenshot;
-        \item extract visible text from an imported image using \textbf{\gls{ocr}};
-        \item enter measurements manually when no textual or visual source is available;
-        \item review the extracted or entered source before continuing to interpretation.
+        \item extract visible text from an imported image using \gls{ocr};
+        \item enter measurements manually;
+        \item review the acquired source before validation.
     \end{enumerate}
 
-
-    \item \textbf{Deterministic interpretation of heterogeneous messages}
-
-    The system shall transform acquired text into structured KPI candidates through deterministic processing. This processing shall support variations in capitalization, accents, punctuation, spacing, numerical separators, units, common aliases, and recognized OCR artefacts.
-
-    The interpretation process shall also distinguish between:
-
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item recognized KPI measurements;
-        \item ambiguous measurements requiring human review;
-        \item explicit missing values;
-        \item duplicate observations;
-        \item unrecognized KPI-like information;
-        \item source metadata and deterministic noise.
-    \end{enumerate}
-
-    The distinction between these states is required by the data-quality constraints described in
-    \textbf{Section~\ref{sec:data-quality-challenges}}.
+    These alternatives allow the platform to integrate with existing field
+    practices without forcing a single method of data entry.
 
 
-    \item \textbf{Human-controlled Review workflow}
+    \item \textbf{Deterministic interpretation and classification}
 
-    Before information becomes part of the confirmed dataset, FactoryFlow shall provide a Review stage in which every uncertain element has an explicit resolution path.
+    Acquired text is transformed into structured KPI candidates through
+    \textbf{deterministic processing}. Normalization handles relevant
+    variations in capitalization, accents, punctuation, spacing, numerical
+    separators, known units, approved aliases, and recognized OCR artefacts.
 
-    The platform shall allow the user to:
+    The interpretation stage keeps the following states distinguishable:
+    recognized measurements, ambiguous values, explicit missing information,
+    duplicate observations, unresolved KPI-like content, and safely identified
+    source noise.
 
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item validate an ambiguous but acceptable measurement;
-        \item confirm a duplicate occurrence without merging it with another source observation;
-        \item correct a detected value before validation;
-        \item preserve an explicitly missing value as \textbf{Non renseigné};
-        \item replace a missing value manually and validate the correction;
-        \item associate an unrecognized line with an existing KPI;
-        \item create and associate a genuinely new KPI without leaving the Review workflow;
-        \item ignore confirmed metadata or noise while preserving its raw source;
-        \item save incomplete work as a draft and resume its verification later.
-    \end{enumerate}
-
-    Report confirmation shall remain unavailable while unresolved or review-required information is still present.
+    This separation is essential because information with different semantic
+    meaning must not follow the same validation path.
 
 
-    \item \textbf{KPI catalog and association management}
+    \item \textbf{Human-controlled review and KPI management}
 
-    FactoryFlow shall maintain a reusable catalog of KPI definitions.
+    Before uncertain information can enter the confirmed dataset, FactoryFlow
+    provides a dedicated \textbf{Review workflow}. The user can validate an
+    acceptable measurement, correct a value, confirm a legitimate duplicate,
+    preserve a missing value as \textbf{Non renseigné}, associate an
+    unresolved line with an existing KPI, or create a new KPI when required.
 
-    The system shall support:
+    Source metadata and safely classified noise can be ignored without
+    removing their trace from the original acquisition. Incomplete work can
+    also be saved as a draft and resumed later.
 
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item exact matching against canonical KPI labels;
-        \item matching through approved aliases;
-        \item ranked fuzzy suggestions when no exact association is available;
-        \item visible confidence information for fuzzy suggestions;
-        \item manual selection of another KPI when the proposed association is unsuitable;
-        \item inline creation of a new indicator;
-        \item duplicate prevention when an equivalent KPI already exists;
-        \item explicit memorization of a user-approved association when requested.
-    \end{enumerate}
+    KPI association follows a controlled hierarchy based on canonical labels,
+    approved aliases, and fuzzy suggestions. \textbf{Fuzzy matching remains
+    advisory}: a weak suggestion can assist the user, but it cannot confirm an
+    association or prevent the creation of a genuinely new KPI.
 
-    A weak fuzzy suggestion shall never be treated as a definitive association and shall not prevent the user from creating a genuinely new indicator.
-
-
-    \item \textbf{Traceability and persistence}
-
-    Every confirmed report shall be stored in a centralized database together with the information required to understand its origin and validation history.
-
-    FactoryFlow shall preserve:
-
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item the original acquired source;
-        \item confirmed KPI measurements;
-        \item explicit missing values;
-        \item separately confirmed duplicate observations;
-        \item ignored source lines where traceability is required;
-        \item the resolution decisions performed during Review.
-    \end{enumerate}
-
-    This requirement implements the traceability principle introduced in
-    \textbf{Section~\ref{sec:maintenance-context}}.
+    A reusable association is memorized only after an explicit user decision.
 
 
-    \item \textbf{Historical consultation and statistical analysis}
+    \item \textbf{Confirmation, persistence, and traceability}
 
-    The user shall be able to consult previously confirmed maintenance reports and analyse the evolution of recorded indicators over time.
+    A report becomes part of the trusted dataset only after the required
+    review decisions have been completed. \textbf{Confirmation remains
+    blocked while mandatory human resolution is still pending}.
 
-    The statistical module shall provide:
+    For confirmed reports, FactoryFlow preserves the information required to
+    understand both the measurement and its origin. This includes the original
+    source, confirmed KPI values, explicit missing values, legitimate duplicate
+    observations, relevant ignored lines, and the decisions taken during
+    Review.
 
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item historical KPI consultation;
-        \item filtering by relevant period or indicator;
-        \item statistical summaries calculated from confirmed measurements;
-        \item interactive trend visualization;
-        \item consultation of the date and exact value of selected historical points.
-    \end{enumerate}
+    The resulting history therefore records not only a final value, but also
+    the context needed to explain how that value entered the system.
 
-    Missing information shall be excluded from numerical calculations and shall never be converted into zero.
+
+    \item \textbf{Historical consultation and statistics}
+
+    Confirmed maintenance information can be consulted over time through the
+    report history and statistical views. The engineer can filter relevant
+    information, inspect KPI evolution, consult statistical summaries, and
+    interact with historical trend visualizations.
+
+    Statistical calculations rely on \textbf{confirmed measurements}.
+    Missing information remains absent from numerical calculations rather than
+    being silently converted into zero.
+
+
+    \item \textbf{PDF and Excel reporting}
+
+    FactoryFlow transforms validated maintenance information into structured
+    \textbf{PDF and Excel documents}.
+
+    Two reporting scopes are supported:
+
+    \begin{itemize}
+        \item an \textbf{individual export} contains only the selected
+        confirmed maintenance report;
+
+        \item a \textbf{consolidated export} brings together the confirmed
+        reports belonging to a daily, weekly, monthly, or custom period.
+    \end{itemize}
+
+    Generated documents preserve missing measurements as
+    \textbf{Non renseigné}, retain the relevant reporting provenance, and
+    remain available for later consultation, download, or sharing.
+
+
+    \item \textbf{Scheduling, distribution, and notifications}
+
+    Repetitive reporting tasks can be automated through configurable
+    planifications. The engineer can create daily, weekly, or monthly
+    schedules, select the execution time and document formats, enable or pause
+    a schedule, and optionally configure automatic email distribution.
+
+    At execution time, the platform determines the appropriate reporting
+    period, generates the requested documents, stores the result, performs the
+    configured distribution, and records the execution outcome.
+
+    Notifications keep the engineer informed when a scheduled document is
+    ready or when generation or delivery requires attention. A distribution
+    failure does not invalidate a document that was generated successfully.
 
 
     \item \textbf{Maintenance Intelligence}
 
-    FactoryFlow shall exploit validated historical information to provide a higher analytical layer dedicated to maintenance follow-up.
+    Validated historical information provides the foundation for a higher
+    analytical layer dedicated to maintenance follow-up.
 
-    This layer shall support:
-
+    This layer supports:
     \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
         \item detection of abnormal KPI behaviour and significant deviations;
         \item analysis of historical trends;
-        \item forecasting of suitable consumption or maintenance-related indicators when sufficient historical data is available;
-        \item presentation of analytical findings in a form understandable by the maintenance engineer;
-        \item contextual alerts when an abnormal or relevant condition is identified.
+        \item forecasting of suitable consumption or maintenance-related
+        indicators when sufficient historical data is available;
+        \item presentation of analytical findings in an understandable form;
+        \item contextual alerts when relevant conditions are identified.
     \end{enumerate}
 
-    The intelligence layer shall operate on \textbf{validated historical data}, not directly on unreviewed OCR or parser output.
-
-
-    \item \textbf{Automated reporting}
-
-    The system shall generate structured reports from confirmed maintenance information.
-
-    FactoryFlow shall support:
-
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item generation of \textbf{PDF} reports;
-        \item generation of \textbf{Excel} reports;
-        \item daily, weekly, and monthly reporting periods;
-        \item consolidation of multiple confirmed source observations;
-        \item preservation of missing measurements as \textbf{Non renseigné};
-        \item storage and later consultation of generated reports.
-    \end{enumerate}
-
-
-    \item \textbf{Scheduling, notification, and distribution}
-
-    The platform shall reduce repetitive reporting operations through controlled automation.
-
-    It shall allow:
-
-    \begin{enumerate}[label=\textbf{\arabic{enumi}.\arabic*.}]
-        \item creation of recurring report schedules;
-        \item automatic generation of scheduled reports;
-        \item email distribution of generated documents;
-        \item mobile sharing of reports through compatible Android applications;
-        \item notification of relevant reporting events;
-        \item notification of maintenance-intelligence events requiring user attention.
-    \end{enumerate}
+    The essential constraint is that Maintenance Intelligence operates on
+    \textbf{validated historical data}, not directly on unreviewed OCR or
+    parser output.
 
 \end{enumerate}
 
-Together, these requirements define the functional perimeter of FactoryFlow. The quality constraints governing their execution are specified in
-\textbf{Section~\ref{sec:non-functional-requirements}}, while the rules that protect the semantic integrity of maintenance data are formalized in
-\textbf{Section~\ref{sec:business-rules}}.
+Together, these functions define FactoryFlow as more than a data-entry
+application. The platform establishes a controlled information chain from
+field acquisition to validated reporting and decision support. The quality
+constraints governing this chain are defined in the following section.
 
-% ============================================================
-% NON-FUNCTIONAL REQUIREMENTS
-% ============================================================
+
 % ============================================================
 % NON-FUNCTIONAL REQUIREMENTS
 % ============================================================
@@ -296,19 +268,18 @@ Together, these requirements define the functional perimeter of FactoryFlow. The
 \section{Non-Functional Requirements}
 \label{sec:non-functional-requirements}
 
-In addition to the functional capabilities defined in
-\textbf{Section~\ref{sec:functional-requirements}}, FactoryFlow must satisfy
-quality requirements related to reliability, security, usability,
-traceability, maintainability, performance, and analytical integrity.
+Functional coverage alone is not sufficient in an industrial reporting
+context. FactoryFlow must also preserve the reliability, usability, and
+traceability of the information while remaining maintainable and adaptable to
+its deployment environment.
 
-The principal non-functional requirements are presented in
+The principal quality requirements are summarized in
 \textbf{Table~\ref{tab:non-functional-requirements}}.
-
 
 \begin{longtable}{
     |>{\centering\arraybackslash\bfseries}p{0.12\textwidth}
-    |>{\raggedright\arraybackslash\bfseries}p{0.22\textwidth}
-    |>{\raggedright\arraybackslash}p{0.56\textwidth}|
+    |>{\raggedright\arraybackslash\bfseries}p{0.24\textwidth}
+    |>{\raggedright\arraybackslash}p{0.54\textwidth}|
 }
 
 \caption{Main non-functional requirements of FactoryFlow}
@@ -316,18 +287,10 @@ The principal non-functional requirements are presented in
 \\
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Category}
-&
-\textbf{Requirement}
+\textbf{ID} & \textbf{Category} & \textbf{Requirement}
 \\
-
 \hline
-
 \endfirsthead
-
 
 \multicolumn{3}{c}{
     \textit{Table~\ref{tab:non-functional-requirements} -- continued}
@@ -335,175 +298,102 @@ The principal non-functional requirements are presented in
 \\[4pt]
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Category}
-&
-\textbf{Requirement}
+\textbf{ID} & \textbf{Category} & \textbf{Requirement}
 \\
-
 \hline
-
 \endhead
-
 
 NFR-01
 &
 Data Integrity
 &
-The system shall preserve the distinction between confirmed measurements,
-missing information, ambiguous values, duplicate observations, unresolved
-information, and ignored source metadata.
+Confirmed measurements, missing information, uncertain values, duplicates,
+unresolved content, and ignored metadata remain semantically distinct.
+Analytical functions use validated data, and missing information is never
+silently interpreted as zero.
 \\
-
 \hline
-
 
 NFR-02
 &
-Reliability
+Reliability and Resilience
 &
-Validation, association, draft saving, report confirmation, and source-line
-resolution shall produce deterministic results without silently losing
-previously acquired information.
+Validation, draft saving, confirmation, reporting, and scheduled execution
+must produce predictable results. A temporary communication or email failure
+must not silently corrupt confirmed information or invalidate a successfully
+generated document.
 \\
-
 \hline
-
 
 NFR-03
 &
 Traceability
 &
-Information acquired from an image, pasted message, or manual entry shall
-remain traceable to its original source throughout interpretation,
-validation, storage, and reporting.
+Information acquired through an image, pasted text, or manual entry remains
+traceable to its source throughout interpretation, review, persistence, and
+report generation.
 \\
-
 \hline
-
 
 NFR-04
 &
 Usability
 &
-The mobile interface shall provide a clear workflow in which uncertain,
-missing, or unrecognized information exposes an understandable resolution
-action.
+The mobile workflow clearly distinguishes ready, missing, uncertain,
+duplicate, and unresolved information and provides an understandable action
+whenever user intervention is required.
 \\
-
 \hline
-
 
 NFR-05
 &
 Performance
 &
-Navigation, KPI review, historical consultation, and statistical interaction
-shall remain responsive on the target Android devices, without unnecessary
-blocking operations on the user interface.
+Navigation, Review interactions, history consultation, and statistical
+visualization remain responsive on the target Android devices without
+unnecessary blocking of the user interface.
 \\
-
 \hline
-
 
 NFR-06
 &
 Security
 &
-Protected resources shall require authentication, while credentials,
-authentication tokens, and application secrets shall be handled securely
-and kept outside exposed application logic.
+Protected resources require authentication. Credentials, tokens, database
+connections, and application secrets are handled securely and remain outside
+exposed application logic.
 \\
-
 \hline
-
 
 NFR-07
 &
-Operational Resilience
+Maintainability and Extensibility
 &
-Temporary communication failures shall be reported clearly and shall not
-silently corrupt confirmed information. Incomplete work shall remain
-recoverable through the draft mechanism when applicable.
+Acquisition, interpretation, validation, persistence, reporting, scheduling,
+and analytical responsibilities remain sufficiently separated to evolve
+independently. New KPIs, aliases, interpretation rules, or analytical
+mechanisms can be introduced without redesigning the complete platform.
 \\
-
 \hline
-
 
 NFR-08
 &
-Maintainability
+Interoperability and Deployment
 &
-Acquisition, interpretation, validation, persistence, reporting, and
-analytical responsibilities shall remain sufficiently separated to allow
-individual components to evolve independently.
+The Android application, Spring backend, PostgreSQL database, OCR runtime,
+email service, and generated documents communicate through defined
+interfaces. Environment-dependent endpoints, storage paths, connections, and
+secrets remain externally configurable.
 \\
-
-\hline
-
-
-NFR-09
-&
-Extensibility
-&
-New KPI definitions, aliases, interpretation rules, analytical mechanisms,
-and notification behaviours shall be introducible without redesigning the
-complete platform.
-\\
-
-\hline
-
-
-NFR-10
-&
-Interoperability
-&
-The Android application, backend, PostgreSQL database, OCR runtime, email
-services, and generated documents shall communicate through clearly defined
-interfaces and standard data representations.
-\\
-
-\hline
-
-
-NFR-11
-&
-Deployment
-&
-Environment-dependent parameters such as API endpoints, database
-connections, OCR-service addresses, storage locations, and secrets shall be
-externalized and configurable according to the deployment environment.
-\\
-
-\hline
-
-
-NFR-12
-&
-Analytical Reliability
-&
-Statistics, anomaly detection, trend analysis, and forecasting shall operate
-on validated historical measurements. Missing information shall never be
-silently interpreted as numerical zero.
-\\
-
 \hline
 
 \end{longtable}
 
+These requirements reflect a central design principle of FactoryFlow:
+\textbf{automation must reduce manual effort without weakening the meaning,
+reliability, or traceability of industrial information}. The business rules
+below translate this principle into concrete safeguards.
 
-The requirements in
-\textbf{Table~\ref{tab:non-functional-requirements}}
-reinforce the same principle established during the analysis of the existing
-process: automation must improve the handling of industrial information
-without reducing its reliability or traceability. In particular, analytical
-functions operate on validated historical data rather than directly on raw
-OCR or parser output.
-
-These quality constraints are complemented by the business rules defined in
-\textbf{Section~\ref{sec:business-rules}}.
 
 % ============================================================
 % BUSINESS RULES
@@ -512,15 +402,13 @@ These quality constraints are complemented by the business rules defined in
 \section{Business Rules}
 \label{sec:business-rules}
 
-The business rules define the conditions that FactoryFlow must respect when
-interpreting, validating, storing, and analysing maintenance information.
-Unlike interface behaviour, these rules protect the semantic integrity of
-the data and therefore remain applicable throughout the complete processing
-workflow.
+Business rules protect the semantic integrity of the information handled by
+FactoryFlow. Unlike interface details, they remain valid regardless of the
+screen or technical component performing the operation.
 
-The principal business rules are presented in
-\textbf{Table~\ref{tab:business-rules}}.
-
+Rather than describing every interface action separately,
+\textbf{Table~\ref{tab:business-rules}} concentrates the rules that directly
+protect industrial data and reporting behaviour.
 
 \begin{longtable}{
     |>{\centering\arraybackslash\bfseries}p{0.12\textwidth}
@@ -533,18 +421,10 @@ The principal business rules are presented in
 \\
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Rule}
-&
-\textbf{Description}
+\textbf{ID} & \textbf{Rule} & \textbf{Description}
 \\
-
 \hline
-
 \endfirsthead
-
 
 \multicolumn{3}{c}{
     \textit{Table~\ref{tab:business-rules} -- continued}
@@ -552,277 +432,141 @@ The principal business rules are presented in
 \\[4pt]
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Rule}
-&
-\textbf{Description}
+\textbf{ID} & \textbf{Rule} & \textbf{Description}
 \\
-
 \hline
-
 \endhead
-
 
 BR-01
 &
-Missing is not zero
+Missing and zero remain distinct
 &
-An explicitly missing measurement shall remain represented as missing or
-\textbf{Non renseigné}. It shall never be converted automatically into the
-numerical value zero.
+An explicitly missing measurement remains \textbf{Non renseigné}; it is never
+converted automatically into zero. Conversely, an explicit numerical zero
+remains a valid measurement.
 \\
-
 \hline
-
 
 BR-02
 &
-Zero is a valid value
+Interpretation is deterministic
 &
-A source measurement explicitly equal to zero shall remain a numerical zero
-and shall not be interpreted as missing information.
+Normalization and KPI interpretation follow deterministic rules. When more
+than one credible interpretation remains possible, the uncertainty is kept
+visible and requires human review rather than an automatic guess.
 \\
-
 \hline
-
 
 BR-03
 &
-Deterministic interpretation
+KPI association follows a controlled priority
 &
-Normalization and KPI interpretation shall rely on deterministic rules.
-Equivalent capitalization, accents, spacing, punctuation, separators,
-recognized units, and known OCR artefacts may be normalized without
-changing the original source retained for traceability.
+Association gives priority to an exact canonical label, followed by an
+approved alias. Fuzzy matching is used only as an advisory mechanism when no
+higher-authority match exists and cannot confirm a weak association on its
+own.
 \\
-
 \hline
-
 
 BR-04
 &
-Ambiguous numbers require review
+Learning and KPI creation are explicit
 &
-When a numerical representation admits more than one credible
-interpretation, the system shall preserve the detected value and request
-human validation rather than silently selecting an interpretation.
+New aliases, reusable associations, and new KPI definitions require an
+explicit user decision. FactoryFlow does not silently learn from an uncertain
+suggestion, and the creation of a new KPI checks for an equivalent existing
+definition.
 \\
-
 \hline
-
 
 BR-05
 &
-KPI matching priority
+Uncertainty must be resolved before confirmation
 &
-KPI association shall prioritize an exact canonical match, followed by an
-approved alias. Fuzzy matching may provide ranked suggestions only when no
-higher-authority match exists.
+Ambiguous measurements, review-required duplicates, corrected missing values,
+and unresolved KPI associations require an explicit resolution before the
+report can enter the confirmed dataset.
 \\
-
 \hline
-
 
 BR-06
 &
-Weak suggestions are non-authoritative
+Duplicate observations remain independent
 &
-A weak fuzzy suggestion shall never be treated as a confirmed association
-and shall not prevent the user from selecting another KPI or creating a new
-indicator.
+Legitimate occurrences of the same KPI are not silently merged or
+overwritten. Each occurrence can be reviewed independently and retains its own
+source traceability.
 \\
-
 \hline
-
 
 BR-07
 &
-No silent learning
+Composite measurements remain linked
 &
-A new alias or reusable association shall be memorized only after an
-explicit user decision. The system shall not silently learn from an
-uncertain or automatically proposed association.
+When one source observation contains several related measurements, such as a
+main compressor value and an associated percentage, those values remain
+linked to the same observation.
 \\
-
 \hline
-
 
 BR-08
 &
-Human validation of uncertainty
+Safe noise remains distinct from unresolved information
 &
-Ambiguous measurements, review-required warnings, corrected missing values,
-and unresolved KPI associations shall require an explicit user resolution
-before they enter the confirmed dataset.
+Deterministically recognized metadata, timestamps, interface fragments, and
+other non-business elements may be treated as safe noise. Bulk-ignore actions
+apply only to this category; uncertain KPI-like information remains visible
+until resolved.
 \\
-
 \hline
-
 
 BR-09
 &
-Duplicate observations remain traceable
+The original source is preserved
 &
-Multiple occurrences of the same KPI in a source shall not be silently
-merged or overwritten. Each legitimate occurrence may be validated
-independently and shall retain its source traceability.
+Raw acquired content remains available after OCR extraction, normalization,
+association, review, and confirmation. A validated measurement can therefore
+be traced back to the information from which it originated.
 \\
-
 \hline
-
 
 BR-10
 &
-Composite measurements remain linked
+Validated information drives analysis and reporting
 &
-When a source line contains several semantically related measurements, such
-as a principal compressor value and an associated percentage, these values
-shall remain linked to the same source observation.
+Statistics, trend analysis, Maintenance Intelligence, PDF generation, and
+Excel generation rely on \textbf{confirmed information}. Missing observations
+are excluded from numerical calculations unless an analytical method
+explicitly supports them.
 \\
-
 \hline
-
 
 BR-11
 &
-Correcting a missing value requires validation
+Reporting scope and periods are explicit
 &
-An untouched missing measurement may remain confirmed as
-\textbf{Non renseigné}. If the user supplies a replacement value, the
-correction shall require explicit validation before becoming a confirmed
-measurement.
+An \textbf{individual export} contains only the selected confirmed source
+report. A \textbf{consolidated export} includes the confirmed reports belonging
+to the selected daily, weekly, monthly, or custom period. Weekly periods follow
+Monday to Sunday, monthly periods follow complete calendar months, and
+scheduled generation uses the corresponding completed reporting period.
 \\
-
-\hline
-
-
-BR-12
-&
-Safe noise is distinguished from unresolved information
-&
-Source metadata, interface fragments, timestamps, and other deterministically
-recognized non-business elements may be classified as safe noise. KPI-like
-or uncertain information shall remain unresolved unless sufficient evidence
-exists to classify it safely.
-\\
-
-\hline
-
-
-BR-13
-&
-Bulk ignore applies only to safe noise
-&
-A bulk ignore operation shall affect only source lines classified as safe
-noise. It shall never automatically discard unresolved KPI-like information.
-\\
-
-\hline
-
-
-BR-14
-&
-Original source is preserved
-&
-The raw acquired content shall remain available after OCR extraction,
-normalization, association, validation, and source-line resolution so that a
-confirmed measurement can be traced back to its origin.
-\\
-
-\hline
-
-
-BR-15
-&
-New KPI creation is explicit
-&
-A new KPI definition shall be created only following an explicit user
-action. Before creation, the system shall verify that an equivalent
-definition does not already exist.
-\\
-
-\hline
-
-
-BR-16
-&
-Report confirmation requires resolution
-&
-A report shall not be confirmed while it still contains ambiguous,
-duplicate-review, corrected-missing, or unresolved KPI information requiring
-human intervention.
-\\
-
-\hline
-
-
-BR-17
-&
-Confirmed data drives analytics
-&
-Statistics, anomaly detection, trend analysis, forecasting, and
-maintenance-intelligence functions shall operate on validated historical
-measurements rather than directly on raw OCR or parser output.
-\\
-
-\hline
-
-
-BR-18
-&
-Missing values are excluded from numerical analysis
-&
-Missing information shall be excluded from numerical aggregates,
-statistical calculations, anomaly analysis, and forecasting unless a
-specific analytical method explicitly handles missing observations.
-\\
-
-\hline
-
-
-BR-19
-&
-Reports reflect validated information
-&
-Generated PDF and Excel documents shall be based on confirmed report data.
-Missing measurements shall remain identifiable as
-\textbf{Non renseigné} rather than being replaced by artificial values.
-\\
-
-\hline
-
-
-BR-20
-&
-Reporting periods are deterministic
-&
-Weekly reports shall follow complete Monday-to-Sunday periods, while monthly
-reports shall represent complete calendar months. Automated generation shall
-use the corresponding completed reporting period rather than an arbitrary
-rolling interval.
-\\
-
 \hline
 
 \end{longtable}
 
+These rules form the semantic safeguards between raw acquisition and
+trustworthy industrial information. Their purpose is not to prevent
+automation, but to ensure that automation never silently changes the meaning
+of the original data.
 
-These rules establish the semantic safeguards applied between raw acquisition
-and confirmed industrial information. They ensure that automation assists
-the maintenance engineer without silently changing the meaning of the
-original measurements.
+This principle can be summarized as:
 
-The functional and quality requirements defined in the preceding sections,
-together with these business rules, provide the basis for the acceptance
-criteria presented in
-\textbf{Section~\ref{sec:acceptance-criteria}}.
+\begin{center}
+    \textbf{Automation + Human Validation + Traceability
+    = Trustworthy Industrial Reporting}
+\end{center}
 
-
-% ============================================================
-% ACCEPTANCE CRITERIA
-% ============================================================
 
 % ============================================================
 % ACCEPTANCE CRITERIA
@@ -831,9 +575,10 @@ criteria presented in
 \section{Acceptance Criteria}
 \label{sec:acceptance-criteria}
 
-The acceptance criteria translate the previously defined requirements into
-verifiable conditions. They provide a practical basis for determining whether
-the principal FactoryFlow workflows behave as expected.
+The acceptance criteria provide a concise set of observable conditions against
+which the main FactoryFlow workflows can be evaluated. They intentionally
+focus on complete business scenarios rather than repeating every individual
+requirement.
 
 \begin{longtable}{
     |>{\centering\arraybackslash\bfseries}p{0.12\textwidth}
@@ -846,16 +591,9 @@ the principal FactoryFlow workflows behave as expected.
 \\
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Area}
-&
-\textbf{Acceptance criterion}
+\textbf{ID} & \textbf{Area} & \textbf{Acceptance criterion}
 \\
-
 \hline
-
 \endfirsthead
 
 \multicolumn{3}{c}{
@@ -864,202 +602,101 @@ the principal FactoryFlow workflows behave as expected.
 \\[4pt]
 
 \hline
-
-\textbf{ID}
-&
-\textbf{Area}
-&
-\textbf{Acceptance criterion}
+\textbf{ID} & \textbf{Area} & \textbf{Acceptance criterion}
 \\
-
 \hline
-
 \endhead
-
 
 AC-01
 &
-Acquisition
+Acquisition and interpretation
 &
-The user can acquire maintenance information through manual entry, pasted
-text, or an imported image. Image-based acquisition extracts visible text
-before the interpretation stage.
+Maintenance information can be acquired through pasted text, image import, or
+manual entry. The interpretation stage distinguishes recognized measurements
+from missing, ambiguous, duplicate, unresolved, and safely classified
+non-business information.
 \\
-
 \hline
-
 
 AC-02
 &
-Interpretation
+Data integrity and Review
 &
-Recognized KPI measurements are extracted while ambiguous values, missing
-measurements, duplicate observations, unresolved information, and source
-noise remain distinguishable.
+A missing measurement remains \textbf{Non renseigné}, while a real zero
+remains numerical zero. Any element requiring human review exposes an explicit
+resolution path before it can become confirmed data.
 \\
-
 \hline
-
 
 AC-03
 &
-Missing values
+KPI association and noise handling
 &
-An explicitly missing measurement remains represented as
-\textbf{Non renseigné} and is never automatically converted into zero.
-A real numerical zero remains a valid measurement.
+An unresolved KPI can be associated with an existing definition or explicitly
+created as a new indicator. Weak fuzzy suggestions remain optional, while
+bulk-ignore operations cannot discard unresolved KPI-like information.
 \\
-
 \hline
-
 
 AC-04
 &
-Human validation
+Traceability and confirmation
 &
-Any measurement requiring human review provides an explicit resolution
-action before it can become part of the confirmed dataset.
+A report cannot be confirmed while mandatory resolutions remain pending.
+After confirmation, its measurements remain traceable to the acquired source
+and incomplete work can be recovered through the draft workflow before
+confirmation.
 \\
-
 \hline
-
 
 AC-05
 &
-KPI association
+History and statistics
 &
-An unresolved KPI can be associated with an existing indicator, while a
-genuinely new indicator can be created explicitly without forcing an
-unreliable \textbf{fuzzy association}.
+Confirmed measurements can be consulted historically and used for statistical
+summaries and interactive trend visualization. Missing observations do not
+enter ordinary numerical calculations.
 \\
-
 \hline
-
 
 AC-06
 &
-Duplicate observations
+Reporting
 &
-Multiple legitimate occurrences of the same KPI can be reviewed and
-validated independently without one occurrence silently overwriting another.
+A confirmed report can be exported individually, while confirmed reports can
+also be consolidated over daily, weekly, monthly, or custom periods. PDF and
+Excel outputs preserve \textbf{Non renseigné} values and the relevant report
+provenance.
 \\
-
 \hline
-
 
 AC-07
 &
-Noise handling
+Scheduling and distribution
 &
-Source metadata and safely identified non-business information can be
-ignored without automatically discarding unresolved \textbf{KPI-like} content.
+Configured schedules can generate the requested reporting formats for the
+correct period and optionally distribute them by email. Generation and
+delivery outcomes remain visible through execution history and notifications,
+and an email failure does not remove a successfully generated document.
 \\
-
 \hline
-
 
 AC-08
 &
-Traceability
-&
-A confirmed measurement remains traceable to its acquired source after
-interpretation, validation, persistence, and report generation.
-\\
-
-\hline
-
-
-AC-09
-&
-Draft management
-&
-An incomplete Review workflow can be saved as a draft and reopened later
-without losing its acquired information or current resolution states.
-\\
-
-\hline
-
-
-AC-10
-&
-Report confirmation
-&
-A report cannot be confirmed while information requiring mandatory human
-resolution remains unresolved.
-\\
-
-\hline
-
-
-AC-11
-&
-Historical analysis
-&
-Confirmed maintenance measurements can be consulted historically and used
-to generate statistical summaries and interactive trend visualizations.
-Missing values are excluded from numerical calculations.
-\\
-
-\hline
-
-
-AC-12
-&
 Maintenance Intelligence
 &
-Anomaly detection, trend analysis, forecasting, and contextual alerts use
-validated historical measurements rather than raw \textbf{OCR} or unreviewed parser
+Anomaly detection, trend analysis, forecasting, and contextual alerts operate
+on validated historical measurements rather than raw OCR or unreviewed parser
 output.
 \\
-
-\hline
-
-
-AC-13
-&
-Reporting
-&
-Confirmed maintenance information can be exported through structured \textbf{PDF
-and Excel reports} while preserving missing measurements as
-\textbf{Non renseigné}.
-\\
-
-\hline
-
-
-AC-14
-&
-Automation
-&
-Configured reporting schedules can trigger report generation and the
-corresponding notification or distribution operations according to the
-defined reporting period.
-\\
-
-\hline
-
-
-AC-15
-&
-Operational reliability
-&
-Temporary application or communication failures do not silently convert,
-discard, or confirm maintenance information without an explicit user or
-system resolution.
-\\
-
 \hline
 
 \end{longtable}
 
-These acceptance criteria will also support the validation strategy presented
-later in the report, where the implemented workflows are evaluated against
-the expected system behaviour.
+These criteria establish the bridge between specification and validation. The
+testing chapter will later evaluate the implemented workflows against these
+expected behaviours rather than against isolated interface details.
 
-
-% ============================================================
-% USE CASE MODELING
-% ============================================================
 
 % ============================================================
 % USE CASE MODELING
@@ -1068,52 +705,34 @@ the expected system behaviour.
 \section{Use Case Modeling}
 \label{sec:use-case-modeling}
 
-The requirements defined throughout this chapter were translated into a
-UML use case model in order to provide a global representation of the
-interactions between the user and FactoryFlow.
-
-The platform has a single human actor: the
-\textbf{Maintenance Engineer}. This actor interacts with FactoryFlow
-throughout the maintenance-information lifecycle, from data acquisition and
-validation to historical consultation, reporting, automation, and
-maintenance-oriented analysis.
-
-The principal interactions are represented in
-\textbf{Figure~\ref{fig:factoryflow-use-case}}.
+The functional perimeter defined above is summarized through a UML use case
+model. FactoryFlow has one principal human actor:
+the \textbf{Maintenance Engineer}.
 
 \begin{figure}[H]
     \centering
-
     \includegraphics[width=0.98\textwidth]
     {diagrams/source/factoryflow_uc.png}
-
     \caption{FactoryFlow use case diagram}
     \label{fig:factoryflow-use-case}
 \end{figure}
 
 As shown in \textbf{Figure~\ref{fig:factoryflow-use-case}},
-authentication is a prerequisite for access to the protected functionalities
-of FactoryFlow. The corresponding use case is therefore included by the
-principal authenticated operations of the platform.
+authentication precedes access to the protected functions of the platform.
 
-The Maintenance Engineer can acquire maintenance information through the
-supported acquisition mechanisms, review and validate interpreted data,
-manage KPI definitions and associations, preserve incomplete work as
-drafts, and confirm validated reports.
+The Maintenance Engineer can acquire operational information, review and
+validate interpreted measurements, manage KPI associations, preserve
+incomplete work as drafts, and confirm trusted reports. Once information is
+confirmed, the same actor can consult its history, analyse KPI evolution,
+generate individual or consolidated documents, and manage recurring reporting
+schedules.
 
-The same actor can subsequently consult historical information, analyse KPI
-statistics and trends, access Maintenance Intelligence results, generate
-reports, and manage the scheduling and notification functions associated
-with the reporting workflow.
+The model also reflects the analytical role of FactoryFlow. Validated
+historical measurements feed statistics and, at a higher level, Maintenance
+Intelligence functions. This keeps a clear separation between
+\textbf{raw acquisition}, \textbf{human validation}, and
+\textbf{analytical exploitation}.
 
-The diagram therefore provides a consolidated representation of the
-functional perimeter previously established through the functional
-requirements, business rules, and acceptance criteria.
-
-
-% ============================================================
-% CONCLUSION
-% ============================================================
 
 % ============================================================
 % CONCLUSION
@@ -1122,29 +741,28 @@ requirements, business rules, and acceptance criteria.
 \section{Conclusion}
 \label{sec:requirements-conclusion}
 
-This chapter translated the industrial needs identified in
+This chapter transformed the industrial needs identified in
 \textbf{Chapter~\ref{chap:industrial-context}}
-into a structured specification for FactoryFlow.
+into a concise specification of FactoryFlow.
 
-The analysis identified the Maintenance Engineer as the principal human
-actor and defined the functional requirements covering acquisition,
-deterministic interpretation, human-controlled validation, KPI management,
-traceability, historical analysis, reporting, automation, and Maintenance
-Intelligence.
+The analysis identified the \textbf{Maintenance Engineer} as the principal
+human actor and defined the functions required to acquire heterogeneous
+maintenance information, interpret it deterministically, resolve uncertainty,
+preserve traceability, build a trusted history, and transform confirmed data
+into statistics and professional reports.
 
-The non-functional requirements established the expected levels of data
-integrity, reliability, security, usability, maintainability,
-interoperability, and analytical reliability. These constraints were
-complemented by business rules that preserve the semantic meaning of the
-maintenance information, particularly the distinction between missing and
-zero values, the management of uncertainty, source traceability, and the
-use of validated data for analytical processing.
+The specification also established the quality and business safeguards that
+give these functions their industrial value. In particular,
+\textbf{missing information remains distinct from zero}, fuzzy matching never
+replaces explicit validation, duplicate observations remain traceable, and
+analytical processing relies on confirmed historical measurements.
 
-Finally, the acceptance criteria and UML use case model provided a
-verifiable representation of the expected system behaviour and its main
-user interactions.
+Finally, the reporting and automation requirements extend the same principle
+to document generation and distribution: individual and consolidated scopes
+remain explicit, reporting periods are deterministic, and operational failures
+remain visible instead of silently compromising the resulting information.
 
-Based on this specification, the next chapter presents the
-\textbf{software architecture and detailed design of FactoryFlow},
-explaining how these requirements were translated into the technical
-components of the platform.
+With the expected behaviour now established,
+\textbf{Chapter~\ref{chap:architecture}}
+presents the software architecture and design choices used to translate these
+requirements into the technical components of FactoryFlow.

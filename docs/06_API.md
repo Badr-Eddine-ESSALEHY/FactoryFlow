@@ -2833,4 +2833,32 @@ Confirmation entries identify observations by both `entryId` and `kpiDefinitionI
 
 ---
 
+## Maintenance Intelligence API
+
+All routes require the existing JWT bearer authentication:
+
+```text
+GET  /api/maintenance-intelligence/overview
+GET  /api/maintenance-intelligence/kpis/{kpiId}
+GET  /api/maintenance-intelligence/kpis/{kpiId}/analyses
+GET  /api/maintenance-intelligence/analyses/{analysisId}
+POST /api/maintenance-intelligence/kpis/{kpiId}/refresh
+GET  /api/maintenance-intelligence/kpis/{kpiId}/profile
+PUT  /api/maintenance-intelligence/kpis/{kpiId}/profile
+GET  /api/maintenance-intelligence/alerts
+GET  /api/maintenance-intelligence/alerts/{id}
+```
+
+Overview responses remain compact. KPI detail returns the durable rich result including
+traceable history, anomaly evidence, forecast intervals, metrics, candidates, model
+selection, cadence, trend, and latest-observation expectation. Analysis history and alerts
+are paginated. Alert filters support KPI, type, attention level, and creation-time bounds.
+
+`INSUFFICIENT_DATA` is a valid analytical result. Runtime unavailability produces `503`
+with `INTELLIGENCE_RUNTIME_UNAVAILABLE`; concurrent same-KPI refresh produces `409` with
+`INTELLIGENCE_REFRESH_IN_PROGRESS`. Isolation Forest output is named `anomalyScore` and
+retains its model-relative semantics—it is never exposed as probability or severity.
+
+---
+
 # End of 06_API.md

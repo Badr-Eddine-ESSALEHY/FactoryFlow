@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1800" viewBox="0 0 1400 1800" role="img" aria-labelledby="title desc">
+  <title id="title">Layered and modular architecture of the FactoryFlow Spring Boot backend</title>
+  <desc id="desc">FactoryFlow Android enters one modular Spring Boot backend through the API layer. The backend contains application and business modules, a domain layer, and infrastructure adapters connected to PostgreSQL, PaddleOCR, generated report storage, and SMTP. Quartz triggers reporting and scheduling.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#17324D" flood-opacity="0.12"/></filter>
+    <marker id="arrowNavy" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#244766"/></marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#3277B3"/></marker>
+    <style>
+      .font { font-family: Inter, Arial, sans-serif; fill: #17324D; }
+      .section-title { font-size: 27px; font-weight: 700; letter-spacing: 1.1px; }
+      .module-title { font-size: 26px; font-weight: 650; }
+      .module-subtitle { font-size: 20px; font-weight: 450; fill: #5D6D7C; }
+      .external-title { font-size: 22px; font-weight: 650; }
+      .small-label { font-size: 18px; font-weight: 600; fill: #52677A; }
+      .connector { fill: none; stroke: #244766; stroke-width: 4; marker-end: url(#arrowNavy); }
+      .connector-blue { fill: none; stroke: #3277B3; stroke-width: 4; marker-end: url(#arrowBlue); }
+      .connector-dashed { fill: none; stroke: #A56A14; stroke-width: 4; stroke-dasharray: 10 9; marker-end: url(#arrowNavy); }
+    </style>
+  </defs>
+  <rect width="1400" height="1800" fill="#FFFFFF"/>
+
+  <g filter="url(#shadow)"><rect x="425" y="28" width="550" height="84" rx="42" fill="#E7F3FF" stroke="#3F8FCC" stroke-width="3"/></g>
+  <circle cx="480" cy="70" r="23" fill="#3F8FCC"/><rect x="469" y="52" width="22" height="36" rx="4" fill="#FFFFFF"/><circle cx="480" cy="82" r="2.5" fill="#3F8FCC"/>
+  <text x="720" y="79" text-anchor="middle" class="font" font-size="28" font-weight="700">FACTORYFLOW ANDROID</text>
+  <path d="M700 112 V166" class="connector-blue"/><rect x="575" y="122" width="250" height="30" rx="15" fill="#FFFFFF"/><text x="700" y="143" text-anchor="middle" class="font small-label">REST / JSON / HTTPS</text>
+
+  <g filter="url(#shadow)"><rect x="48" y="170" width="1304" height="1338" rx="30" fill="#F7F9FC" stroke="#244766" stroke-width="4"/></g>
+  <path d="M78 170 H1322 Q1352 170 1352 200 V252 H48 V200 Q48 170 78 170 Z" fill="#17324D"/>
+  <text x="700" y="222" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="750" letter-spacing="1" fill="#FFFFFF">FACTORYFLOW SPRING BOOT BACKEND</text>
+
+  <rect x="90" y="282" width="1220" height="138" rx="20" fill="#EAF5FF" stroke="#75B6E8" stroke-width="2.5"/>
+  <text x="125" y="321" class="font section-title" fill="#2B6F9F">API LAYER</text>
+  <rect x="190" y="341" width="1020" height="56" rx="14" fill="#FFFFFF" stroke="#A9D2F0" stroke-width="2"/>
+  <text x="700" y="377" text-anchor="middle" class="font module-title">REST Controllers   •   Request Validation   •   API DTOs</text>
+  <path d="M700 420 V454" class="connector"/><text x="722" y="446" class="font small-label">delegates</text>
+
+  <rect x="90" y="462" width="1220" height="666" rx="20" fill="#F2EDFF" stroke="#9E83DE" stroke-width="2.5"/>
+  <text x="125" y="502" class="font section-title" fill="#6947B5">APPLICATION / BUSINESS LAYER</text>
+  <g>
+    <rect x="125" y="530" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="402" y="568" text-anchor="middle" class="font module-title">Authentication &amp; Access</text><text x="402" y="597" text-anchor="middle" class="font module-subtitle">Protected application operations</text>
+    <rect x="720" y="530" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="997" y="568" text-anchor="middle" class="font module-title">Acquisition &amp; Validation</text><text x="997" y="597" text-anchor="middle" class="font module-subtitle">Review preparation and confirmation</text>
+    <rect x="125" y="648" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="402" y="686" text-anchor="middle" class="font module-title">Deterministic Interpretation</text><text x="402" y="715" text-anchor="middle" class="font module-subtitle">Controlled KPI meaning</text>
+    <rect x="720" y="648" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="997" y="686" text-anchor="middle" class="font module-title">Report Management</text><text x="997" y="715" text-anchor="middle" class="font module-subtitle">Validated report lifecycle</text>
+    <rect x="125" y="766" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="402" y="804" text-anchor="middle" class="font module-title">Statistics &amp; History</text><text x="402" y="833" text-anchor="middle" class="font module-subtitle">Historical KPI consultation</text>
+    <rect x="720" y="766" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="997" y="804" text-anchor="middle" class="font module-title">Maintenance Intelligence</text><text x="997" y="833" text-anchor="middle" class="font module-subtitle">Validated historical KPI analysis</text>
+    <rect x="125" y="884" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="402" y="922" text-anchor="middle" class="font module-title">Reporting &amp; Scheduling</text><text x="402" y="951" text-anchor="middle" class="font module-subtitle">Documents and automation</text>
+    <rect x="720" y="884" width="555" height="92" rx="16" fill="#FFFFFF" stroke="#B5A5E3" stroke-width="2"/><text x="997" y="922" text-anchor="middle" class="font module-title">Notifications</text><text x="997" y="951" text-anchor="middle" class="font module-subtitle">State and delivery workflows</text>
+  </g>
+  <rect x="172" y="1015" width="270" height="60" rx="30" fill="#FFF2CF" stroke="#D49A35" stroke-width="2.5"/><circle cx="208" cy="1045" r="15" fill="#D49A35"/><path d="M208 1035 V1045 L216 1051" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><text x="335" y="1053" text-anchor="middle" class="font" font-size="21" font-weight="700">Quartz timing</text><path d="M307 1015 V990" class="connector-dashed"/><text x="460" y="1053" class="font small-label" fill="#8A5D14">triggers only</text>
+  <path d="M700 1128 V1160" class="connector"/><text x="722" y="1152" class="font small-label">applies rules</text>
+
+  <rect x="90" y="1168" width="1220" height="128" rx="20" fill="#EAF8ED" stroke="#76C986" stroke-width="2.5"/>
+  <text x="125" y="1207" class="font section-title" fill="#357E45">DOMAIN LAYER</text>
+  <rect x="190" y="1225" width="1020" height="50" rx="14" fill="#FFFFFF" stroke="#A8DDB2" stroke-width="2"/>
+  <text x="700" y="1258" text-anchor="middle" class="font module-title">Business entities   •   Domain rules   •   Validated KPI information</text>
+  <path d="M700 1296 V1328" class="connector"/><text x="722" y="1320" class="font small-label">through ports</text>
+
+  <rect x="90" y="1336" width="1220" height="142" rx="20" fill="#FFF6E3" stroke="#DFB05B" stroke-width="2.5"/>
+  <text x="125" y="1375" class="font section-title" fill="#98651C">INFRASTRUCTURE &amp; DATA ACCESS</text>
+  <rect x="118" y="1396" width="275" height="56" rx="13" fill="#FFFFFF" stroke="#E5C98F" stroke-width="2"/><text x="255" y="1432" text-anchor="middle" class="font" font-size="21" font-weight="650">JPA / Hibernate</text>
+  <rect x="415" y="1396" width="275" height="56" rx="13" fill="#FFFFFF" stroke="#E5C98F" stroke-width="2"/><text x="552" y="1432" text-anchor="middle" class="font" font-size="21" font-weight="650">OCR Provider Adapter</text>
+  <rect x="712" y="1396" width="275" height="56" rx="13" fill="#FFFFFF" stroke="#E5C98F" stroke-width="2"/><text x="849" y="1432" text-anchor="middle" class="font" font-size="21" font-weight="650">Report Storage Adapter</text>
+  <rect x="1009" y="1396" width="275" height="56" rx="13" fill="#FFFFFF" stroke="#E5C98F" stroke-width="2"/><text x="1146" y="1432" text-anchor="middle" class="font" font-size="21" font-weight="650">Email Adapter</text>
+  <path d="M255 1478 V1550" class="connector"/><path d="M552 1478 V1550" class="connector-blue"/><path d="M849 1478 V1550" class="connector"/><path d="M1146 1478 V1550" class="connector"/><text x="552" y="1523" text-anchor="middle" class="font small-label">text extraction only</text>
+
+  <g filter="url(#shadow)">
+    <rect x="110" y="1550" width="290" height="134" rx="18" fill="#F1F4F6" stroke="#78909C" stroke-width="2.5"/><ellipse cx="255" cy="1582" rx="25" ry="10" fill="#78909C"/><rect x="230" y="1582" width="50" height="28" fill="#78909C"/><ellipse cx="255" cy="1610" rx="25" ry="10" fill="#607D8B"/><text x="255" y="1650" text-anchor="middle" class="font external-title">PostgreSQL</text>
+    <rect x="407" y="1550" width="290" height="134" rx="18" fill="#E5FAF7" stroke="#4CB8AE" stroke-width="2.5"/><circle cx="552" cy="1587" r="24" fill="#4CB8AE"/><path d="M539 1587 H565 M552 1574 V1600" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/><text x="552" y="1631" text-anchor="middle" class="font external-title">PaddleOCR Runtime</text><text x="552" y="1659" text-anchor="middle" class="font module-subtitle">Private OCR boundary</text>
+    <rect x="704" y="1550" width="290" height="134" rx="18" fill="#F1F4F6" stroke="#78909C" stroke-width="2.5"/><rect x="817" y="1578" width="48" height="34" rx="5" fill="#78909C"/><rect x="827" y="1569" width="48" height="34" rx="5" fill="#A4B2BA"/><text x="849" y="1631" text-anchor="middle" class="font external-title">Generated Reports</text><text x="849" y="1659" text-anchor="middle" class="font module-subtitle">Document storage</text>
+    <rect x="1001" y="1550" width="290" height="134" rx="18" fill="#FFF0E2" stroke="#D7893A" stroke-width="2.5"/><rect x="1117" y="1570" width="58" height="42" rx="6" fill="#D7893A"/><path d="M1120 1575 L1146 1595 L1172 1575" fill="none" stroke="#FFFFFF" stroke-width="4"/><text x="1146" y="1631" text-anchor="middle" class="font external-title">SMTP / Email</text><text x="1146" y="1659" text-anchor="middle" class="font module-subtitle">Scheduled delivery</text>
+  </g>
+  <text x="700" y="1742" text-anchor="middle" class="font" font-size="20" font-weight="550" fill="#617487">One deployment • separated responsibilities • external systems accessed through dedicated adapters</text>
+</svg>

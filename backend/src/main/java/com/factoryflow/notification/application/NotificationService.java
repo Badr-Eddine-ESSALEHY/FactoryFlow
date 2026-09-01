@@ -39,4 +39,11 @@ public class NotificationService {
         if (user == null) return;
         notifications.save(UserNotification.create(user, type, title, message, reportId, generatedId, clock.instant()));
     }
+    @Transactional
+    public boolean notifyIntelligence(UserAccount user, String title, String message, Long reportId, Long alertId) {
+        if (user == null || notifications.existsByRelatedIntelligenceAlertId(alertId)) return false;
+        notifications.save(UserNotification.create(user, NotificationType.MAINTENANCE_INTELLIGENCE_ATTENTION,
+                title, message, reportId, null, alertId, clock.instant()));
+        return true;
+    }
 }

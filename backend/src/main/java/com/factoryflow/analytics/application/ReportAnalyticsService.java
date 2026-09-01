@@ -57,7 +57,7 @@ public class ReportAnalyticsService {
                 identity.kpiDefinitionId(), identity.code(), identity.displayName(), identity.unit(),
                 last, mean, minimum, maximum,
                 minimum == null ? null : maximum.subtract(minimum), standardDeviation(numbers, mean),
-                mean == null || previousMean == null ? null : mean.subtract(previousMean), trend(numbers, mean), first, last,
+                mean == null || previousMean == null ? null : mean.subtract(previousMean), analyzeTrend(numbers).direction(), first, last,
                 valid.size(), values.size() - valid.size(), reportIds.size(), ratio(valid.size(), values.size()),
                 valid.stream().map(value -> new AnalyticsSnapshot.Point(value.effectiveDate(), value.reportId(), value.value())).toList());
     }
@@ -76,8 +76,11 @@ public class ReportAnalyticsService {
         return BigDecimal.valueOf(Math.sqrt(variance.doubleValue())).setScale(SCALE, RoundingMode.HALF_UP).stripTrailingZeros();
     }
 
-    private TrendDirection trend(List<BigDecimal> values, BigDecimal mean) {
-        if (values.size() < 2) return TrendDirection.INSUFFICIENT_DATA;
+    public TrendMeasurement analyzeTrend(List<BigDecimal> values) {
+        if (values.size() < 2) {
+            return new TrendMeasurement(TrendDirection.INSUFFICIENT_DATA, null, null, null, values.size());
+        }
+        BigDecimal mean = mean(values);
         BigDecimal xMean = BigDecimal.valueOf(values.size() - 1).divide(BigDecimal.valueOf(2), MathContext.DECIMAL64);
         BigDecimal numerator = BigDecimal.ZERO;
         BigDecimal denominator = BigDecimal.ZERO;
@@ -88,8 +91,15 @@ public class ReportAnalyticsService {
         }
         BigDecimal slope = numerator.divide(denominator, SCALE * 2, RoundingMode.HALF_UP);
         BigDecimal threshold = mean.abs().multiply(STABLE_RELATIVE_SLOPE).max(MINIMUM_STABLE_SLOPE);
-        if (slope.abs().compareTo(threshold) <= 0) return TrendDirection.STABLE;
-        return slope.signum() > 0 ? TrendDirection.INCREASING : TrendDirection.DECREASING;
+        TrendDirection direction = slope.abs().compareTo(threshold) <= 0
+                ? TrendDirection.STABLE
+                : (slope.signum() > 0 ? TrendDirection.INCREASING : TrendDirection.DECREASING);
+        BigDecimal absoluteChange = values.getLast().subtract(values.getFirst());
+        BigDecimal percentageChange = values.getFirst().compareTo(BigDecimal.ZERO) == 0
+                ? null
+                : absoluteChange.multiply(BigDecimal.valueOf(100))
+                        .divide(values.getFirst().abs(), SCALE, RoundingMode.HALF_UP).stripTrailingZeros();
+        return new TrendMeasurement(direction, slope.stripTrailingZeros(), absoluteChange, percentageChange, values.size());
     }
 
     private BigDecimal ratio(long numerator, long denominator) {
@@ -101,5 +111,14 @@ public class ReportAnalyticsService {
     public record Measurement(Long kpiDefinitionId, String code, String displayName, String unit,
                               LocalDate effectiveDate, Long reportId, BigDecimal value) {
         public String key() { return kpiDefinitionId == null ? displayName : kpiDefinitionId.toString(); }
+    }
+
+    public record TrendMeasurement(
+            TrendDirection direction,
+            BigDecimal slopePerObservation,
+            BigDecimal absoluteChange,
+            BigDecimal percentageChange,
+            int observationCount
+    ) {
     }
 }

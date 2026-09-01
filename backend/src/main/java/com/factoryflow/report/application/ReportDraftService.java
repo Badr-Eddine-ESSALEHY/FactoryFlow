@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -38,15 +39,17 @@ public class ReportDraftService {
     private final AuthenticationService authentication;
     private final NotificationService notifications;
     private final KpiDefinitionService kpiDefinitionService;
+    private final ApplicationEventPublisher events;
 
     public ReportDraftService(MaintenanceReportRepository reports, KpiDefinitionRepository definitions,
                               AuthenticationService authentication, NotificationService notifications,
-                              KpiDefinitionService kpiDefinitionService) {
+                              KpiDefinitionService kpiDefinitionService, ApplicationEventPublisher events) {
         this.reports = reports;
         this.definitions = definitions;
         this.authentication = authentication;
         this.notifications = notifications;
         this.kpiDefinitionService = kpiDefinitionService;
+        this.events = events;
     }
 
     @Transactional
@@ -195,6 +198,8 @@ public class ReportDraftService {
         notifications.notify(confirmed.getSubmittedBy(), NotificationType.REPORT_CONFIRMED,
                 "Rapport confirmé", "Le rapport du " + confirmed.getEffectiveDate() + " est maintenant officiel.",
                 confirmed.getId(), null);
+        events.publishEvent(new ReportConfirmedEvent(confirmed.getId(), confirmed.getEffectiveDate(),
+                confirmed.getEntries().stream().map(entry -> entry.getDefinition().getId()).collect(java.util.stream.Collectors.toSet())));
         return ReportResponse.from(confirmed);
     }
 

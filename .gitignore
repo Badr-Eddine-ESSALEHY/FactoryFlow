@@ -12,6 +12,7 @@ android/**/build/
 
 # Local FactoryFlow runtime/generated files
 backend/ocr-runtime/.venv/
+backend/intelligence-runtime/.venv/
 backend/ocr-runtime/__pycache__/
 **/__pycache__/
 output/

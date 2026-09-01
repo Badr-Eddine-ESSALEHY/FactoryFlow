@@ -9,4 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserNotificationRepository extends JpaRepository<UserNotification, Long> {
     List<UserNotification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     Optional<UserNotification> findByIdAndUserId(Long id, Long userId);
+    boolean existsByRelatedIntelligenceAlertId(Long alertId);
 }

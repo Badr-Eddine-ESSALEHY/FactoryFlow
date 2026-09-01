@@ -3119,42 +3119,42 @@ Do not silently reorder the project because a different feature looks more excit
 
 67. Current Work
 Current milestone:
-Final client completion pass before physical-device acceptance
+Maintenance Intelligence Phase 2 backend accepted
 
 Current task:
-Run the PostgreSQL-backed integration suite with valid local test credentials, then
-complete real-device acceptance on the target Vivo device
+Freeze the verified Phase 2 backend checkpoint without starting Android Phase 3.
 
 Last completed:
-Exact confirmed-report export; daily/weekly/monthly/custom consolidated export; one-sheet
-Excel and manager PDF cleanup; conditional weekly/monthly PDF analytics; grouped scheduled
-email attachments; truthful partial/SMTP failure states; Android period/format generation
-UX; navigation-safe schedule action; narrow PF/Aymane/Lokbiche safe-noise classification;
-implementation-status documentation; representative PDF/XLSX artifacts; refreshed debug APK
+Maintenance Intelligence Phase 2 implementation: per-KPI profile, versioned JSONB analysis
+snapshots, leakage-free latest-observation expectation, deterministic contextual alerts,
+idempotent existing-notification integration, bounded after-commit refresh, and secured APIs.
 
 In progress:
-Environment-dependent verification only: PostgreSQL integration tests, live SMTP delivery,
-real release HTTPS URL configuration, and Vivo end-to-end/visual acceptance
+Final Git audit and checkpoint publication. Android repository, ViewModel, screens,
+navigation, and charts have deliberately not started.
 
 Next:
-Provide `TEST_DB_PASSWORD`/`DB_PASSWORD` for the local `factoryflow_test` database and
-rerun `mvnw test`; configure SMTP credentials in environment variables; install the
-debug APK and validate the supplied WhatsApp screenshot on the Vivo device
+After explicit Phase 2 approval, begin Android Phase 3 against the frozen secured API.
 
 Primary blocker:
-The local PostgreSQL server rejects the available `postgres` connection because no valid
-test password is present in the environment. Production installation additionally
-requires the real HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL` and environment-only SMTP
-credentials.
+No Phase 2 acceptance blocker remains. Production installation still requires the real
+HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL` and environment-only SMTP credentials.
 
 Implementation status:
-Backend compile/test-compile pass. The database-independent backend suite reports 126
-tests, 0 failures, 0 errors, 1 opt-in PaddleOCR test skipped. The complete backend suite
-discovers 161 tests and currently reports 0 failures, 35 Spring context errors, and 1
-skip; every error follows PostgreSQL authentication failure before test execution.
-Android `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug` pass;
-the unit suite reports 41 tests with 0 failures/errors/skips. Real-device acceptance and
-live SMTP delivery remain external verification steps.
+Backend compilation and packaging pass. Flyway V13 and the real PostgreSQL persistence/API
+path are verified, including profile uniqueness, JSONB analysis round-trip, latest-success
+versus latest-failure queries, contextual-alert idempotency, notification linkage, and JWT-
+secured retrieval. The final backend suite passes 187 tests across 44 suites with zero
+failures/errors and two opt-in skips. The focused Java Maintenance Intelligence run passes
+25 ordinary tests plus the PostgreSQL integration test; the separately enabled live Java-
+to-Python contract also passes. The expanded Python analytical suite passes all 27 tests.
+A PostgreSQL-specific nullable alert-filter defect found by the integration test was fixed
+by composing typed JPA specifications dynamically. Representative single-KPI analytical
+calls averaged about 0.53 s for 28 daily observations and 4.18 s for 46 observations with
+seven-day seasonality, reinforcing the bounded background executor.
+The unchanged Android verification from Phase 1 remains 41 unit tests plus successful
+`compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug`. Real-device
+acceptance and live SMTP delivery remain external verification steps.
 
 Update this section after every meaningful development session.
 

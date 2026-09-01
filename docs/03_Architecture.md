@@ -1459,17 +1459,44 @@ It never replaces parser confirmation.
 
 ---
 
-# 74. Future Predictive Layer
+# 74. Maintenance Intelligence Analytical Core
 
-Possible future:
+The internal Phase 1 analytical boundary is implemented as:
 
 ```text
-confirmed historical KPI data
+CONFIRMED maintenance_reports + kpi_entries.final_value
     ↓
-analytics / anomaly detection / forecasting
+Spring historical preparation and cadence metadata
+    ↓
+MaintenanceIntelligenceProvider
+    ↓ private HTTP
+Python runtime: Isolation Forest + adaptive ETS/SARIMA/baselines
+    ↓
+Spring response identity validation + existing deterministic trend semantics
+    ↓
+structured in-memory MaintenanceIntelligenceResult
 ```
 
-Outside current core.
+Spring Boot alone selects trusted records. The Python runtime has no PostgreSQL access and
+cannot consume drafts, extracted values, parser candidates, or OCR text. It never
+interpolates or aggregates observations in Phase 1; irregular and duplicate-date series
+produce explicit forecasting insufficiency.
+
+Forecast comparison uses common expanding-window origins aligned to the requested
+multi-step horizon. Results retain aggregate and per-horizon errors. A one-standard-error
+rule defines the candidates operationally indistinguishable from the numerical best and
+then selects the least complex member of that set; a materially better complex model can
+still win. SARIMA candidates are subject to convergence, finite-parameter, AR-root, and
+MA-root checks, with residual autocorrelation retained as warning evidence when testable.
+
+Cadence metadata deliberately separates observed spacing from expected business cadence.
+Stable complete histories may use `INFERRED_OBSERVED`; `CONFIGURED_EXPECTED` is supported
+by the internal analytical contract without adding persistence, and ambiguous or missing
+cadence remains `UNKNOWN`. The Phase 1 no-resampling policy remains explicit.
+
+This is an internal analytical core for validated maintenance KPI reporting, not an
+equipment-failure prediction platform. Persistence, public REST exposure, contextual
+alerts, notifications, and Android presentation remain outside Phase 1.
 
 ---
 
@@ -1600,6 +1627,34 @@ It is not the product itself.
 The product remains:
 
 > **a mobile platform that turns fragmented maintenance KPI information into verified, centralized, automated reporting without removing human control.**
+
+---
+
+## 80. Maintenance Intelligence Phase 2
+
+Phase 2 preserves the private analytical boundary and adds durable business orchestration:
+
+```text
+CONFIRMED final KPI history
+→ per-KPI KpiIntelligenceProfile
+→ Phase 1 analytical runtime
+→ versioned JSONB analysis snapshot + queryable summary
+→ latest-observation out-of-sample expectation
+→ deterministic contextual decision
+→ idempotent MaintenanceIntelligenceAlert
+→ existing persisted UserNotification
+→ secured REST API
+```
+
+Report confirmation publishes an internal event inside its transaction. An `AFTER_COMMIT`
+listener submits one task per distinct KPI to a bounded executor, so Python work never
+delays or invalidates confirmation. This queue is deliberately process-local rather than
+durable; manual single-KPI refresh is the recovery path after restart or queue rejection.
+
+Analysis persistence, alert persistence, and notification persistence use separate
+transactions. Consequently, later contextualization or notification failure cannot erase
+a valid analytical snapshot. The API exposes the latest usable analytical result separately
+from the latest refresh attempt, including technical failures.
 
 ---
 

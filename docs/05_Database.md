@@ -2549,4 +2549,23 @@ If the schema cannot preserve those answers, it is not complete enough for Facto
 
 ---
 
+## 155. Maintenance Intelligence persistence
+
+Migration `V13__create_maintenance_intelligence.sql` introduces:
+
+- `kpi_intelligence_profiles`: one optimistic-versioned analytical profile per KPI;
+- `maintenance_intelligence_analyses`: immutable execution history with queryable summary
+  columns plus schema-versioned JSONB profile/result snapshots;
+- `maintenance_intelligence_alerts`: structured contextual evidence linked to the KPI,
+  analysis, source entry, and source report;
+- `user_notifications.related_intelligence_alert_id`: optional unique delivery linkage.
+
+Expected business cadence belongs to the separate profile because it is analytical
+configuration, not canonical KPI identity. Alert uniqueness is `(source_entry_id,
+alert_type)`: rerunning unchanged evidence updates/relinks the alert instead of creating a
+duplicate notification. Analyses are intentionally append-only, including technical
+failure attempts; failed attempts never replace or delete the latest usable snapshot.
+
+---
+
 # End of 05_Database.md

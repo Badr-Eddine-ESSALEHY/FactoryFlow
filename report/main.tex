@@ -10,6 +10,18 @@
 \input{config/commands}
 \input{config/metadata}
 
+% ============================================================
+% SECTION NUMBERING DEPTH
+% ============================================================
+
+% Number headings down to subsubsection level:
+% VII.3.1, VII.3.2, VII.3.3, ...
+\setcounter{secnumdepth}{3}
+
+% Keep the Table of Contents at subsection level:
+% VII.1, VII.2, VII.3, ...
+\setcounter{tocdepth}{2}
+
 \begin{document}
 
 % ============================================================
@@ -18,18 +30,24 @@
 
 \pagenumbering{gobble}
 
+\hypersetup{pageanchor=false}
+
 \input{frontmatter/cover}
 
 \clearpage
+
 \input{frontmatter/dedication}
 
 \clearpage
+
 \input{frontmatter/acknowledgements}
 
 \clearpage
+
 \input{frontmatter/abstract}
 
 \clearpage
+
 \input{frontmatter/lists}
 
 % ============================================================
@@ -41,10 +59,15 @@
 
 % The front matter is physically counted but its page numbers are hidden.
 % Reveal Arabic numbering here without resetting the page counter.
+
+\hypersetup{pageanchor=true}
+
 \renewcommand{\thepage}{\arabic{page}}
+
 \pagestyle{fancy}
 
 \chapter*{GENERAL INTRODUCTION}
+
 \markboth{GENERAL INTRODUCTION}{}
 
 \addcontentsline{toc}{chapter}{GENERAL INTRODUCTION}
@@ -56,10 +79,15 @@
 % ============================================================
 
 \include{chapters/01_context}
+
 \include{chapters/02_requirements}
+
 \include{chapters/03_architecture}
+
 \include{chapters/04_factoryflow_implementation}
+
 \include{chapters/05_dosage_analysis}
+
 \include{chapters/06_validation_results}
 
 % ============================================================
@@ -69,7 +97,9 @@
 \include{backmatter/conclusion}
 
 \clearpage
+
 \chapter*{REFERENCES}
+
 \markboth{REFERENCES}{}
 
 \addcontentsline{toc}{chapter}{REFERENCES}
@@ -77,7 +107,9 @@
 \printbibliography[heading=none]
 
 \clearpage
+
 \appendix
+
 \input{backmatter/appendices}
 
 \end{document}

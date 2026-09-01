@@ -1317,6 +1317,35 @@ DATE_TRUNC
 
 Do not fetch every historical row to Java for basic aggregation.
 
+## 79.1 Maintenance Intelligence Internal Boundary
+
+Maintenance Intelligence is separate from descriptive Statistics. Its Phase 1 application
+service loads one KPI and one date window through a query constrained to confirmed reports
+and `kpi_entries.final_value`. Preparation preserves entry/report identity, effective date,
+confirmation timestamp, zero values, missing counts, unit, and explicit cadence metadata.
+
+Spring calls a distinct private Python runtime through `MaintenanceIntelligenceProvider`.
+The runtime applies scikit-learn Isolation Forest and evaluates baseline, ETS, and bounded
+SARIMA candidates at identical expanding-window origins over the complete requested
+forecast horizon. Aggregate and per-horizon MAE, RMSE, sMAPE, lag-one non-seasonal MASE,
+and lag-`p` seasonal MASE are retained when mathematically defined. Model selection uses
+the numerical best candidate's fold-level sMAPE standard error to form a competitive set,
+then selects its least-complex member. Metadata preserves the raw best, parsimonious
+choice, final selection, and any final-fit fallback.
+
+Candidate eligibility accounts for history, requested horizon, rolling-origin count, and
+seasonal cycles. SARIMA fits must converge and pass finite-parameter and root diagnostics;
+Ljung-Box residual evidence is exposed as a warning when sufficient residual history
+exists. Isolation Forest uses confirmed value, actual change per elapsed day, and trailing
+median deviation. Duplicate effective dates cause typed abstention while preserving every
+observation, rather than fabricating a one-day interval.
+
+Cadence records observed spacing, an optional expected cadence, its basis, ambiguity, and
+missing count. Expected cadence is contract-only in Phase 1: no KPI or MI persistence field
+has been added. Missing observations cannot silently redefine business cadence, and no
+resampling occurs. Anomaly scores remain model-relative evidence, not probability or
+severity. No analytical result is persisted or publicly exposed in Phase 1.
+
 ---
 
 # 80. Reporting Period Service
@@ -3129,6 +3158,31 @@ Flyway migration `V11__preserve_review_classification.sql` adds non-destructive 
 Report confirmation is observation-based. `kpi_entries.id` identifies each retained occurrence, so duplicate KPI observations remain separate and traceable. Confirmation validates that the submitted KPI definition still matches the persisted observation but does not impose uniqueness on the definition ID.
 
 Safe bulk ignore uses persisted deterministic classification rather than reclassifying display text at click time. Removing an extraction creates an ignored source trace with reason `REMOVED_EXTRACTION`.
+
+---
+
+## Maintenance Intelligence Phase 2 orchestration
+
+`KpiIntelligenceProfileService` owns validated business configuration while technical
+algorithm parameters remain environment configuration. `MaintenanceIntelligenceRefreshOrchestrator`
+computes outside write transactions, persists the analytical snapshot in a new transaction,
+then invokes separate contextual-alert and notification stages.
+
+The private runtime withholds the latest usable observation, runs one-step model selection
+and fitting on prior observations only, and returns an expectation for the withheld date.
+Spring derives alerts without interpreting score magnitude:
+
+```text
+latest anomaly + outside genuine interval → STRONG_CONTEXTUAL_DEVIATION / HIGH
+latest anomaly only                       → ANOMALOUS_OBSERVATION / MEDIUM
+outside genuine interval only             → FORECAST_DEVIATION / MEDIUM
+trend or insufficient data alone          → no alert
+```
+
+No interval is fabricated for naive models. Alerts preserve actual value, source IDs,
+model-relative anomaly evidence, expected value/interval, trend, model family, and analysis
+identity. Only newly inserted alerts call the existing `NotificationService`; notification
+failure is recorded on the alert and does not roll back the analysis or alert.
 
 ---
 

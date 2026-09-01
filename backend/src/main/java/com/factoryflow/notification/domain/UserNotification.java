@@ -14,19 +14,26 @@ public class UserNotification {
     @Column(nullable = false, length = 500) private String message;
     @Column(name = "related_report_id") private Long relatedReportId;
     @Column(name = "related_generated_report_id") private Long relatedGeneratedReportId;
+    @Column(name = "related_intelligence_alert_id") private Long relatedIntelligenceAlertId;
     @Column(name = "created_at", nullable = false) private Instant createdAt;
     @Column(name = "read_at") private Instant readAt;
     protected UserNotification() { }
     public static UserNotification create(UserAccount user, NotificationType type, String title, String message,
                                           Long reportId, Long generatedReportId, Instant createdAt) {
+        return create(user, type, title, message, reportId, generatedReportId, null, createdAt);
+    }
+    public static UserNotification create(UserAccount user, NotificationType type, String title, String message,
+                                          Long reportId, Long generatedReportId, Long intelligenceAlertId, Instant createdAt) {
         UserNotification value = new UserNotification(); value.user = user; value.type = type; value.title = title;
         value.message = message; value.relatedReportId = reportId; value.relatedGeneratedReportId = generatedReportId;
+        value.relatedIntelligenceAlertId = intelligenceAlertId;
         value.createdAt = createdAt; return value;
     }
     public void markRead(Instant at) { if (readAt == null) readAt = at; }
     public Long getId() { return id; } public NotificationType getType() { return type; }
     public String getTitle() { return title; } public String getMessage() { return message; }
     public Long getRelatedReportId() { return relatedReportId; } public Long getRelatedGeneratedReportId() { return relatedGeneratedReportId; }
+    public Long getRelatedIntelligenceAlertId() { return relatedIntelligenceAlertId; }
     public Instant getCreatedAt() { return createdAt; } public Instant getReadAt() { return readAt; }
     public UserAccount getUser() { return user; }
 }
