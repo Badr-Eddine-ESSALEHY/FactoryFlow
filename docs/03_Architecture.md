@@ -1656,6 +1656,44 @@ transactions. Consequently, later contextualization or notification failure cann
 a valid analytical snapshot. The API exposes the latest usable analytical result separately
 from the latest refresh attempt, including technical failures.
 
+## 81. Maintenance Intelligence Android presentation
+
+Phase 3 consumes the secured Phase 2 API through the normal Android boundary:
+
+```text
+Stats entry
+→ Navigation Compose
+→ Maintenance Intelligence ViewModel
+→ MaintenanceIntelligenceRepository
+→ Retrofit + JWT interceptor
+→ persisted Phase 2 API
+→ mapped Android models
+→ explicit loading/content/empty/error state
+→ overview / KPI workspace / contextual alerts
+```
+
+The KPI workspace separates Overview, Anomalies, Forecast, Trend, and Model/Quality so
+algorithmic evidence is progressively disclosed rather than compressed into one long
+screen. Compose Canvas renders actual observations, shape-coded anomalies, dashed forecast
+continuations, genuine prediction bands, candidate comparisons, per-horizon validation
+error, the backend-provided deterministic trend, and observation-to-observation movement.
+The trend line is reproduced exactly without a second Android regression: for the ordered
+observations `x = 0..n-1`, Android combines the returned slope with the observation centroid
+using `y = yMean + slope * (x - xMean)`, the same least-squares line represented by the
+backend result. Change bars use a disclosed signed square-root display scale so one extreme
+movement does not erase smaller movements visually. Android never reruns Isolation Forest,
+model selection, or forecasting.
+
+The Phase 2 anomaly payload exposes feature names but not exact per-observation feature
+vectors. Phase 3 therefore explains the three analytical dimensions without drawing a
+fabricated feature-value chart. Rolling-origin actual-versus-predicted pairs are likewise
+not visualized because only aggregate and per-horizon validation metrics are public.
+
+Runtime acceptance also protects presentation-specific invariants that compilation cannot
+prove. KPI and alert rows use separately namespaced lazy-list keys, status pills wrap rather
+than hiding off-screen, and a failed refresh keeps the latest usable persisted analysis
+visible with a distinct retry explanation.
+
 ---
 
 # End of 03_Architecture.md

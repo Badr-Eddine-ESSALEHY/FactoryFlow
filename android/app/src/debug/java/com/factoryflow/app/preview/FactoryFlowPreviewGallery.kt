@@ -300,7 +300,7 @@ fun FactoryFlowConfirmationDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DAR
 @Composable
 fun FactoryFlowStatisticsLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGHT) {
     FocusedPreviewFrame(stringResource(R.string.statistics_title)) { modifier ->
-        StatisticsContent(PreviewFixtures.statistics, {}, {}, modifier)
+        StatisticsContent(PreviewFixtures.statistics, {}, {}, {}, modifier)
     }
 }
 
@@ -308,7 +308,7 @@ fun FactoryFlowStatisticsLightPreview() = FactoryFlowTheme(mode = ThemeMode.LIGH
 @Composable
 fun FactoryFlowStatisticsDarkPreview() = FactoryFlowTheme(mode = ThemeMode.DARK) {
     FocusedPreviewFrame(stringResource(R.string.statistics_title)) { modifier ->
-        StatisticsContent(PreviewFixtures.statistics, {}, {}, modifier)
+        StatisticsContent(PreviewFixtures.statistics, {}, {}, {}, modifier)
     }
 }
 

@@ -3938,6 +3938,63 @@ The final application should feel like:
 
 ---
 
+## 293. Maintenance Intelligence Android module
+
+Maintenance Intelligence is entered from the top-level Statistics destination. Its own
+overview loads the compact backend response, summarizes analysis/alert availability, and
+opens either a KPI workspace or the contextual-alert list. The nested routes keep the
+Statistics shell association while hiding bottom navigation during focused analysis.
+
+The Android data path is:
+
+```text
+Composable
+→ StateFlow ViewModel
+→ MaintenanceIntelligenceRepository
+→ FactoryFlowApi
+→ /api/maintenance-intelligence/**
+→ network DTO mapping
+→ stable Android analytical models
+→ screen state
+```
+
+The selected KPI workspace uses five state-preserving analytical tabs:
+
+```text
+Overview | Anomalies | Forecast | Trend | Model and quality
+```
+
+Visualization inventory:
+
+- Overview: confirmed history with anomaly markers, forecast continuation, genuine
+  interval band, out-of-sample latest-observation evidence, and related alerts.
+- Anomalies: confirmed history with circle/diamond/triangle semantics and a separate
+  model-relative anomaly-evidence chart with the backend threshold.
+- Forecast: history-to-forecast chart, candidate-model metric comparison, and selected/
+  naive/raw-best per-horizon backtest error chart.
+- Trend: confirmed evolution with the exact backend least-squares line reconstructed from
+  the returned slope and ordered-observation centroid, plus successive-change bars using a
+  disclosed signed square-root display scale to preserve small movements beside outliers.
+- Model and quality: observation sufficiency, missing/duplicate counts, expected versus
+  observed cadence, no-resampling policy, selected model, metrics, and safe diagnostics.
+- Alerts: pageable filtered list, evidence-chain detail, KPI drill-down, and source-report
+  traceability.
+
+Color never carries analytical meaning alone. Circles represent confirmed observations,
+diamonds anomalies, triangles forecasts/contextual deviation, solid lines history, dashed
+lines forecast/trend references, and translucent areas authentic forecast intervals.
+Charts support drag/tap inspection and include textual summaries for accessibility.
+Workspace status pills wrap on narrow widths, long alert/KPI labels may use two lines, and
+overview lazy-list keys are namespaced by item type so equal database identifiers cannot
+collide during scrolling.
+
+Persisted notifications now deep-link to their related intelligence alert before falling
+back to the related report. No Android code recomputes trend classification, anomaly
+classification, forecasts, model selection, contextual alert severity, or notification
+rules.
+
+---
+
 ## Delivery Stabilization Notes
 
 The Android file boundaries follow these release rules:

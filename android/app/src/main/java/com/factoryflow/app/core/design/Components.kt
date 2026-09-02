@@ -403,15 +403,17 @@ fun FlowListRow(
     gradientEnd: Color? = null,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
+    titleMaxLines: Int = 1,
+    metaMaxLines: Int = 1,
 ) {
     FlowCard(modifier, PaddingValues(horizontal = FlowSpacing.md, vertical = FlowSpacing.sm), onClick) {
         Row(Modifier.fillMaxWidth().heightIn(min = FlowSize.listRowMinHeight), verticalAlignment = Alignment.CenterVertically) {
             FlowIconTile(icon, null, accent, gradientEnd = gradientEnd, size = FlowSize.listIconTile)
             Spacer(Modifier.width(FlowSpacing.sm))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(FlowSpacing.micro))
-                Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = metaMaxLines, overflow = TextOverflow.Ellipsis)
             }
             if (trailing != null) {
                 Spacer(Modifier.width(FlowSpacing.sm))

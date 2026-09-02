@@ -219,7 +219,7 @@
     <string name="notifications_title">Notifications</string>
     <string name="new_notification">Nouveau</string>
     <string name="no_notifications">Aucune notification pour le moment</string>
-    <string name="no_notifications_detail">Les mises à jour en temps réel seront activées lors de la prochaine étape produit.</string>
+    <string name="no_notifications_detail">Les alertes analytiques et les événements importants apparaîtront ici.</string>
     <string name="profile">Profil</string>
     <string name="excel">Excel</string>
     <string name="pdf">PDF</string>

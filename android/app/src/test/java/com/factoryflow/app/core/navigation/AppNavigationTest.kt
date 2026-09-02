@@ -25,6 +25,10 @@ class AppNavigationTest {
     fun `top-level and unknown destinations resolve predictably`() {
         assertEquals(Routes.DASHBOARD, selectedTopLevelRoute(Routes.DASHBOARD))
         assertEquals(Routes.STATISTICS, selectedTopLevelRoute(Routes.STATISTICS))
+        assertEquals(Routes.STATISTICS, selectedTopLevelRoute(Routes.INTELLIGENCE_OVERVIEW))
+        assertEquals(Routes.STATISTICS, selectedTopLevelRoute(Routes.INTELLIGENCE_WORKSPACE))
+        assertEquals(Routes.STATISTICS, selectedTopLevelRoute(Routes.INTELLIGENCE_ALERTS))
+        assertEquals(Routes.STATISTICS, selectedTopLevelRoute(Routes.INTELLIGENCE_ALERT_DETAIL))
         assertEquals(Routes.NOTIFICATIONS, selectedTopLevelRoute(Routes.NOTIFICATIONS))
         assertEquals(Routes.DASHBOARD, selectedTopLevelRoute(Routes.PROFILE))
         assertEquals(Routes.DASHBOARD, selectedTopLevelRoute(null))
@@ -49,6 +53,10 @@ class AppNavigationTest {
         assertEquals(false, showsBottomNavigation(Routes.GENERATED_DETAIL))
         assertEquals(false, showsBottomNavigation(Routes.SCHEDULE_FORM))
         assertEquals(false, showsBottomNavigation(Routes.PROFILE))
+        assertEquals(false, showsBottomNavigation(Routes.INTELLIGENCE_OVERVIEW))
+        assertEquals(false, showsBottomNavigation(Routes.INTELLIGENCE_WORKSPACE))
+        assertEquals(false, showsBottomNavigation(Routes.INTELLIGENCE_ALERTS))
+        assertEquals(false, showsBottomNavigation(Routes.INTELLIGENCE_ALERT_DETAIL))
         assertEquals(false, showsBottomNavigation(null))
     }
 }

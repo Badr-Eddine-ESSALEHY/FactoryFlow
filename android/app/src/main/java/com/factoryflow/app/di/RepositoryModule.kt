@@ -18,4 +18,5 @@ abstract class RepositoryModule {
     @Binds @Singleton abstract fun statistics(impl: DefaultStatisticsRepository): StatisticsRepository
     @Binds @Singleton abstract fun schedules(impl: DefaultSchedulesRepository): SchedulesRepository
     @Binds @Singleton abstract fun notifications(impl: DefaultNotificationsRepository): NotificationsRepository
+    @Binds @Singleton abstract fun intelligence(impl: DefaultMaintenanceIntelligenceRepository): MaintenanceIntelligenceRepository
 }

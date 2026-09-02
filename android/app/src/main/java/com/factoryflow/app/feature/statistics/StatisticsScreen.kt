@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.PsychologyAlt
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -87,7 +89,10 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
+fun StatisticsScreen(
+    onOpenIntelligence: () -> Unit,
+    viewModel: StatisticsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     FactoryFlowScaffold(topBar = { StatisticsTopBar() }) { padding ->
         when {
@@ -107,7 +112,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 stringResource(R.string.retry),
                 viewModel::load,
             )
-            else -> StatisticsContent(state, viewModel::days, viewModel::select, Modifier.padding(padding))
+            else -> StatisticsContent(state, viewModel::days, viewModel::select, onOpenIntelligence, Modifier.padding(padding))
         }
     }
 }
@@ -127,6 +132,7 @@ fun StatisticsContent(
     state: StatisticsUiState,
     onDays: (Int) -> Unit,
     onKpi: (Long) -> Unit,
+    onOpenIntelligence: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selected = state.selected ?: return
@@ -139,6 +145,29 @@ fun StatisticsContent(
             contentPadding = PaddingValues(FlowSpacing.xl, FlowSpacing.md, FlowSpacing.xl, FlowSpacing.xxl),
             verticalArrangement = Arrangement.spacedBy(FlowSpacing.md),
         ) {
+            item {
+                FlowCard(
+                    Modifier.fillMaxWidth(),
+                    PaddingValues(FlowSpacing.lg),
+                    onClick = onOpenIntelligence,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FlowIconTile(Icons.Outlined.PsychologyAlt, null, FlowPurple, size = FlowSize.iconTileLarge)
+                        Spacer(Modifier.width(FlowSpacing.md))
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.mi_open), style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                stringResource(R.string.mi_open_detail),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
             item {
                 FlowSegmentedControl(
                     options = listOf(

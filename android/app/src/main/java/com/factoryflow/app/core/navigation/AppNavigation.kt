@@ -21,6 +21,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.factoryflow.app.R
 import com.factoryflow.app.core.design.FlowBottomNavigation
@@ -46,6 +48,10 @@ import com.factoryflow.app.feature.review.ReviewScreen
 import com.factoryflow.app.feature.schedules.ScheduleFormScreen
 import com.factoryflow.app.feature.schedules.SchedulesScreen
 import com.factoryflow.app.feature.statistics.StatisticsScreen
+import com.factoryflow.app.feature.intelligence.MaintenanceIntelligenceOverviewScreen
+import com.factoryflow.app.feature.intelligence.KpiIntelligenceWorkspaceScreen
+import com.factoryflow.app.feature.intelligence.IntelligenceAlertsScreen
+import com.factoryflow.app.feature.intelligence.IntelligenceAlertDetailScreen
 import androidx.compose.material.icons.outlined.BarChart
 
 internal object Routes {
@@ -65,6 +71,10 @@ internal object Routes {
     const val GENERATED_DETAIL = "generated/{generatedId}"
     const val SCHEDULES = "schedules"
     const val SCHEDULE_FORM = "schedule/{scheduleId}"
+    const val INTELLIGENCE_OVERVIEW = "maintenance-intelligence"
+    const val INTELLIGENCE_WORKSPACE = "maintenance-intelligence/kpi/{kpiId}"
+    const val INTELLIGENCE_ALERTS = "maintenance-intelligence/alerts"
+    const val INTELLIGENCE_ALERT_DETAIL = "maintenance-intelligence/alerts/{alertId}"
 }
 
 private val topLevelRoutes = setOf(
@@ -84,6 +94,8 @@ internal fun selectedTopLevelRoute(route: String?): String = when (route) {
     Routes.REPORTS, Routes.CONFIRMED, Routes.REPORT_DETAIL, Routes.GENERATED_DETAIL, Routes.SCHEDULES, Routes.SCHEDULE_FORM -> Routes.REPORTS
     Routes.CREATE, Routes.PASTE, Routes.MANUAL, Routes.GALLERY, Routes.SHARED_IMAGE, Routes.REVIEW -> Routes.CREATE
     Routes.STATISTICS -> Routes.STATISTICS
+    Routes.INTELLIGENCE_OVERVIEW, Routes.INTELLIGENCE_WORKSPACE, Routes.INTELLIGENCE_ALERTS,
+    Routes.INTELLIGENCE_ALERT_DETAIL -> Routes.STATISTICS
     Routes.NOTIFICATIONS -> Routes.NOTIFICATIONS
     else -> Routes.DASHBOARD
 }
@@ -162,12 +174,47 @@ fun AuthenticatedApp(
                     )
                 }
                 composable(Routes.STATISTICS) {
-                    StatisticsScreen()
+                    StatisticsScreen(onOpenIntelligence = { navController.navigate(Routes.INTELLIGENCE_OVERVIEW) })
                 }
                 composable(Routes.NOTIFICATIONS) {
                     NotificationsScreen(
                         onReport = { navController.navigate("report/$it") },
                         onGenerated = { navController.navigate("generated/$it") },
+                        onIntelligenceAlert = { navController.navigate("maintenance-intelligence/alerts/$it") },
+                    )
+                }
+                composable(Routes.INTELLIGENCE_OVERVIEW) {
+                    MaintenanceIntelligenceOverviewScreen(
+                        onBack = { navigateBack(navController) },
+                        onKpi = { navController.navigate("maintenance-intelligence/kpi/$it") },
+                        onAlerts = { navController.navigate(Routes.INTELLIGENCE_ALERTS) },
+                        onAlert = { navController.navigate("maintenance-intelligence/alerts/$it") },
+                    )
+                }
+                composable(
+                    route = Routes.INTELLIGENCE_WORKSPACE,
+                    arguments = listOf(navArgument("kpiId") { type = NavType.LongType }),
+                ) {
+                    KpiIntelligenceWorkspaceScreen(
+                        onBack = { navigateBack(navController) },
+                        onAlert = { navController.navigate("maintenance-intelligence/alerts/$it") },
+                        onReport = { navController.navigate("report/$it") },
+                    )
+                }
+                composable(Routes.INTELLIGENCE_ALERTS) {
+                    IntelligenceAlertsScreen(
+                        onBack = { navigateBack(navController) },
+                        onAlert = { navController.navigate("maintenance-intelligence/alerts/$it") },
+                    )
+                }
+                composable(
+                    route = Routes.INTELLIGENCE_ALERT_DETAIL,
+                    arguments = listOf(navArgument("alertId") { type = NavType.LongType }),
+                ) {
+                    IntelligenceAlertDetailScreen(
+                        onBack = { navigateBack(navController) },
+                        onKpi = { navController.navigate("maintenance-intelligence/kpi/$it") },
+                        onReport = { navController.navigate("report/$it") },
                     )
                 }
                 composable(Routes.PROFILE) {

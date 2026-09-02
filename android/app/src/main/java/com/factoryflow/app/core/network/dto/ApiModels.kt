@@ -272,5 +272,6 @@ data class ScheduleRunDto(
 @JsonClass(generateAdapter = false)
 data class NotificationDto(
     val id: Long, val type: String, val title: String, val message: String,
-    val relatedReportId: Long?, val relatedGeneratedReportId: Long?, val createdAt: String, val readAt: String?,
+    val relatedReportId: Long?, val relatedGeneratedReportId: Long?,
+    val relatedIntelligenceAlertId: Long? = null, val createdAt: String, val readAt: String?,
 )

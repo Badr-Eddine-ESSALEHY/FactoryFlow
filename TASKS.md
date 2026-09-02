@@ -3119,42 +3119,42 @@ Do not silently reorder the project because a different feature looks more excit
 
 67. Current Work
 Current milestone:
-Maintenance Intelligence Phase 2 backend accepted
+Maintenance Intelligence Phase 3 Android client accepted and frozen
 
 Current task:
-Freeze the verified Phase 2 backend checkpoint without starting Android Phase 3.
+No active implementation task. Phase 3 is frozen; do not start Phase 4 without explicit approval.
 
 Last completed:
-Maintenance Intelligence Phase 2 implementation: per-KPI profile, versioned JSONB analysis
-snapshots, leakage-free latest-observation expectation, deterministic contextual alerts,
-idempotent existing-notification integration, bounded after-commit refresh, and secured APIs.
+The secured Phase 2 API is now integrated through Retrofit, a dedicated repository and
+stable Android models. The application provides a global intelligence overview, a five-
+page KPI analytical workspace, contextual-alert list/detail screens, persisted-notification
+deep links, and truthful Compose Canvas visualizations for history, anomalies, forecasts,
+validation metrics, trend, and observation-to-observation change.
 
 In progress:
-Final Git audit and checkpoint publication. Android repository, ViewModel, screens,
-navigation, and charts have deliberately not started.
+None. The remaining emulator rerun was explicitly waived as a non-blocking visual acceptance item.
 
 Next:
-After explicit Phase 2 approval, begin Android Phase 3 against the frozen secured API.
+After explicit Phase 3 approval, define the next Maintenance Intelligence phase. Do not
+start it automatically.
 
 Primary blocker:
-No Phase 2 acceptance blocker remains. Production installation still requires the real
-HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL` and environment-only SMTP credentials.
+No Phase 3 blocker remains. The automated and backend-connected acceptance pass found and
+corrected a lazy-list key collision, clipped status pills, outlier-compressed change bars,
+duplicated technical-error copy, cadence pluralization, and notification wording. Production
+installation still requires the real HTTPS `FACTORYFLOW_RELEASE_API_BASE_URL`.
 
 Implementation status:
-Backend compilation and packaging pass. Flyway V13 and the real PostgreSQL persistence/API
-path are verified, including profile uniqueness, JSONB analysis round-trip, latest-success
-versus latest-failure queries, contextual-alert idempotency, notification linkage, and JWT-
-secured retrieval. The final backend suite passes 187 tests across 44 suites with zero
-failures/errors and two opt-in skips. The focused Java Maintenance Intelligence run passes
-25 ordinary tests plus the PostgreSQL integration test; the separately enabled live Java-
-to-Python contract also passes. The expanded Python analytical suite passes all 27 tests.
-A PostgreSQL-specific nullable alert-filter defect found by the integration test was fixed
-by composing typed JPA specifications dynamically. Representative single-KPI analytical
-calls averaged about 0.53 s for 28 daily observations and 4.18 s for 46 observations with
-seven-day seasonality, reinforcing the bounded background executor.
-The unchanged Android verification from Phase 1 remains 41 unit tests plus successful
-`compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug`. Real-device
-acceptance and live SMTP delivery remain external verification steps.
+Android `testDebugUnitTest`, `lintDebug`, and `assembleDebug` pass. The suite now contains
+48 tests across 14 suites with zero failures, errors, or skips, including Maintenance
+Intelligence repository mapping, ViewModel loading/refresh/abstention/filter behavior, and
+nested navigation classification plus collision-proof overview item keys. The focused
+backend notification and secured API contract tests pass. The complete PostgreSQL-backed
+backend run passes 188 tests with zero failures/errors and two intentional skips. The
+previously frozen Phase 2
+analytical and persistence evidence remains unchanged. Android does not fabricate the
+per-observation Isolation Forest feature vectors or rolling-origin prediction pairs that the
+current API does not expose.
 
 Update this section after every meaningful development session.
 

@@ -1,6 +1,5 @@
 package com.factoryflow.app.feature.notifications
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +21,7 @@ import com.factoryflow.app.core.network.dto.NotificationDto
 fun NotificationsScreen(
     onReport: (Long) -> Unit,
     onGenerated: (Long) -> Unit,
+    onIntelligenceAlert: (Long) -> Unit,
     viewModel: NotificationsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -31,7 +31,8 @@ fun NotificationsScreen(
             onRetry = viewModel::load,
             onRead = viewModel::read,
             onOpen = { notification ->
-                notification.relatedGeneratedReportId?.let(onGenerated)
+                notification.relatedIntelligenceAlertId?.let(onIntelligenceAlert)
+                    ?: notification.relatedGeneratedReportId?.let(onGenerated)
                     ?: notification.relatedReportId?.let(onReport)
             },
             modifier = Modifier.weight(1f),
@@ -63,7 +64,7 @@ fun NotificationsContent(
                 items(state.items, key = NotificationDto::id) { item ->
                     FlowListRow(
                         icon = icon(item.type), title = item.title, meta = item.message,
-                        accent = accent(item.type), modifier = Modifier.fillMaxWidth().clickable {
+                        accent = accent(item.type), modifier = Modifier.fillMaxWidth(), onClick = {
                             onRead(item.id)
                             onOpen(item)
                         },
@@ -80,6 +81,7 @@ private fun icon(type: String): ImageVector = when (type) {
     "SCHEDULED_DOCUMENT_READY" -> Icons.Outlined.Description
     "EMAIL_FAILED" -> Icons.Outlined.MarkEmailUnread
     "SCHEDULE_FAILED" -> Icons.Outlined.ErrorOutline
+    "MAINTENANCE_INTELLIGENCE_ATTENTION" -> Icons.Outlined.PsychologyAlt
     else -> Icons.Outlined.RateReview
 }
 
@@ -87,5 +89,6 @@ private fun accent(type: String) = when (type) {
     "REPORT_CONFIRMED" -> FlowTeal
     "SCHEDULED_DOCUMENT_READY" -> FlowBlue
     "EMAIL_FAILED", "SCHEDULE_FAILED" -> FlowOrange
+    "MAINTENANCE_INTELLIGENCE_ATTENTION" -> FlowDanger
     else -> FlowPurple
 }

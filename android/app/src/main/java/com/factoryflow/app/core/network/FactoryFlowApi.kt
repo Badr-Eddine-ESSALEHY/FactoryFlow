@@ -72,4 +72,22 @@ interface FactoryFlowApi {
     ): PageDto<ScheduleRunDto>
     @GET("api/notifications") suspend fun notifications(): List<NotificationDto>
     @PATCH("api/notifications/{id}/read") suspend fun markNotificationRead(@Path("id") id: Long): NotificationDto
+    @GET("api/maintenance-intelligence/overview") suspend fun intelligenceOverview(): IntelligenceOverviewDto
+    @GET("api/maintenance-intelligence/kpis/{kpiId}") suspend fun intelligenceDetail(
+        @Path("kpiId") kpiId: Long,
+    ): IntelligenceAnalysisDetailDto
+    @POST("api/maintenance-intelligence/kpis/{kpiId}/refresh") suspend fun refreshIntelligence(
+        @Path("kpiId") kpiId: Long,
+    ): IntelligenceAnalysisDetailDto
+    @GET("api/maintenance-intelligence/alerts") suspend fun intelligenceAlerts(
+        @Query("kpiId") kpiId: Long? = null,
+        @Query("type") type: String? = null,
+        @Query("attentionLevel") attentionLevel: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 30,
+        @Query("sort") sort: String = "createdAt,desc",
+    ): PageDto<IntelligenceAlertDto>
+    @GET("api/maintenance-intelligence/alerts/{id}") suspend fun intelligenceAlert(
+        @Path("id") id: Long,
+    ): IntelligenceAlertDto
 }

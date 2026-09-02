@@ -5511,4 +5511,38 @@ That feeling is more important than any individual animation or component.
 
 ---
 
+## 323. Maintenance Intelligence Experience
+
+Maintenance Intelligence is reachable from Statistics and opens as a focused nested
+analytical workspace. The global overview answers which KPIs have usable analyses,
+forecasts, anomalies, insufficient history, or contextual alerts. Selecting a KPI opens a
+horizontally scrollable five-part workspace: Overview, Anomalies, Forecast, Trend, and
+Model/Quality. Each part owns one analytical question and the selected KPI identity remains
+visible above the tabs.
+
+Charts use shape, line style, color, and text together. Confirmed observations are circles
+on solid lines; anomalies are diamonds; forecasts are triangles on dashed lines; contextual
+deviations use a distinct triangle; forecast intervals are translucent bands. Drag/tap
+inspection exposes the selected date and value. A nearby textual summary ensures that
+analytical meaning is not available only through graphics.
+
+The trend reference reproduces the backend least-squares fit rather than fitting a second
+mobile model. Successive-change bars disclose their signed square-root display scale so
+small movements remain visible beside an outlier. Analytical status pills wrap instead of
+requiring an undisclosed horizontal gesture, and alert titles may occupy two lines when
+needed.
+
+Analytical abstention is a designed state, not an error. Insufficient history, duplicate
+effective dates, missing-cadence ambiguity, irregular spacing, cadence mismatch, and model
+failure receive concise explanations without manufacturing a result. Technical/network
+failures remain visually distinct and provide retry. A missing persisted analysis offers an
+explicit first-analysis action.
+
+Contextual alert detail explains which independent signals agreed, shows actual and
+expected evidence without calling it failure probability, links to the KPI workspace, and
+links to the confirmed source report. `HIGH` means corroborating analytical signals, not
+equipment failure severity.
+
+---
+
 # End of UI_UX.md

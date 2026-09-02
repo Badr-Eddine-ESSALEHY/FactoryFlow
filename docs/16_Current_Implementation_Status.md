@@ -1,7 +1,7 @@
 # FactoryFlow Current Implementation Status
 
 > Status: Active implementation register  
-> Last verified: 2026-08-22
+> Last verified: 2026-09-02
 
 This file records what exists in the repository now. Design documents may describe
 future options, but they must not be presented as implemented unless this register and
@@ -31,6 +31,10 @@ the code agree.
 - One grouped scheduled e-mail with every requested attachment, HTML plus plain-text
   alternative, and separate generation/e-mail delivery states.
 - Durable, user-scoped in-app notifications.
+- Maintenance Intelligence profiles, versioned analytical snapshots, contextual alerts,
+  and secured retrieval APIs over confirmed KPI history.
+- Android Maintenance Intelligence overview, five-page per-KPI workspace, contextual-alert
+  list/detail, persisted-notification deep links, and interactive analytical charts.
 - PostgreSQL + Flyway production persistence and automated unit/integration test suites.
 
 ## Intentionally not implemented
@@ -43,6 +47,11 @@ the code agree.
 - Firebase Cloud Messaging. Notifications are persisted in-app.
 - RabbitMQ. Scheduled/report processing remains synchronous and in-process.
 - SignalR. It belongs to a separate project and is not part of FactoryFlow.
+- Android-side anomaly detection, forecasting, trend classification, or contextual-alert
+  decisions. The mobile client presents persisted backend results and never recomputes them.
+- Per-observation Isolation Forest feature-vector charts and rolling-origin actual-versus-
+  predicted charts. The current API exposes feature names and aggregate/per-horizon
+  validation metrics, not the underlying point-level values needed to draw those views.
 
 ## Reporting and delivery invariants
 
@@ -67,13 +76,17 @@ the code agree.
 
 ## Verification state
 
-- Backend compile and test-compile pass.
-- Database-independent backend suite: 126 tests, 0 failures, 0 errors, 1 opt-in
-  PaddleOCR runtime test skipped.
-- Complete backend suite: 161 tests discovered, 0 assertion failures, 35 Spring context
-  errors, 1 skip. All 35 errors are caused by rejected local PostgreSQL authentication
-  before integration tests can execute; valid test credentials are still required.
-- Android: `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug`, and `assembleDebug`
-  pass. The unit suite contains 41 tests with no failures, errors, or skips.
-- Remaining external acceptance: live SMTP delivery, production HTTPS API URL, and
-  end-to-end/visual verification on the target Vivo device.
+- Backend compile and test-compile pass. The focused Maintenance Intelligence notification
+  and API-contract run passes 2 tests with no failures, errors, or skips.
+- The current complete PostgreSQL-backed backend run passes 188 tests with 0 failures,
+  0 errors, and 2 intentional skips. All 13 Flyway migrations validate against PostgreSQL
+  18.4; Flyway emits its expected newer-server compatibility warning.
+- Android: `testDebugUnitTest`, `lintDebug`, and `assembleDebug` pass. The unit suite contains
+  48 tests across 14 suites with no failures, errors, or skips.
+- Backend-connected emulator inspection covered the overview, five KPI analytical pages,
+  contextual-alert list/detail, notification deep link, long names, short/long histories,
+  anomaly/no-anomaly, interval/no-interval, duplicate dates, cadence ambiguity, and retained
+  analysis after technical refresh failure. Phase 3 is accepted and frozen; the remaining
+  emulator rerun was explicitly waived as a non-blocking visual acceptance item.
+- Remaining external acceptance outside the frozen Phase 3 checkpoint: live SMTP delivery
+  and the production HTTPS API URL.
